@@ -5,3 +5,6 @@
 /logs/
 /src/main/resources/static/assets/
 /src/main/resources/static/index.html
+/admin-frontend/node_modules/
+/target/
+/target-node/
