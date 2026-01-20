@@ -1,0 +1,153 @@
+<!--首页-->
+<view class="page-container">
+  <!-- 搜索框 -->
+  <view class="search-bar" bindtap="onSearchTap">
+    <view class="search-input-wrapper">
+      <text class="search-icon">🔍</text>
+      <text class="search-placeholder">搜索门店购买、酒店预订、文创特产</text>
+    </view>
+  </view>
+
+  <!-- 轮播图 -->
+  <view class="banner-section" wx:if="{{banners.length > 0}}">
+    <banner
+      banners="{{banners}}"
+      autoplay="{{true}}"
+      interval="{{3000}}"
+      indicator-dots="{{true}}"
+      indicator-color="rgba(255, 255, 255, 0.5)"
+      indicator-active-color="#409EFF"
+      height="{{400}}"
+      bindchange="onBannerChange"
+      bindtap="onBannerTap"
+    />
+  </view>
+
+  <!-- Icon 图标列表 -->
+  <view class="icon-section" wx:if="{{icons.length > 0}}">
+    <view class="icon-list">
+      <view 
+        class="icon-item" 
+        wx:for="{{icons}}" 
+        wx:key="id"
+        data-icon="{{item}}"
+        bindtap="onIconTap"
+      >
+        <image class="icon-image" src="{{item.icon}}" mode="aspectFit" />
+        <text class="icon-name">{{item.name}}</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- 热门推荐 -->
+  <view class="section" wx:if="{{recommendAttractions.length > 0 || recommendHotels.length > 0 || recommendProducts.length > 0}}">
+
+    <!-- 推荐景点 -->
+    <view class="recommend-subsection" wx:if="{{recommendAttractions.length > 0}}">
+      <view class="subsection-header">
+        <text class="subsection-title">推荐景点</text>
+        <view class="subsection-more" bindtap="onViewMoreAttractions">
+          <text>查看更多</text>
+          <text class="more-icon">></text>
+        </view>
+      </view>
+      <scroll-view class="product-list" scroll-x="{{true}}" show-scrollbar="{{false}}" enable-flex="{{true}}">
+        <view class="product-list-wrapper">
+          <view class="product-item" wx:for="{{recommendAttractions}}" wx:key="id">
+            <product-card
+              product="{{item}}"
+              product-type="ATTRACTION"
+              show-price="{{true}}"
+              show-rating="{{false}}"
+              bindtap="onProductTap"
+            />
+          </view>
+        </view>
+      </scroll-view>
+    </view>
+
+    <!-- 推荐酒店 -->
+    <view class="recommend-subsection" wx:if="{{recommendHotels.length > 0}}">
+      <view class="subsection-header">
+        <text class="subsection-title">推荐酒店</text>
+        <view class="subsection-more" bindtap="onViewMoreHotels">
+          <text>查看更多</text>
+          <text class="more-icon">></text>
+        </view>
+      </view>
+      <scroll-view class="product-list" scroll-x="{{true}}" show-scrollbar="{{false}}" enable-flex="{{true}}">
+        <view class="product-list-wrapper">
+          <view class="product-item" wx:for="{{recommendHotels}}" wx:key="id">
+            <product-card
+              product="{{item}}"
+              product-type="HOTEL"
+              show-price="{{true}}"
+              show-rating="{{false}}"
+              bindtap="onProductTap"
+            />
+          </view>
+        </view>
+      </scroll-view>
+    </view>
+
+    <!-- 推荐商品（页签形式） -->
+    <view class="recommend-subsection" wx:if="{{recommendProductCategories.length > 0}}">
+      <view class="subsection-header">
+        <text class="subsection-title">热门推荐</text>
+        <view class="subsection-more" bindtap="onViewMoreProducts">
+          <text>查看更多</text>
+          <text class="more-icon">></text>
+        </view>
+      </view>
+      
+      <!-- 商品分类页签 -->
+      <view class="product-category-tabs">
+        <view 
+          class="category-tab {{currentProductCategoryIndex === index ? 'active' : ''}}"
+          wx:for="{{recommendProductCategories}}" 
+          wx:key="categoryId"
+          wx:for-index="index"
+          data-index="{{index}}"
+          bindtap="onProductCategoryTabChange"
+        >
+          <image wx:if="{{item.categoryIcon}}" class="category-tab-icon" src="{{item.categoryIcon}}" mode="aspectFit" />
+          <text class="category-tab-text">{{item.categoryName}}</text>
+        </view>
+      </view>
+      
+      <!-- 当前选中分类的商品列表 -->
+      <view class="product-grid" wx:if="{{recommendProductCategories[currentProductCategoryIndex]}}">
+        <view 
+          class="product-grid-item" 
+          wx:for="{{recommendProductCategories[currentProductCategoryIndex].products}}" 
+          wx:key="id"
+        >
+          <product-card
+            product="{{item}}"
+            product-type="PRODUCT"
+            show-price="{{true}}"
+            show-rating="{{false}}"
+            bindtap="onProductTap"
+          />
+        </view>
+      </view>
+      
+      <!-- 空状态 -->
+      <view class="empty-products" wx:if="{{recommendProductCategories[currentProductCategoryIndex] && recommendProductCategories[currentProductCategoryIndex].products.length === 0}}">
+        <text class="empty-text">该分类暂无商品</text>
+      </view>
+    </view>
+    
+  </view>
+
+  <!-- 空状态 -->
+  <view class="empty-state" wx:if="{{!loading && banners.length === 0 && icons.length === 0 && recommendAttractions.length === 0 && recommendHotels.length === 0 && recommendProducts.length === 0}}">
+    <text class="empty-icon">📭</text>
+    <text class="empty-text">暂无推荐内容</text>
+  </view>
+
+  <!-- 加载状态 -->
+  <view class="loading-state" wx:if="{{loading}}">
+    <text>加载中...</text>
+  </view>
+</view>

@@ -1,0 +1,92 @@
+<!--文章详情页-->
+<view class="page-container">
+  <view wx:if="{{article}}" class="detail-content">
+    <!-- 文章头部 -->
+    <view class="article-header">
+      <view class="article-title">{{article.title}}</view>
+      <view class="article-meta">
+        <text class="meta-item">{{article.author || '管理员'}}</text>
+        <text class="meta-separator">·</text>
+        <text class="meta-item">{{article.publishTimeText}}</text>
+      </view>
+      <view class="article-stats">
+        <text class="stat-item">阅读 {{article.viewCount || 0}}</text>
+        <text class="stat-separator">·</text>
+        <text class="stat-item">点赞 {{article.likeCount || 0}}</text>
+        <text class="stat-separator">·</text>
+        <text class="stat-item">收藏 {{article.favoriteCount || 0}}</text>
+      </view>
+    </view>
+
+    <!-- 封面图 -->
+    <image
+      wx:if="{{article.coverImage}}"
+      class="article-cover"
+      src="{{article.coverImage}}"
+      mode="widthFix"
+      lazy-load="{{true}}"
+    />
+
+    <!-- 文章内容区域 -->
+    <view class="article-content">
+      <rich-text nodes="{{article.content}}"></rich-text>
+    </view>
+
+    <!-- 相关文章推荐 -->
+    <view wx:if="{{relatedArticles.length > 0}}" class="related-section">
+      <view class="section-title">相关推荐</view>
+      <view class="related-list">
+        <view
+          wx:for="{{relatedArticles}}"
+          wx:key="id"
+          class="related-item"
+          data-id="{{item.id}}"
+          bindtap="onRelatedArticleTap"
+        >
+          <image
+            wx:if="{{item.coverImage}}"
+            class="related-cover"
+            src="{{item.coverImage}}"
+            mode="aspectFill"
+            lazy-load="{{true}}"
+          />
+          <view class="related-info">
+            <view class="related-title">{{item.title}}</view>
+            <view class="related-meta">
+              <text class="related-stat">阅读 {{item.viewCount || 0}}</text>
+              <text class="related-separator">·</text>
+              <text class="related-stat">点赞 {{item.likeCount || 0}}</text>
+            </view>
+          </view>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 加载状态 -->
+  <view wx:if="{{loading}}" class="loading-container">
+    <text>加载中...</text>
+  </view>
+
+  <!-- 底部操作栏（固定） -->
+  <view wx:if="{{article}}" class="action-bar safe-area-bottom">
+    <view
+      class="action-btn {{isLiked ? 'active' : ''}}"
+      bindtap="onLikeTap"
+    >
+      <text class="action-icon">{{isLiked ? '❤️' : '🤍'}}</text>
+      <text class="action-text">点赞</text>
+    </view>
+    <view
+      class="action-btn {{isFavorited ? 'active' : ''}}"
+      bindtap="onFavoriteTap"
+    >
+      <text class="action-icon">{{isFavorited ? '⭐' : '☆'}}</text>
+      <text class="action-text">收藏</text>
+    </view>
+    <button class="action-btn share-btn" open-type="share">
+      <text class="action-icon">📤</text>
+      <text class="action-text">分享</text>
+    </button>
+  </view>
+</view>

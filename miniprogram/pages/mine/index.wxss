@@ -1,0 +1,168 @@
+/* 我的页面样式 */
+.page-container {
+  min-height: 100vh;
+  background: #f5f5f5;
+  padding-bottom: 40rpx;
+}
+
+/* 用户信息卡片 */
+.user-card {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  padding: 60rpx 40rpx 80rpx;
+  margin-bottom: 20rpx;
+}
+
+.user-info {
+  display: flex;
+  align-items: center;
+}
+
+.avatar {
+  width: 120rpx;
+  height: 120rpx;
+  border-radius: 60rpx;
+  margin-right: 30rpx;
+  border: 4rpx solid rgba(255, 255, 255, 0.3);
+}
+
+.user-details {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.nickname {
+  font-size: 36rpx;
+  font-weight: bold;
+  color: #fff;
+  margin-bottom: 10rpx;
+}
+
+.phone {
+  font-size: 28rpx;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.login-prompt {
+  display: flex;
+  align-items: center;
+}
+
+.login-btn-wrapper {
+  flex: 1;
+  margin-left: 30rpx;
+}
+
+.login-btn {
+  width: 200rpx;
+  height: 64rpx;
+  line-height: 64rpx;
+  background: rgba(255, 255, 255, 0.2);
+  color: #fff;
+  border-radius: 32rpx;
+  font-size: 28rpx;
+  border: 2rpx solid rgba(255, 255, 255, 0.3);
+}
+
+.login-btn::after {
+  border: none;
+}
+
+/* 订单入口卡片 */
+.order-card {
+  background: #fff;
+  margin: 0 20rpx 20rpx;
+  border-radius: 16rpx;
+  padding: 40rpx 0;
+  display: flex;
+  justify-content: space-around;
+  box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.05);
+}
+
+.order-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+}
+
+.order-label {
+  font-size: 26rpx;
+  color: #666;
+  margin-bottom: 10rpx;
+}
+
+.order-badge {
+  position: absolute;
+  top: -10rpx;
+  right: -20rpx;
+  background: #ff4757;
+  border-radius: 20rpx;
+  min-width: 32rpx;
+  height: 32rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 8rpx;
+}
+
+.badge-text {
+  font-size: 20rpx;
+  color: #fff;
+  font-weight: bold;
+}
+
+/* 功能入口列表 */
+.menu-list {
+  background: #fff;
+  margin: 0 20rpx 20rpx;
+  border-radius: 16rpx;
+  overflow: hidden;
+}
+
+.menu-item {
+  display: flex;
+  align-items: center;
+  padding: 30rpx 40rpx;
+  border-bottom: 1rpx solid #f0f0f0;
+}
+
+.menu-item:last-child {
+  border-bottom: none;
+}
+
+.menu-icon {
+  font-size: 40rpx;
+  margin-right: 30rpx;
+}
+
+.menu-label {
+  flex: 1;
+  font-size: 30rpx;
+  color: #333;
+}
+
+.menu-arrow {
+  font-size: 28rpx;
+  color: #999;
+}
+
+/* 退出登录按钮 */
+.logout-section {
+  margin: 40rpx 20rpx 0;
+}
+
+.logout-btn {
+  width: 100%;
+  height: 88rpx;
+  line-height: 88rpx;
+  background: #fff;
+  color: #ff4757;
+  border-radius: 16rpx;
+  font-size: 32rpx;
+  border: 1rpx solid #ff4757;
+}
+
+.logout-btn::after {
+  border: none;
+}

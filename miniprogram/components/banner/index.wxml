@@ -1,0 +1,38 @@
+<!--轮播图组件-->
+<swiper
+  class="banner-swiper"
+  indicator-dots="{{indicatorDots}}"
+  indicator-color="{{indicatorColor}}"
+  indicator-active-color="{{indicatorActiveColor}}"
+  autoplay="{{shouldAutoplay}}"
+  interval="{{interval}}"
+  circular="{{true}}"
+  bindchange="onSwiperChange"
+  style="height: {{height}}rpx;"
+>
+  <swiper-item wx:for="{{banners}}" wx:key="index" class="banner-item">
+    <!-- 图片类型 -->
+    <image
+      wx:if="{{item.type === 'image'}}"
+      class="banner-image"
+      src="{{item.image}}"
+      mode="aspectFill"
+      bindtap="onBannerTap"
+      data-index="{{index}}"
+    />
+
+    <!-- 视频类型 -->
+    <video
+      wx:elif="{{item.type === 'video'}}"
+      class="banner-video"
+      src="{{item.video}}"
+      controls="{{true}}"
+      show-center-play-btn="{{true}}"
+      enable-play-gesture="{{true}}"
+      bindplay="onVideoPlay"
+      bindended="onVideoEnded"
+      bindtap="onBannerTap"
+      data-index="{{index}}"
+    />
+  </swiper-item>
+</swiper>

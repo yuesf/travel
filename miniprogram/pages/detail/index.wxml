@@ -1,0 +1,350 @@
+<!--详情页-->
+<view class="page-container">
+  <!-- 加载状态 -->
+  <view wx:if="{{loading}}" class="loading-container">
+    <text class="loading-text">加载中...</text>
+  </view>
+
+  <!-- 内容区域 -->
+  <view wx:elif="{{detail}}" class="content-container">
+    <!-- 图片/视频轮播区域 -->
+    <view class="swiper-container">
+      <swiper
+        class="swiper"
+        indicator-dots="{{mediaList.length > 1}}"
+        indicator-color="rgba(255, 255, 255, 0.5)"
+        indicator-active-color="#ffffff"
+        autoplay="{{false}}"
+        circular="{{true}}"
+        bindchange="onSwiperChange"
+      >
+        <swiper-item wx:for="{{mediaList}}" wx:key="index">
+          <!-- 图片 -->
+          <image
+            wx:if="{{item.type === 'image'}}"
+            class="swiper-image"
+            src="{{item.url}}"
+            mode="aspectFill"
+            data-index="{{index}}"
+            bindtap="onImageTap"
+          />
+          <!-- 视频 -->
+          <video
+            wx:elif="{{item.type === 'video'}}"
+            class="swiper-video"
+            src="{{item.url}}"
+            poster="{{item.poster}}"
+            controls="{{true}}"
+            show-center-play-btn="{{true}}"
+            enable-play-gesture="{{true}}"
+            bindplay="onVideoPlay"
+            bindfullscreenchange="onVideoFullscreenChange"
+          />
+        </swiper-item>
+      </swiper>
+      <!-- 轮播指示器 -->
+      <view wx:if="{{mediaList.length > 1}}" class="swiper-indicator">
+        <text class="swiper-indicator-text">{{currentSwiperIndex + 1}}/{{mediaList.length}}</text>
+      </view>
+    </view>
+
+    <!-- 基本信息区域 -->
+    <view class="info-section">
+      <!-- 名称和价格 -->
+      <view class="info-header">
+        <text class="info-name">{{detail.name}}</text>
+        <view class="info-price-row">
+          <text class="info-price">¥{{detail.price}}</text>
+          <text wx:if="{{detail.originalPrice}}" class="info-original-price">¥{{detail.originalPrice}}</text>
+        </view>
+      </view>
+
+      <!-- 评分和位置 -->
+      <view class="info-meta">
+        <view wx:if="{{detail.rating}}" class="info-rating">
+          <text class="info-rating-text">评分：{{detail.rating}}</text>
+          <text class="info-rating-star">★</text>
+        </view>
+        <view wx:if="{{detail.location}}" class="info-location">
+          <text class="info-location-icon">📍</text>
+          <text class="info-location-text">{{detail.location}}</text>
+        </view>
+      </view>
+
+      <!-- 库存信息 -->
+      <view wx:if="{{detail.stock !== undefined}}" class="info-stock">
+        <text class="info-stock-text">库存：{{detail.stock}}件</text>
+      </view>
+
+      <!-- 酒店特有信息 -->
+      <view wx:if="{{type === 'hotel' && detail.starLevel}}" class="info-hotel">
+        <text class="info-hotel-text">星级：{{detail.starLevel}}星</text>
+      </view>
+    </view>
+
+    <!-- 详情内容区域 -->
+    <view class="detail-section">
+      <!-- 标签页 -->
+      <view class="tabs-container">
+        <view
+          wx:for="{{tabs}}"
+          wx:key="index"
+          class="tab-item {{activeTab === index ? 'active' : ''}}"
+          data-index="{{index}}"
+          bindtap="onTabChange"
+        >
+          <text class="tab-text">{{item}}</text>
+        </view>
+      </view>
+
+      <!-- 详情内容 -->
+      <view class="detail-content">
+        <!-- 详情标签页 -->
+        <view wx:if="{{activeTab === 0}}" class="detail-tab-content">
+          <!-- 详情描述（富文本） -->
+          <view wx:if="{{detail.description}}" class="detail-description">
+            <rich-text nodes="{{detail.description}}"></rich-text>
+          </view>
+
+          <!-- 设施/服务列表（酒店） -->
+          <view wx:if="{{type === 'hotel' && detail.facilities}}" class="detail-facilities">
+            <view class="detail-facilities-title">设施服务</view>
+            <view class="detail-facilities-list">
+              <view
+                wx:for="{{detail.facilities}}"
+                wx:key="index"
+                class="facility-item"
+              >
+                <text class="facility-text">{{item}}</text>
+              </view>
+            </view>
+          </view>
+
+          <!-- 房型列表（酒店） -->
+          <view wx:if="{{type === 'hotel' && detail.rooms}}" class="detail-rooms">
+            <view class="detail-rooms-title">房型选择</view>
+            <view class="detail-rooms-list">
+              <view
+                wx:for="{{detail.rooms}}"
+                wx:key="id"
+                class="room-item"
+                data-room="{{item}}"
+                bindtap="onSelectRoom"
+              >
+                <view class="room-info">
+                  <text class="room-name">{{item.name}}</text>
+                  <text class="room-desc">{{item.description}}</text>
+                  <view class="room-features">
+                    <text wx:for="{{item.features}}" wx:key="index" class="room-feature">{{item}}</text>
+                  </view>
+                </view>
+                <view class="room-price">
+                  <text class="room-price-text">¥{{item.price}}</text>
+                  <text class="room-price-unit">/晚</text>
+                </view>
+              </view>
+            </view>
+          </view>
+
+          <!-- 门票信息（景点） -->
+          <view wx:if="{{type === 'attraction' && detail.tickets}}" class="detail-tickets">
+            <view class="detail-tickets-title">门票信息</view>
+            <view class="detail-tickets-list">
+              <view
+                wx:for="{{detail.tickets}}"
+                wx:key="id"
+                class="ticket-item"
+              >
+                <view class="ticket-info">
+                  <text class="ticket-name">{{item.name}}</text>
+                  <text class="ticket-desc">{{item.description}}</text>
+                </view>
+                <text class="ticket-price">¥{{item.price}}</text>
+              </view>
+            </view>
+          </view>
+        </view>
+
+        <!-- 评价标签页 -->
+        <view wx:if="{{activeTab === 1}}" class="detail-tab-content">
+          <view class="empty-content">
+            <text class="empty-text">暂无评价</text>
+          </view>
+        </view>
+
+        <!-- 须知标签页 -->
+        <view wx:if="{{activeTab === 2}}" class="detail-tab-content">
+          <view wx:if="{{detail.notice}}" class="detail-notice">
+            <rich-text nodes="{{detail.notice}}"></rich-text>
+          </view>
+          <view wx:else class="empty-content">
+            <text class="empty-text">暂无须知</text>
+          </view>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 空状态 -->
+  <view wx:if="{{!loading && !detail}}" class="empty-container">
+    <text class="empty-text">暂无商品信息</text>
+  </view>
+
+  <!-- 底部操作栏（固定） -->
+  <view wx:if="{{detail}}" class="action-bar">
+    <!-- 左侧导航图标 -->
+    <view class="action-nav-icons">
+      <view class="nav-icon" bindtap="onGoHome">
+        <text class="nav-icon-text">🏠</text>
+        <text class="nav-icon-label">首页</text>
+      </view>
+      <view class="nav-icon" bindtap="onGoCart">
+        <text class="nav-icon-text">🛒</text>
+        <text class="nav-icon-label">购物车</text>
+      </view>
+    </view>
+    
+    <!-- 右侧操作按钮 -->
+    <view class="action-buttons">
+      <view class="action-btn cart" bindtap="onAddToCart">
+        <text class="action-btn-text">加入购物车</text>
+      </view>
+      <view class="action-btn buy" bindtap="onBuyNow">
+        <text class="action-btn-text">立即购买</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- 房型选择弹窗（酒店） -->
+  <view wx:if="{{showRoomModal && type === 'hotel'}}" class="room-modal-mask" bindtap="onCloseRoomModal">
+    <view class="room-modal" catchtap="true">
+      <view class="room-modal-header">
+        <text class="room-modal-title">选择房型</text>
+        <text class="room-modal-close" bindtap="onCloseRoomModal">✕</text>
+      </view>
+      
+      <scroll-view class="room-modal-content" scroll-y="true">
+        <!-- 日期选择 -->
+        <view class="room-modal-dates">
+          <view class="date-item">
+            <text class="date-label">入住日期</text>
+            <picker mode="date" value="{{checkInDate}}" start="{{minDate}}" bindchange="onCheckInDateChange">
+              <view class="date-picker">
+                <text class="date-text">{{checkInDate || '请选择'}}</text>
+                <text class="date-arrow">›</text>
+              </view>
+            </picker>
+          </view>
+          <view class="date-item">
+            <text class="date-label">退房日期</text>
+            <picker mode="date" value="{{checkOutDate}}" start="{{checkInDate || minDate}}" bindchange="onCheckOutDateChange">
+              <view class="date-picker">
+                <text class="date-text">{{checkOutDate || '请选择'}}</text>
+                <text class="date-arrow">›</text>
+              </view>
+            </picker>
+          </view>
+        </view>
+
+        <!-- 房型列表 -->
+        <view wx:if="{{detail.rooms}}" class="room-modal-rooms">
+          <view
+            wx:for="{{detail.rooms}}"
+            wx:key="id"
+            class="room-modal-item {{selectedRoom && selectedRoom.id === item.id ? 'active' : ''}}"
+            data-room="{{item}}"
+            bindtap="onSelectRoom"
+          >
+            <view class="room-modal-item-info">
+              <text class="room-modal-item-name">{{item.name}}</text>
+              <text class="room-modal-item-desc">{{item.description}}</text>
+            </view>
+            <view class="room-modal-item-price">
+              <text class="room-modal-item-price-text">¥{{item.price}}</text>
+              <text class="room-modal-item-price-unit">/晚</text>
+            </view>
+            <view wx:if="{{selectedRoom && selectedRoom.id === item.id}}" class="room-modal-item-check">✓</view>
+          </view>
+        </view>
+      </scroll-view>
+
+        <!-- 数量选择 -->
+        <view class="room-modal-footer">
+          <view class="quantity-selector">
+            <text class="quantity-label">数量：</text>
+            <view class="quantity-controls">
+              <view class="quantity-btn minus" bindtap="onDecreaseQuantity">-</view>
+              <text class="quantity-value">{{quantity}}</text>
+              <view class="quantity-btn plus" bindtap="onIncreaseQuantity">+</view>
+            </view>
+          </view>
+        <view class="room-modal-actions">
+          <view class="room-modal-btn cancel" bindtap="onCloseRoomModal">取消</view>
+          <view class="room-modal-btn confirm" bindtap="onAddToCart">确定</view>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 规格选择弹窗（商品） -->
+  <view wx:if="{{showSpecModal && type === 'product'}}" class="spec-modal-mask" bindtap="onCloseSpecModal">
+    <view class="spec-modal" catchtap="true">
+      <view class="spec-modal-header">
+        <text class="spec-modal-title">选择规格</text>
+        <text class="spec-modal-close" bindtap="onCloseSpecModal">✕</text>
+      </view>
+      
+      <scroll-view class="spec-modal-content" scroll-y="true">
+        <!-- 商品信息 -->
+        <view class="spec-product-info">
+          <image wx:if="{{detail.images && detail.images.length > 0}}" class="spec-product-image" src="{{detail.images[0]}}" mode="aspectFill" />
+          <view class="spec-product-details">
+            <text class="spec-product-name">{{detail.name}}</text>
+            <text class="spec-product-price">¥{{detail.price}}</text>
+          </view>
+        </view>
+        
+        <!-- 规格选择 -->
+        <view wx:if="{{detail.specList && detail.specList.length > 0}}" class="spec-list">
+          <view wx:for="{{detail.specList}}" wx:for-item="specItem" wx:key="key" class="spec-group">
+            <view class="spec-group-title">{{specItem.key}}</view>
+            <view class="spec-options">
+              <!-- 遍历规格选项 -->
+              <view
+                wx:for="{{specItem.value}}" wx:for-item="option"
+                wx:key="*this"
+                class="spec-option {{selectedSpec[specItem.key] === option ? 'active' : ''}}"
+                data-spec-key="{{specItem.key}}"
+                data-spec-value="{{option}}"
+                bindtap="onSelectSpec"
+              >
+                <text class="spec-option-text">{{option}}</text>
+              </view>
+            </view>
+          </view>
+        </view>
+      </scroll-view>
+
+      <!-- 规格选择提示信息 -->
+      <view wx:if="{{showSpecTip}}" class="spec-tip">
+        <text class="spec-tip-text">{{specTipText}}</text>
+      </view>
+
+      <!-- 数量选择和操作按钮 -->
+      <view class="spec-modal-footer">
+        <view class="quantity-selector">
+          <text class="quantity-label">数量：</text>
+          <view class="quantity-controls">
+            <view class="quantity-btn minus" bindtap="onDecreaseQuantity">-</view>
+            <text class="quantity-value">{{quantity}}</text>
+            <view class="quantity-btn plus" bindtap="onIncreaseQuantity">+</view>
+          </view>
+        </view>
+        <view class="spec-modal-actions">
+          <view class="spec-modal-btn cancel" bindtap="onCloseSpecModal">取消</view>
+          <view class="spec-modal-btn confirm" bindtap="onAddToCart">确定</view>
+        </view>
+      </view>
+    </view>
+  </view>
+</view>

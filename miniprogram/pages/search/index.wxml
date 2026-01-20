@@ -1,0 +1,84 @@
+<!--搜索页面-->
+<view class="page-container">
+  <!-- 搜索框 -->
+  <view class="search-header">
+    <view class="search-input-wrapper">
+      <input
+        class="search-input"
+        type="text"
+        placeholder="搜索景点、酒店、商品"
+        value="{{keyword}}"
+        bindinput="onInput"
+        bindconfirm="onConfirm"
+        confirm-type="search"
+        focus="{{true}}"
+      />
+      <view class="search-btn" bindtap="onConfirm">搜索</view>
+    </view>
+  </view>
+
+  <!-- 搜索历史 -->
+  <view class="search-history" wx:if="{{!hasSearched && searchHistory.length > 0}}">
+    <view class="history-header">
+      <text class="history-title">搜索历史</text>
+      <text class="history-clear" bindtap="onClearHistory">清除</text>
+    </view>
+    <view class="history-list">
+      <view
+        class="history-item"
+        wx:for="{{searchHistory}}"
+        wx:key="*this"
+        data-keyword="{{item}}"
+        bindtap="onHistoryTap"
+      >
+        {{item}}
+      </view>
+    </view>
+  </view>
+
+  <!-- 搜索结果 -->
+  <view class="search-results" wx:if="{{hasSearched}}">
+    <view class="results-header">
+      <text class="results-title">搜索结果</text>
+      <text class="results-count" wx:if="{{searchResults.length > 0}}">
+        共{{searchResults.length}}条
+      </text>
+    </view>
+
+    <!-- 结果列表 -->
+    <view class="results-list" wx:if="{{searchResults.length > 0}}">
+      <view
+        class="result-item"
+        wx:for="{{searchResults}}"
+        wx:key="id"
+        data-item="{{item}}"
+        bindtap="onResultTap"
+      >
+        <image class="result-image" src="{{item.image || item.coverImage}}" mode="aspectFill" />
+        <view class="result-info">
+          <view class="result-title">{{item.name || item.title}}</view>
+          <view class="result-desc" wx:if="{{item.description || item.summary}}">
+            {{item.description || item.summary}}
+          </view>
+          <view class="result-footer">
+            <text class="result-price" wx:if="{{item.price}}">¥{{item.price}}</text>
+            <text class="result-location" wx:if="{{item.location || item.address}}">
+              {{item.location || item.address}}
+            </text>
+          </view>
+        </view>
+      </view>
+    </view>
+
+    <!-- 空状态 -->
+    <view class="empty-state" wx:else>
+      <text class="empty-icon">🔍</text>
+      <text class="empty-text">暂无搜索结果</text>
+    </view>
+  </view>
+
+  <!-- 加载状态 -->
+  <view class="loading-state" wx:if="{{loading}}">
+    <text>搜索中...</text>
+  </view>
+</view>

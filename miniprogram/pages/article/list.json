@@ -1,0 +1,9 @@
+{
+  "navigationBarTitleText": "文章",
+  "navigationBarTextStyle": "black",
+  "enablePullDownRefresh": true,
+  "onReachBottomDistance": 50,
+  "usingComponents": {
+    "empty": "/components/empty/index"
+  }
+}

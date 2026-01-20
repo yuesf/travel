@@ -1,0 +1,98 @@
+<!--文章列表页-->
+<view class="page-container">
+  <!-- 分类/标签筛选栏 -->
+  <view class="filter-bar">
+    <scroll-view class="filter-scroll" scroll-x>
+      <view class="filter-content">
+        <!-- 全部分类 -->
+        <view
+          class="filter-item {{!selectedCategoryId ? 'active' : ''}}"
+          bindtap="onSelectCategory"
+          data-id=""
+        >
+          <text class="filter-text">全部</text>
+        </view>
+        
+        <!-- 分类列表 -->
+        <view
+          wx:for="{{categoryList}}"
+          wx:key="id"
+          class="filter-item {{selectedCategoryId === item.id ? 'active' : ''}}"
+          bindtap="onSelectCategory"
+          data-id="{{item.id}}"
+        >
+          <text class="filter-text">{{item.name}}</text>
+        </view>
+      </view>
+    </scroll-view>
+  </view>
+
+  <!-- 文章列表 -->
+  <scroll-view
+    class="article-scroll"
+    scroll-y
+    enable-back-to-top
+    refresher-enabled
+    refresher-triggered="{{loading}}"
+    bindrefresherrefresh="onPullDownRefresh"
+    bindscrolltolower="onReachBottom"
+  >
+    <!-- 文章卡片列表 -->
+    <view wx:if="{{articleList.length > 0}}" class="article-list">
+      <view
+        wx:for="{{articleList}}"
+        wx:key="id"
+        class="article-card"
+        data-id="{{item.id}}"
+        bindtap="onArticleTap"
+      >
+        <!-- 封面图 -->
+        <image
+          wx:if="{{item.coverImage}}"
+          class="article-cover"
+          src="{{item.coverImage}}"
+          mode="aspectFill"
+          lazy-load="{{true}}"
+        />
+        
+        <!-- 文章信息 -->
+        <view class="article-info">
+          <!-- 标题 -->
+          <view class="article-title">{{item.title}}</view>
+          
+          <!-- 摘要 -->
+          <view wx:if="{{item.summary}}" class="article-summary">
+            {{item.summary}}
+          </view>
+          
+          <!-- 底部信息 -->
+          <view class="article-footer">
+            <view class="article-meta">
+              <text class="meta-item">{{item.author || '管理员'}}</text>
+              <text class="meta-separator">·</text>
+              <text class="meta-item">{{item.publishTimeText}}</text>
+            </view>
+            <view class="article-stats">
+              <text class="stat-item">阅读 {{item.viewCount}}</text>
+              <text class="stat-separator">·</text>
+              <text class="stat-item">点赞 {{item.likeCount}}</text>
+            </view>
+          </view>
+        </view>
+      </view>
+    </view>
+
+    <!-- 空状态 -->
+    <view wx:else class="empty-container">
+      <empty text="暂无文章" show-action="{{false}}" />
+    </view>
+
+    <!-- 加载更多提示 -->
+    <view wx:if="{{articleList.length > 0 && loading}}" class="loading-more">
+      <text>加载中...</text>
+    </view>
+    <view wx:if="{{articleList.length > 0 && !hasMore && !loading}}" class="no-more">
+      <text>没有更多了</text>
+    </view>
+  </scroll-view>
+</view>

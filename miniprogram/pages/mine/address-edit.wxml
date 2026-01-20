@@ -1,0 +1,72 @@
+<!--收货地址编辑页-->
+<view class="page-container">
+  <scroll-view class="edit-scroll" scroll-y>
+    <view class="form-card">
+      <view class="form-item">
+        <text class="form-label">收货人姓名</text>
+        <input
+          class="form-input"
+          type="text"
+          placeholder="请输入收货人姓名"
+          value="{{receiverName}}"
+          bindinput="onReceiverNameInput"
+        />
+      </view>
+
+      <view class="form-item">
+        <text class="form-label">手机号</text>
+        <input
+          class="form-input"
+          type="number"
+          placeholder="请输入手机号"
+          value="{{receiverPhone}}"
+          bindinput="onReceiverPhoneInput"
+          maxlength="11"
+        />
+      </view>
+
+      <view class="form-item">
+        <text class="form-label">省市区</text>
+        <picker
+          mode="region"
+          value="{{region}}"
+          bindchange="onRegionChange"
+        >
+          <view class="picker-view">
+            <text wx:if="{{province && city && district}}" class="picker-text">
+              {{province}} {{city}} {{district}}
+            </text>
+            <text wx:else class="picker-text placeholder">请选择省市区</text>
+          </view>
+        </picker>
+      </view>
+
+      <view class="form-item">
+        <text class="form-label">详细地址</text>
+        <textarea
+          class="form-textarea"
+          placeholder="请输入详细地址"
+          value="{{detailAddress}}"
+          bindinput="onDetailAddressInput"
+          maxlength="200"
+        />
+      </view>
+
+      <view class="form-item">
+        <view class="switch-item">
+          <text class="form-label">设为默认地址</text>
+          <switch
+            checked="{{isDefault === 1}}"
+            bindchange="onDefaultChange"
+            color="#ff6b6b"
+          />
+        </view>
+      </view>
+    </view>
+  </scroll-view>
+
+  <!-- 底部保存按钮 -->
+  <view class="save-bar">
+    <button class="save-btn" bindtap="onSave">保存</button>
+  </view>
+</view>

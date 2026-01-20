@@ -1,0 +1,61 @@
+/**
+ * 样式变量定义
+ * 注意：微信小程序 WXSS 需要在 page 选择器中定义 CSS 变量
+ */
+
+page {
+  /* 主题色彩 */
+  --color-primary: #409EFF;
+  --color-success: #67C23A;
+  --color-warning: #E6A23C;
+  --color-danger: #F56C6C;
+  --color-info: #909399;
+
+  /* 文字颜色 */
+  --text-color-primary: #303133;
+  --text-color-regular: #606266;
+  --text-color-secondary: #909399;
+  --text-color-placeholder: #C0C4CC;
+
+  /* 边框颜色 */
+  --border-color-base: #DCDFE6;
+  --border-color-light: #E4E7ED;
+  --border-color-lighter: #EBEEF5;
+  --border-color-extra-light: #F2F6FC;
+
+  /* 背景颜色 */
+  --bg-color-base: #F5F7FA;
+  --bg-color-light: #FAFAFA;
+  --bg-color-white: #FFFFFF;
+
+  /* 字体大小 */
+  --font-size-xs: 20rpx;
+  --font-size-sm: 24rpx;
+  --font-size-base: 28rpx;
+  --font-size-lg: 32rpx;
+  --font-size-xl: 36rpx;
+  --font-size-xxl: 40rpx;
+
+  /* 间距 */
+  --spacing-xs: 10rpx;
+  --spacing-sm: 20rpx;
+  --spacing-md: 30rpx;
+  --spacing-lg: 40rpx;
+  --spacing-xl: 50rpx;
+
+  /* 圆角 */
+  --border-radius-sm: 4rpx;
+  --border-radius-base: 8rpx;
+  --border-radius-lg: 16rpx;
+  --border-radius-round: 50%;
+
+  /* 阴影 */
+  --box-shadow-base: 0 2rpx 12rpx rgba(0, 0, 0, 0.1);
+  --box-shadow-light: 0 2rpx 8rpx rgba(0, 0, 0, 0.05);
+  --box-shadow-dark: 0 4rpx 16rpx rgba(0, 0, 0, 0.15);
+
+  /* 动画时间 */
+  --transition-duration-fast: 0.2s;
+  --transition-duration-base: 0.3s;
+  --transition-duration-slow: 0.5s;
+}

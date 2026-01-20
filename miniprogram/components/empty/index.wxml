@@ -1,0 +1,24 @@
+<!--空状态组件-->
+<view class="empty-container">
+  <!-- 空状态图片 -->
+  <image
+    wx:if="{{image}}"
+    class="empty-image"
+    src="{{image}}"
+    mode="aspectFit"
+  />
+  <view wx:else class="empty-icon">📭</view>
+
+  <!-- 提示文字 -->
+  <view class="empty-text">{{text}}</view>
+
+  <!-- 操作按钮 -->
+  <view wx:if="{{showAction}}" class="empty-action">
+    <button class="action-button" bindtap="onActionTap">
+      {{actionText}}
+    </button>
+  </view>
+
+  <!-- 自定义插槽 -->
+  <slot></slot>
+</view>

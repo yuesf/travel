@@ -1,0 +1,24 @@
+<!--加载组件-->
+<view wx:if="{{loading}}" class="loading-container {{fullscreen ? 'loading-fullscreen' : ''}}">
+  <!-- 旋转加载 -->
+  <view wx:if="{{type === 'spinner'}}" class="loading-spinner">
+    <view class="spinner-item"></view>
+    <view class="spinner-item"></view>
+    <view class="spinner-item"></view>
+    <view class="spinner-item"></view>
+    <view class="spinner-item"></view>
+    <view class="spinner-item"></view>
+    <view class="spinner-item"></view>
+    <view class="spinner-item"></view>
+  </view>
+
+  <!-- 点状加载 -->
+  <view wx:elif="{{type === 'dots'}}" class="loading-dots">
+    <view class="dot-item"></view>
+    <view class="dot-item"></view>
+    <view class="dot-item"></view>
+  </view>
+
+  <!-- 加载文字 -->
+  <view wx:if="{{text}}" class="loading-text">{{text}}</view>
+</view>

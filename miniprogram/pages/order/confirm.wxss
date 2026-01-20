@@ -1,0 +1,345 @@
+/* 订单确认页样式 */
+
+.page-container {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  background-color: #f5f5f5;
+}
+
+/* 滚动区域 */
+.confirm-scroll {
+  flex: 1;
+  margin-bottom: 120rpx; /* 底部提交栏高度 */
+}
+
+/* 收货地址区域 */
+.address-section {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  margin: 20rpx;
+  padding: 30rpx;
+  background-color: #ffffff;
+  border-radius: 16rpx;
+  border: 2rpx solid #EBEEF5;
+  position: relative;
+}
+
+.address-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.address-info {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  margin-bottom: 10rpx;
+}
+
+.receiver-name {
+  font-size: 30rpx;
+  font-weight: 600;
+  color: #303133;
+  margin-right: 20rpx;
+}
+
+.receiver-phone {
+  font-size: 28rpx;
+  color: #606266;
+}
+
+.address-detail {
+  font-size: 26rpx;
+  color: #909399;
+  line-height: 1.5;
+}
+
+.address-empty {
+  flex: 1;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  padding: 20rpx 0;
+}
+
+.add-icon {
+  font-size: 40rpx;
+  color: #409EFF;
+  margin-right: 10rpx;
+}
+
+.add-text {
+  font-size: 28rpx;
+  color: #909399;
+}
+
+.address-arrow {
+  font-size: 32rpx;
+  color: #909399;
+  margin-left: 20rpx;
+}
+
+/* 信息卡片 */
+.info-card {
+  display: flex;
+  flex-direction: column;
+  margin: 20rpx;
+  background-color: #ffffff;
+  border-radius: 16rpx;
+  overflow: hidden;
+}
+
+.card-title {
+  padding: 30rpx;
+  font-size: 32rpx;
+  font-weight: 600;
+  color: #303133;
+  border-bottom: 1rpx solid #EBEEF5;
+}
+
+.card-content {
+  padding: 30rpx;
+}
+
+/* 商家信息 */
+.merchant-info {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  padding: 30rpx;
+  border-bottom: 1rpx solid #EBEEF5;
+}
+
+.merchant-icon {
+  font-size: 32rpx;
+  margin-right: 10rpx;
+}
+
+.merchant-name {
+  font-size: 30rpx;
+  font-weight: 600;
+  color: #303133;
+}
+
+/* 商品信息 */
+.product-item {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  margin-bottom: 30rpx;
+}
+
+.product-item:last-child {
+  margin-bottom: 0;
+}
+
+.product-image {
+  width: 160rpx;
+  height: 160rpx;
+  border-radius: 8rpx;
+  background-color: #F5F7FA;
+  margin-right: 20rpx;
+  flex-shrink: 0;
+}
+
+.product-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.product-name {
+  font-size: 28rpx;
+  font-weight: 500;
+  color: #303133;
+  line-height: 1.5;
+  margin-bottom: 10rpx;
+}
+
+.product-specs {
+  font-size: 24rpx;
+  color: #909399;
+  margin-bottom: 10rpx;
+}
+
+.product-price {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: auto;
+}
+
+.price-label {
+  font-size: 24rpx;
+  color: #606266;
+}
+
+.price-value {
+  font-size: 28rpx;
+  color: #F56C6C;
+  font-weight: 600;
+}
+
+.product-subtotal {
+  margin-top: 20rpx;
+  padding-top: 20rpx;
+  border-top: 1rpx solid #EBEEF5;
+  text-align: right;
+  font-size: 28rpx;
+  color: #303133;
+}
+
+/* 配送方式行 */
+.delivery-row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.delivery-label {
+  font-size: 28rpx;
+  color: #606266;
+}
+
+.delivery-value {
+  font-size: 28rpx;
+  color: #303133;
+}
+
+/* 优惠券选择 */
+.coupon-select {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.coupon-label {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+}
+
+.coupon-icon {
+  display: inline-block;
+  width: 40rpx;
+  height: 40rpx;
+  line-height: 40rpx;
+  text-align: center;
+  background-color: #F56C6C;
+  color: #ffffff;
+  font-size: 24rpx;
+  font-weight: 600;
+  border-radius: 4rpx;
+  margin-right: 10rpx;
+}
+
+.coupon-text-label {
+  font-size: 28rpx;
+  color: #303133;
+}
+
+.coupon-value {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+}
+
+.coupon-text {
+  font-size: 28rpx;
+  color: #303133;
+  margin-right: 10rpx;
+}
+
+.coupon-text.placeholder {
+  color: #909399;
+}
+
+.coupon-arrow {
+  font-size: 28rpx;
+  color: #909399;
+}
+
+/* 表单项 */
+.form-textarea {
+  padding: 20rpx;
+  font-size: 28rpx;
+  color: #303133;
+  background-color: #F5F7FA;
+  border-radius: 8rpx;
+  border: 1rpx solid #EBEEF5;
+  min-height: 120rpx;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* 底部提交栏（固定） */
+.submit-bar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 100;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  padding: 20rpx 30rpx;
+  background-color: #ffffff;
+  border-top: 1rpx solid #EBEEF5;
+  box-shadow: 0 -2rpx 10rpx rgba(0, 0, 0, 0.05);
+}
+
+.submit-info {
+  flex: 1;
+  display: flex;
+  flex-direction: row;
+  align-items: baseline;
+  margin-right: 20rpx;
+}
+
+.submit-label {
+  font-size: 28rpx;
+  color: #606266;
+  margin-right: 8rpx;
+}
+
+.submit-price {
+  font-size: 40rpx;
+  color: #F56C6C;
+  font-weight: 600;
+}
+
+.submit-btn {
+  padding: 0 60rpx;
+  height: 72rpx;
+  line-height: 72rpx;
+  font-size: 28rpx;
+  color: #ffffff;
+  background-color: #409EFF;
+  border-radius: 36rpx;
+  border: none;
+  transition: all 0.3s;
+}
+
+.submit-btn.loading {
+  background-color: #C0C4CC;
+  opacity: 0.7;
+}
+
+.submit-btn[disabled] {
+  background-color: #C0C4CC;
+  color: #ffffff;
+  opacity: 0.6;
+}
+
+/* 安全区域适配 */
+.safe-area-bottom {
+  padding-bottom: env(safe-area-inset-bottom);
+}

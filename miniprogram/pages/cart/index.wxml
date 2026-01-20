@@ -1,0 +1,134 @@
+<!--购物车页-->
+<view class="page-container">
+  <!-- 顶部导航栏 -->
+  <view class="cart-header">
+    <view class="header-title">购物车</view>
+    <view class="header-edit" bindtap="onToggleEditMode">
+      {{editMode ? '完成' : '编辑'}}
+    </view>
+  </view>
+
+  <!-- 购物车列表 -->
+  <scroll-view
+    class="cart-scroll"
+    scroll-y
+    enable-back-to-top
+    refresher-enabled
+    refresher-triggered="{{loading}}"
+    bindrefresherrefresh="onPullDownRefresh"
+  >
+    <!-- 购物车商品列表 -->
+    <view wx:if="{{cartList.length > 0}}" class="cart-list">
+      <view
+        wx:for="{{cartList}}"
+        wx:key="id"
+        class="cart-item"
+        data-index="{{index}}"
+        bindtap="onItemTap"
+      >
+        <!-- 选择框 -->
+        <view class="cart-item-checkbox" catchtap="onToggleItemSelect" data-index="{{index}}">
+          <view class="checkbox {{item.selected ? 'checked' : ''}}">
+            <text wx:if="{{item.selected}}" class="checkbox-icon">✓</text>
+          </view>
+        </view>
+
+        <!-- 商品信息 -->
+        <view class="cart-item-content">
+          <!-- 商品图片（优先使用后端返回的itemImage） -->
+          <image
+            class="cart-item-image"
+            src="{{item.itemImage || (item.productDetail && (item.productDetail.image || item.productDetail.coverImage)) || defaultProductImage}}"
+            mode="aspectFill"
+          />
+
+          <!-- 商品详情 -->
+          <view class="cart-item-info">
+            <!-- 商品名称（优先使用后端返回的itemName） -->
+            <view class="cart-item-name">
+              {{item.itemName || (item.productDetail && (item.productDetail.name || item.productDetail.title)) || '商品信息加载中...'}}
+            </view>
+
+            <!-- 商品规格（酒店房型等） -->
+            <view wx:if="{{item.productDetail && item.productDetail.specs}}" class="cart-item-specs">
+              {{item.productDetail.specs}}
+            </view>
+
+            <!-- 价格和数量 -->
+            <view class="cart-item-footer">
+              <!-- 价格（优先使用后端返回的itemPrice） -->
+              <view class="cart-item-price">
+                <text class="price-symbol">¥</text><text class="price-value">{{item.itemPrice || (item.productDetail && (item.productDetail.price || item.productDetail.minPrice)) || 0}}</text>
+              </view>
+
+              <!-- 数量选择器（非编辑模式） -->
+              <view wx:if="{{!editMode}}" class="cart-item-quantity">
+                <view
+                  class="quantity-btn minus"
+                  data-index="{{index}}"
+                  catchtap="onDecreaseQuantity"
+                >
+                  -
+                </view>
+                <text class="quantity-value">{{item.quantity}}</text>
+                <view
+                  class="quantity-btn plus"
+                  data-index="{{index}}"
+                  catchtap="onIncreaseQuantity"
+                >
+                  +
+                </view>
+              </view>
+
+              <!-- 删除按钮（编辑模式） -->
+              <view wx:else class="cart-item-delete">
+                <view
+                  class="delete-btn"
+                  data-index="{{index}}"
+                  catchtap="onDeleteItem"
+                >
+                  删除
+                </view>
+              </view>
+            </view>
+          </view>
+        </view>
+      </view>
+    </view>
+
+    <!-- 空状态 -->
+    <view wx:else class="empty-container">
+      <empty text="购物车是空的" show-action="{{true}}" action-text="去逛逛" bindaction="onGoShopping" />
+    </view>
+  </scroll-view>
+
+  <!-- 底部结算栏（固定） -->
+  <view wx:if="{{cartList.length > 0}}" class="cart-footer safe-area-bottom">
+    <!-- 全选 -->
+    <view class="footer-select-all" bindtap="onToggleSelectAll">
+      <view class="checkbox {{selectedAll ? 'checked' : ''}}">
+        <text wx:if="{{selectedAll}}" class="checkbox-icon">✓</text>
+      </view>
+      <text class="select-all-text">全选</text>
+    </view>
+
+    <!-- 合计金额 -->
+    <view class="footer-total">
+      <text class="total-label">合计：</text>
+      <text class="total-price">
+        <text class="price-symbol">¥</text><text class="price-value">{{totalPrice}}</text>
+      </text>
+    </view>
+
+    <!-- 结算按钮 -->
+    <view class="footer-checkout">
+      <button
+        class="checkout-btn {{selectedItemsCount > 0 ? 'active' : ''}}"
+        bindtap="onCheckout"
+        disabled="{{selectedItemsCount === 0}}"
+      >
+        结算({{selectedItemsCount}})
+      </button>
+    </view>
+  </view>
+</view>

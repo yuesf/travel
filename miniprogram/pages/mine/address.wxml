@@ -1,0 +1,47 @@
+<!--收货地址列表页-->
+<view class="page-container">
+  <!-- 地址列表 -->
+  <scroll-view class="address-scroll" scroll-y>
+    <view
+      wx:for="{{addressList}}"
+      wx:key="id"
+      class="address-item {{selectMode ? 'select-mode' : ''}}"
+      bindtap="{{selectMode ? 'onSelectAddress' : ''}}"
+      data-id="{{item.id}}"
+    >
+      <view class="address-content">
+        <view class="address-header">
+          <text class="receiver-name">{{item.receiverName}}</text>
+          <text class="receiver-phone">{{item.receiverPhone}}</text>
+          <view wx:if="{{item.isDefault === 1}}" class="default-tag">默认</view>
+        </view>
+        <view class="address-detail">
+          {{item.province}}{{item.city}}{{item.district}}{{item.detailAddress}}
+        </view>
+      </view>
+      <view wx:if="{{!selectMode}}" class="address-actions">
+        <view class="action-btn" bindtap="onSetDefault" data-id="{{item.id}}">
+          <text wx:if="{{item.isDefault === 1}}" class="action-text active">默认</text>
+          <text wx:else class="action-text">设为默认</text>
+        </view>
+        <view class="action-btn" bindtap="onEditAddress" data-id="{{item.id}}">
+          <text class="action-text">编辑</text>
+        </view>
+        <view class="action-btn" bindtap="onDeleteAddress" data-id="{{item.id}}">
+          <text class="action-text delete">删除</text>
+        </view>
+      </view>
+    </view>
+    
+    <!-- 空状态 -->
+    <view wx:if="{{addressList.length === 0}}" class="empty-state">
+      <text class="empty-text">暂无收货地址</text>
+      <button class="add-btn" bindtap="onAddAddress">添加地址</button>
+    </view>
+  </scroll-view>
+
+  <!-- 底部添加按钮 -->
+  <view wx:if="{{addressList.length > 0}}" class="add-bar">
+    <button class="add-btn-large" bindtap="onAddAddress">+ 添加新地址</button>
+  </view>
+</view>

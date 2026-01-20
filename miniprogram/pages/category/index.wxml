@@ -1,0 +1,147 @@
+<!--分类页-->
+<view class="page-container">
+  <!-- 左右分栏布局 -->
+  <view class="category-layout">
+    <!-- 左侧分类列表 -->
+    <scroll-view class="category-sidebar" scroll-y="true">
+      <view 
+        wx:for="{{categories}}" 
+        wx:key="id"
+        class="category-item {{currentCategoryId === item.id ? 'active' : ''}}"
+        data-categoryid="{{item.id}}"
+        bindtap="onCategoryTap"
+      >
+        <text class="category-text">{{item.name}}</text>
+      </view>
+    </scroll-view>
+
+    <!-- 右侧商品列表 -->
+    <scroll-view 
+      class="product-content"
+      scroll-y="true"
+      refresher-enabled="true"
+      refresher-triggered="{{loading && page === 1}}"
+      bindrefresherrefresh="onPullDownRefresh"
+      bindscrolltolower="onReachBottom"
+    >
+      <!-- 商品列表 -->
+      <view class="product-list">
+        <view 
+          wx:for="{{products}}"
+          wx:key="id"
+          class="product-item"
+          bindtap="onProductTap"
+          data-product="{{item}}"
+        >
+          <!-- 商品图片 -->
+          <view class="product-image-wrapper">
+            <image
+              class="product-image"
+              src="{{item.image || item.coverImage || '/static/images/default-product.png'}}"
+              mode="aspectFill"
+              lazy-load="{{true}}"
+            />
+          </view>
+          
+          <!-- 商品信息 -->
+          <view class="product-info">
+            <view class="product-title">{{item.name}}</view>
+            <view class="product-sales">已售{{item.sales || 0}}件</view>
+            <view class="product-price-wrapper">
+              <view class="product-price">
+                <text class="price-symbol">¥</text>
+                <text class="price-value">{{item.price || item.minPrice || 0}}</text>
+              </view>
+              <text wx:if="{{item.originalPrice && item.originalPrice > (item.price || item.minPrice || 0)}}" class="price-original">
+                ¥{{item.originalPrice}}
+              </text>
+            </view>
+          </view>
+          
+          <!-- 购物车图标 -->
+          <view class="product-cart-icon" catchtap="onAddToCart" data-product="{{item}}">
+            <text class="cart-icon">🛒</text>
+          </view>
+        </view>
+      </view>
+      
+      <!-- 加载更多提示 -->
+      <view wx:if="{{loading && page > 1}}" class="loading-more">
+        <text class="loading-more-text">加载中...</text>
+      </view>
+      
+      <!-- 没有更多提示 -->
+      <view wx:if="{{!hasMore && products.length > 0}}" class="no-more">
+        <text class="no-more-text">亲,已经到底啦!</text>
+      </view>
+      
+      <!-- 空状态 -->
+      <view wx:if="{{!loading && products.length === 0}}" class="empty-container">
+        <text class="empty-text">暂无商品</text>
+      </view>
+    </scroll-view>
+  </view>
+
+  <!-- 规格选择弹窗（商品） -->
+  <view wx:if="{{showSpecModal}}" class="spec-modal-mask" bindtap="onCloseSpecModal">
+    <view class="spec-modal" catchtap="true">
+      <view class="spec-modal-header">
+        <text class="spec-modal-title">选择规格</text>
+        <text class="spec-modal-close" bindtap="onCloseSpecModal">✕</text>
+      </view>
+      
+      <scroll-view class="spec-modal-content" scroll-y="true">
+        <!-- 商品信息 -->
+        <view class="spec-product-info">
+          <image wx:if="{{currentProductDetail && currentProductDetail.images && currentProductDetail.images.length > 0}}" class="spec-product-image" src="{{currentProductDetail.images[0]}}" mode="aspectFill" />
+          <image wx:elif="{{currentProductDetail && (currentProductDetail.image || currentProductDetail.coverImage)}}" class="spec-product-image" src="{{currentProductDetail.image || currentProductDetail.coverImage}}" mode="aspectFill" />
+          <view class="spec-product-details">
+            <text class="spec-product-name">{{currentProductDetail ? currentProductDetail.name : ''}}</text>
+            <text class="spec-product-price">¥{{currentProductDetail ? (currentProductDetail.price || currentProductDetail.minPrice || 0) : 0}}</text>
+          </view>
+        </view>
+        
+        <!-- 规格选择 -->
+        <view wx:if="{{currentProductDetail && currentProductDetail.specList && currentProductDetail.specList.length > 0}}" class="spec-list">
+          <view wx:for="{{currentProductDetail.specList}}" wx:for-item="specItem" wx:key="key" class="spec-group">
+            <view class="spec-group-title">{{specItem.key}}</view>
+            <view class="spec-options">
+              <!-- 遍历规格选项 -->
+              <view
+                wx:for="{{specItem.value}}" wx:for-item="option"
+                wx:key="*this"
+                class="spec-option {{selectedSpec[specItem.key] === option ? 'active' : ''}}"
+                data-spec-key="{{specItem.key}}"
+                data-spec-value="{{option}}"
+                bindtap="onSelectSpec"
+              >
+                <text class="spec-option-text">{{option}}</text>
+              </view>
+            </view>
+          </view>
+        </view>
+      </scroll-view>
+
+      <!-- 规格选择提示信息 -->
+      <view wx:if="{{showSpecTip}}" class="spec-tip">
+        <text class="spec-tip-text">{{specTipText}}</text>
+      </view>
+
+      <!-- 数量选择和操作按钮 -->
+      <view class="spec-modal-footer">
+        <view class="quantity-selector">
+          <text class="quantity-label">数量：</text>
+          <view class="quantity-controls">
+            <view class="quantity-btn minus" bindtap="onDecreaseQuantity">-</view>
+            <text class="quantity-value">{{quantity}}</text>
+            <view class="quantity-btn plus" bindtap="onIncreaseQuantity">+</view>
+          </view>
+        </view>
+        <view class="spec-modal-actions">
+          <view class="spec-modal-btn cancel" bindtap="onCloseSpecModal">取消</view>
+          <view class="spec-modal-btn confirm" bindtap="onAddToCart">确定</view>
+        </view>
+      </view>
+    </view>
+  </view>
+</view>

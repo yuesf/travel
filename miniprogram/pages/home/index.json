@@ -1,0 +1,8 @@
+{
+  "navigationBarTitleText": "首页",
+  "enablePullDownRefresh": true,
+  "usingComponents": {
+    "banner": "/components/banner/index",
+    "product-card": "/components/product-card/index"
+  }
+}

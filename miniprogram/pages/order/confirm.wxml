@@ -1,0 +1,131 @@
+<!--订单确认页-->
+<view class="page-container">
+  <scroll-view class="confirm-scroll" scroll-y>
+    <!-- 收货地址区域 -->
+    <view class="address-section" bindtap="onSelectAddress">
+      <view wx:if="{{selectedAddress}}" class="address-content">
+        <view class="address-info">
+          <text class="receiver-name">{{selectedAddress.receiverName}}</text>
+          <text class="receiver-phone">{{selectedAddress.receiverPhone}}</text>
+        </view>
+        <view class="address-detail">
+          {{selectedAddress.province}}{{selectedAddress.city}}{{selectedAddress.district}}{{selectedAddress.detailAddress}}
+        </view>
+      </view>
+      <view wx:else class="address-empty">
+        <text class="add-icon">+</text>
+        <text class="add-text">请添加收货地址</text>
+      </view>
+      <text class="address-arrow">></text>
+    </view>
+
+    <!-- 商家和商品信息卡片 -->
+    <view class="info-card">
+      <view class="merchant-info">
+        <text class="merchant-icon">🏪</text>
+        <text class="merchant-name">吴桥智慧旅游</text>
+      </view>
+      <view class="card-content">
+        <view
+          wx:for="{{cartItems}}"
+          wx:key="id"
+          class="product-item"
+        >
+          <image
+            wx:if="{{item.itemImage || (item.productDetail && (item.productDetail.image || item.productDetail.coverImage))}}"
+            class="product-image"
+            src="{{item.itemImage || item.productDetail.image || item.productDetail.coverImage}}"
+            mode="aspectFill"
+          />
+          <view class="product-info">
+            <view class="product-name">
+              {{item.itemName || (item.productDetail ? (item.productDetail.name || item.productDetail.title) : '商品信息')}}
+            </view>
+            <view class="product-specs">
+              <text wx:if="{{item.useDate}}">使用日期：{{item.useDate}}</text>
+              <text wx:if="{{item.checkInDate}}">入住：{{item.checkInDate}} 退房：{{item.checkOutDate}}</text>
+              <text wx:if="{{item.productDetail && item.productDetail.material}}">材质：{{item.productDetail.material}}</text>
+            </view>
+            <view class="product-price">
+              <text class="price-label">数量：x{{item.quantity}}</text>
+              <text class="price-value">
+                ¥{{item.itemPrice ? (item.itemPrice * item.quantity) : (item.productDetail ? ((item.productDetail.price || item.productDetail.minPrice || item.productDetail.ticketPrice || 0) * item.quantity) : 0)}}
+              </text>
+            </view>
+          </view>
+        </view>
+        <view class="product-subtotal">
+          <text>共{{cartItems.length}}件 小计:¥{{totalAmount}}</text>
+        </view>
+      </view>
+    </view>
+
+    <!-- 配送方式 -->
+    <view class="info-card">
+      <view class="card-content">
+        <view class="delivery-row">
+          <text class="delivery-label">配送方式</text>
+          <text class="delivery-value">快递配送</text>
+        </view>
+      </view>
+    </view>
+
+    <!-- 优惠券选择 -->
+    <view class="info-card">
+      <view class="card-content">
+        <view class="coupon-select" bindtap="onSelectCoupon">
+          <view class="coupon-label">
+            <text class="coupon-icon">惠</text>
+            <text class="coupon-text-label">优惠券</text>
+          </view>
+          <view class="coupon-value">
+            <text wx:if="{{selectedCoupon}}" class="coupon-text">
+              {{selectedCoupon.coupon.name}} (减¥{{selectedCoupon.coupon.amount}})
+            </text>
+            <text wx:else class="coupon-text placeholder">暂无优惠券可用</text>
+            <text class="coupon-arrow">></text>
+          </view>
+        </view>
+      </view>
+    </view>
+
+    <!-- 运费 -->
+    <view class="info-card">
+      <view class="card-content">
+        <view class="delivery-row">
+          <text class="delivery-label">运费</text>
+          <text class="delivery-value">¥{{shippingFee}}</text>
+        </view>
+      </view>
+    </view>
+
+    <!-- 买家留言 -->
+    <view class="info-card">
+      <view class="card-title">买家留言</view>
+      <view class="card-content">
+        <textarea
+          class="form-textarea"
+          placeholder="选填，如有特殊要求请填写"
+          value="{{remark}}"
+          bindinput="onRemarkInput"
+          maxlength="200"
+        />
+      </view>
+    </view>
+  </scroll-view>
+
+  <!-- 底部提交栏（固定） -->
+  <view class="submit-bar safe-area-bottom">
+    <view class="submit-info">
+      <text class="submit-label">合计:</text>
+      <text class="submit-price">¥{{payAmount}}</text>
+    </view>
+    <button
+      class="submit-btn {{loading ? 'loading' : ''}}"
+      bindtap="onSubmitOrder"
+      disabled="{{loading}}"
+    >
+      {{loading ? '提交中...' : '提交订单'}}
+    </button>
+  </view>
+</view>

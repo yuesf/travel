@@ -1,0 +1,138 @@
+<!--订单列表页-->
+<view class="page-container">
+  <!-- 订单状态标签栏 -->
+  <scroll-view class="status-tabs" scroll-x>
+    <view class="status-tabs-content">
+      <view
+        wx:for="{{statusTabs}}"
+        wx:key="key"
+        class="status-tab {{currentStatus === item.key ? 'active' : ''}}"
+        data-key="{{item.key}}"
+        bindtap="onStatusTabChange"
+        data-index="{{index}}"
+      >
+        <text class="tab-text">{{item.label}}</text>
+      </view>
+    </view>
+  </scroll-view>
+
+  <!-- 订单列表 -->
+  <scroll-view
+    class="order-scroll"
+    scroll-y
+    enable-back-to-top
+    refresher-enabled
+    refresher-triggered="{{loading}}"
+    bindrefresherrefresh="onPullDownRefresh"
+    bindscrolltolower="onReachBottom"
+  >
+    <!-- 订单卡片列表 -->
+    <view wx:if="{{orderList.length > 0}}" class="order-list">
+      <view
+        wx:for="{{orderList}}"
+        wx:key="id"
+        class="order-card"
+        data-id="{{item.id}}"
+        bindtap="onOrderTap"
+      >
+        <!-- 订单头部 -->
+        <view class="order-header">
+          <view class="order-info">
+            <text class="order-no">订单号：{{item.orderNo}}</text>
+            <text class="order-status status-{{item.status}}">{{item.statusText}}</text>
+          </view>
+        </view>
+
+        <!-- 订单商品信息 -->
+        <view class="order-items">
+          <view
+            wx:for="{{item.items || []}}"
+            wx:key="id"
+            wx:for-item="orderItem"
+            class="order-item"
+          >
+            <image
+              class="item-image"
+              src="{{orderItem.itemImage || orderItem.image || '/assets/icons/default-product.png'}}"
+              mode="aspectFill"
+              binderror="onImageError"
+              data-order-index="{{index}}"
+              data-item-index="{{itemIndex}}"
+            />
+            <view class="item-info">
+              <view class="item-name">{{orderItem.itemName || orderItem.name || '商品信息'}}</view>
+              <view class="item-specs">
+                <text wx:if="{{orderItem.useDate}}">使用日期：{{orderItem.useDate}}</text>
+                <text wx:if="{{orderItem.checkInDate}}">入住：{{orderItem.checkInDate}} 退房：{{orderItem.checkOutDate}}</text>
+              </view>
+              <view class="item-price">
+                <text class="price-label">数量：{{orderItem.quantity || 1}} × ¥{{orderItem.price || '0.00'}}</text>
+                <text class="price-value">¥{{orderItem.totalPrice || '0.00'}}</text>
+              </view>
+            </view>
+          </view>
+          
+          <!-- 如果没有items，显示订单类型和金额 -->
+          <view wx:if="{{!item.items || item.items.length === 0}}" class="order-item">
+            <view class="item-info">
+              <view class="item-name">{{item.orderTypeText || item.orderType}}</view>
+              <view class="item-price">
+                <text class="price-value">¥{{item.payAmount || item.totalAmount || '0.00'}}</text>
+              </view>
+            </view>
+          </view>
+        </view>
+
+        <!-- 订单金额 -->
+        <view class="order-footer">
+          <view class="order-total">
+            <text wx:if="{{item.discountAmount > 0}}" class="discount-info">优惠：-¥{{item.discountAmount}}</text>
+            <text class="total-label">合计：</text>
+            <text class="total-price">¥{{item.payAmount || item.totalAmount || '0.00'}}</text>
+          </view>
+          
+          <!-- 操作按钮 -->
+          <view class="order-actions">
+            <button
+              wx:if="{{item.status === 'PENDING_PAY'}}"
+              class="action-btn cancel-btn"
+              data-id="{{item.id}}"
+              catchtap="onCancelOrder"
+            >
+              取消订单
+            </button>
+            <button
+              wx:if="{{item.status === 'PENDING_PAY'}}"
+              class="action-btn pay-btn"
+              data-id="{{item.id}}"
+              catchtap="onPayOrder"
+            >
+              立即支付
+            </button>
+            <button
+              wx:if="{{item.status === 'PAID' || item.status === 'USED'}}"
+              class="action-btn refund-btn"
+              data-id="{{item.id}}"
+              catchtap="onApplyRefund"
+            >
+              申请退款
+            </button>
+          </view>
+        </view>
+      </view>
+    </view>
+
+    <!-- 空状态 -->
+    <view wx:else class="empty-container">
+      <empty text="暂无订单" show-action="{{true}}" action-text="去逛逛" bindaction="onGoShopping" />
+    </view>
+
+    <!-- 加载更多提示 -->
+    <view wx:if="{{orderList.length > 0 && loading}}" class="loading-more">
+      <text>加载中...</text>
+    </view>
+    <view wx:if="{{orderList.length > 0 && !hasMore && !loading}}" class="no-more">
+      <text>没有更多了</text>
+    </view>
+  </scroll-view>
+</view>
