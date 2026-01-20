@@ -37,9 +37,11 @@ export default defineConfig(({ mode }) => {
       },
     },
     build: {
-      outDir: resolve(__dirname, 'dist'), // ../src/main/resources/static
+      outDir: resolve(__dirname, 'dist'),
       emptyOutDir: true,
       assetsDir: 'assets',
+      // 确保资源路径使用 base 路径
+      assetsInlineLimit: 4096,
       rollupOptions: {
         output: {
           manualChunks(id) {
