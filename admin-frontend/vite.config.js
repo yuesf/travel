@@ -8,8 +8,8 @@ import { resolve } from 'path'
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => {
   // 根据环境设置 base 路径
-  // 生产环境部署在 /travel/ 路径下，开发环境在根路径
-  const base = mode === 'production' ? '/travel/' : '/'
+  // 生产环境部署在 /admin/ 路径下（nginx 配置），开发环境在根路径
+  const base = mode === 'production' ? '/admin/' : '/'
   
   return {
     base,

@@ -95,14 +95,7 @@ public class SecurityConfig {
                 .requestMatchers("/api/v1/miniprogram/hotels/**").permitAll()
                 .requestMatchers("/api/v1/miniprogram/products").permitAll()
                 .requestMatchers("/api/v1/miniprogram/products/**").permitAll()
-                // 前端静态资源允许匿名访问（JS、CSS、图片等）
-                .requestMatchers("/assets/**").permitAll()
-                .requestMatchers("/travel/assets/**").permitAll()  // 生产环境静态资源
-                .requestMatchers("/*.js", "/*.css", "/*.ico", "/*.png", "/*.jpg", "/*.jpeg", "/*.gif", "/*.svg", 
-                               "/*.woff", "/*.woff2", "/*.ttf", "/*.eot", "/*.map").permitAll()
-                .requestMatchers("/travel/*.js", "/travel/*.css", "/travel/*.ico", "/travel/*.png", 
-                               "/travel/*.jpg", "/travel/*.jpeg", "/travel/*.gif", "/travel/*.svg", 
-                               "/travel/*.woff", "/travel/*.woff2", "/travel/*.ttf", "/travel/*.eot", "/travel/*.map").permitAll()
+                // 注意：前端静态资源已分离到 nginx，不再由后端提供，因此不需要配置权限
                 // 静态资源访问允许匿名访问（上传的文件）
                 .requestMatchers("/uploads/**").permitAll()
                 // 小程序静态资源路径

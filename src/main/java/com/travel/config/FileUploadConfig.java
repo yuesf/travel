@@ -62,34 +62,10 @@ public class FileUploadConfig implements WebMvcConfigurer {
     /**
      * 配置静态资源访问
      * 将 /uploads/** 映射到本地文件系统的上传目录
-     * 显式配置前端静态资源，确保优先级高于控制器
+     * 注意：前端静态资源已分离到 nginx，不再由后端提供
      */
     @Override
     public void addResourceHandlers(ResourceHandlerRegistry registry) {
-        // 显式配置前端静态资源（JS、CSS、图片等），确保优先级高于控制器
-        // 配置 /assets/** 路径（开发环境）
-        registry.addResourceHandler("/assets/**")
-                .addResourceLocations("classpath:/static/assets/")
-                .setCachePeriod(3600);
-        
-        // 配置 /travel/assets/** 路径（生产环境）
-        registry.addResourceHandler("/travel/assets/**")
-                .addResourceLocations("classpath:/static/assets/")
-                .setCachePeriod(3600);
-        
-        // 配置根路径下的静态资源文件（favicon.ico 等）
-        registry.addResourceHandler("/*.js", "/*.css", "/*.ico", "/*.png", "/*.jpg", "/*.jpeg", 
-                                   "/*.gif", "/*.svg", "/*.woff", "/*.woff2", "/*.ttf", "/*.eot", "/*.map")
-                .addResourceLocations("classpath:/static/")
-                .setCachePeriod(3600);
-        
-        // 配置 /travel/ 路径下的静态资源文件（生产环境）
-        registry.addResourceHandler("/travel/*.js", "/travel/*.css", "/travel/*.ico", "/travel/*.png", 
-                                   "/travel/*.jpg", "/travel/*.jpeg", "/travel/*.gif", "/travel/*.svg", 
-                                   "/travel/*.woff", "/travel/*.woff2", "/travel/*.ttf", "/travel/*.eot", "/travel/*.map")
-                .addResourceLocations("classpath:/static/")
-                .setCachePeriod(3600);
-        
         // 从 access-url 中提取路径前缀（例如：http://localhost:8080/uploads -> /uploads）
         String pathPattern = extractPathFromUrl(accessUrl);
         
@@ -101,12 +77,12 @@ public class FileUploadConfig implements WebMvcConfigurer {
                 .addResourceLocations("file:" + actualUploadPath.toAbsolutePath() + "/");
         
         log.info("配置静态资源访问: {} -> {}", pathPattern + "/**", actualUploadPath.toAbsolutePath());
-        log.info("配置前端静态资源: /assets/** -> classpath:/static/assets/ (优先级: 0)");
+        log.info("前端静态资源已分离到 nginx，不再由后端提供");
         
         // 注意：
-        // 1. 显式配置前端静态资源，设置最高优先级（order = 0），确保高于 ViewController
-        // 2. /static/** 路径由 StaticResourceController 处理，返回 404
-        // 3. 小程序不应该请求后端的静态资源，这些资源应该在小程序本地
+        // 1. 前端静态资源已分离，由 nginx 直接提供（/admin/ 路径）
+        // 2. 后端只处理上传文件的静态资源访问（/uploads/**）
+        // 3. /static/** 路径由 StaticResourceController 处理，返回 404
     }
     
     /**
