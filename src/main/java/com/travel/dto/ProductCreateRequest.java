@@ -1,0 +1,66 @@
+package com.travel.dto;
+
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import lombok.Data;
+
+import java.math.BigDecimal;
+import java.util.List;
+import java.util.Map;
+
+/**
+ * 创建商品请求DTO
+ * 
+ * @author travel-platform
+ */
+@Data
+public class ProductCreateRequest {
+    
+    /**
+     * 商品名称
+     */
+    @NotBlank(message = "商品名称不能为空")
+    private String name;
+    
+    /**
+     * 分类ID
+     */
+    private Long categoryId;
+    
+    /**
+     * 价格
+     */
+    @NotNull(message = "价格不能为空")
+    private BigDecimal price;
+    
+    /**
+     * 原价
+     */
+    private BigDecimal originalPrice;
+    
+    /**
+     * 库存
+     */
+    @NotNull(message = "库存不能为空")
+    private Integer stock;
+    
+    /**
+     * 描述
+     */
+    private String description;
+    
+    /**
+     * 图片列表
+     */
+    private List<String> images;
+    
+    /**
+     * 规格（JSON对象）
+     */
+    private Map<String, Object> specifications;
+    
+    /**
+     * 状态：0-下架，1-上架
+     */
+    private Integer status;
+}

@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.travel.mapper.HotelRoomMapper">
+
+    <resultMap id="BaseResultMap" type="com.travel.entity.HotelRoom">
+        <id column="id" property="id"/>
+        <result column="hotel_id" property="hotelId"/>
+        <result column="room_type" property="roomType"/>
+        <result column="price" property="price"/>
+        <result column="stock" property="stock"/>
+        <result column="bed_type" property="bedType"/>
+        <result column="area" property="area"/>
+        <result column="facilities" property="facilities" typeHandler="com.travel.mapper.typehandler.JsonListTypeHandler"/>
+        <result column="images" property="images" typeHandler="com.travel.mapper.typehandler.JsonListTypeHandler"/>
+        <result column="status" property="status"/>
+        <result column="create_time" property="createTime"/>
+        <result column="update_time" property="updateTime"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id, hotel_id, room_type, price, stock, bed_type, area, facilities, images,
+        status, create_time, update_time
+    </sql>
+
+    <!-- 根据ID查询 -->
+    <select id="selectById" resultMap="BaseResultMap">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM hotel_room
+        WHERE id = #{id}
+    </select>
+
+    <!-- 根据酒店ID查询房型列表 -->
+    <select id="selectByHotelId" resultMap="BaseResultMap">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM hotel_room
+        WHERE hotel_id = #{hotelId}
+        ORDER BY create_time DESC
+    </select>
+
+    <!-- 插入房型 -->
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO hotel_room (
+            hotel_id, room_type, price, stock, bed_type, area, facilities, images, status
+        ) VALUES (
+            #{hotelId}, #{roomType}, #{price}, #{stock}, #{bedType}, #{area},
+            #{facilities, typeHandler=com.travel.mapper.typehandler.JsonListTypeHandler},
+            #{images, typeHandler=com.travel.mapper.typehandler.JsonListTypeHandler},
+            #{status}
+        )
+    </insert>
+
+    <!-- 更新房型信息 -->
+    <update id="updateById">
+        UPDATE hotel_room
+        <set>
+            <if test="hotelId != null">hotel_id = #{hotelId},</if>
+            <if test="roomType != null">room_type = #{roomType},</if>
+            <if test="price != null">price = #{price},</if>
+            <if test="stock != null">stock = #{stock},</if>
+            <if test="bedType != null">bed_type = #{bedType},</if>
+            <if test="area != null">area = #{area},</if>
+            <if test="facilities != null">facilities = #{facilities, typeHandler=com.travel.mapper.typehandler.JsonListTypeHandler},</if>
+            <if test="images != null">images = #{images, typeHandler=com.travel.mapper.typehandler.JsonListTypeHandler},</if>
+            <if test="status != null">status = #{status},</if>
+        </set>
+        WHERE id = #{id}
+    </update>
+
+    <!-- 删除房型（物理删除） -->
+    <delete id="deleteById">
+        DELETE FROM hotel_room WHERE id = #{id}
+    </delete>
+
+    <!-- 根据酒店ID删除所有房型 -->
+    <delete id="deleteByHotelId">
+        DELETE FROM hotel_room WHERE hotel_id = #{hotelId}
+    </delete>
+
+    <!-- 检查房型是否有关联订单 -->
+    <select id="countOrdersByRoomId" resultType="long">
+        SELECT COUNT(*)
+        FROM order_item
+        WHERE item_type = 'HOTEL_ROOM' AND item_id = #{roomId}
+    </select>
+
+</mapper>

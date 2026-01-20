@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.travel.mapper.PaymentConfigMapper">
+
+    <resultMap id="BaseResultMap" type="com.travel.entity.PaymentConfig">
+        <id column="id" property="id"/>
+        <result column="app_id" property="appId"/>
+        <result column="mch_id" property="mchId"/>
+        <result column="api_key" property="apiKey"/>
+        <result column="notify_url" property="notifyUrl"/>
+        <result column="status" property="status"/>
+        <result column="description" property="description"/>
+        <result column="create_time" property="createTime"/>
+        <result column="update_time" property="updateTime"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id, app_id, mch_id, api_key, notify_url, status, description, create_time, update_time
+    </sql>
+
+    <!-- 根据ID查询 -->
+    <select id="selectById" resultMap="BaseResultMap">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM payment_config
+        WHERE id = #{id}
+    </select>
+
+    <!-- 根据AppID查询 -->
+    <select id="selectByAppId" resultMap="BaseResultMap">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM payment_config
+        WHERE app_id = #{appId}
+        LIMIT 1
+    </select>
+
+    <!-- 查询启用的配置 -->
+    <select id="selectEnabled" resultMap="BaseResultMap">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM payment_config
+        WHERE status = 1
+        LIMIT 1
+    </select>
+
+    <!-- 插入 -->
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO payment_config (
+            app_id, mch_id, api_key, notify_url, status, description
+        ) VALUES (
+            #{appId}, #{mchId}, #{apiKey}, #{notifyUrl}, #{status}, #{description}
+        )
+    </insert>
+
+    <!-- 更新 -->
+    <update id="updateById">
+        UPDATE payment_config
+        <set>
+            <if test="appId != null">app_id = #{appId},</if>
+            <if test="mchId != null">mch_id = #{mchId},</if>
+            <if test="apiKey != null">api_key = #{apiKey},</if>
+            <if test="notifyUrl != null">notify_url = #{notifyUrl},</if>
+            <if test="status != null">status = #{status},</if>
+            <if test="description != null">description = #{description},</if>
+        </set>
+        WHERE id = #{id}
+    </update>
+
+    <!-- 更新状态 -->
+    <update id="updateStatus">
+        UPDATE payment_config
+        SET status = #{status}
+        WHERE id = #{id}
+    </update>
+
+</mapper>

@@ -1,0 +1,232 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.travel.mapper.StatisticsMapper">
+
+    <!-- 统计总订单数 -->
+    <select id="countOrders" resultType="long">
+        SELECT COUNT(*)
+        FROM `order`
+        <where>
+            <if test="startTime != null and startTime != ''">
+                AND create_time >= #{startTime}
+            </if>
+            <if test="endTime != null and endTime != ''">
+                AND create_time &lt;= #{endTime}
+            </if>
+        </where>
+    </select>
+
+    <!-- 统计已支付订单数 -->
+    <select id="countPaidOrders" resultType="long">
+        SELECT COUNT(*)
+        FROM `order`
+        <where>
+            status IN ('PAID', 'USED', 'COMPLETED')
+            <if test="startTime != null and startTime != ''">
+                AND create_time >= #{startTime}
+            </if>
+            <if test="endTime != null and endTime != ''">
+                AND create_time &lt;= #{endTime}
+            </if>
+        </where>
+    </select>
+
+    <!-- 统计待处理订单数（PENDING_PAY状态） -->
+    <select id="countPendingOrders" resultType="long">
+        SELECT COUNT(*)
+        FROM `order`
+        WHERE status = 'PENDING_PAY'
+    </select>
+
+    <!-- 统计订单总金额 -->
+    <select id="sumOrderAmount" resultType="java.math.BigDecimal">
+        SELECT COALESCE(SUM(total_amount), 0)
+        FROM `order`
+        <where>
+            <if test="startTime != null and startTime != ''">
+                AND create_time >= #{startTime}
+            </if>
+            <if test="endTime != null and endTime != ''">
+                AND create_time &lt;= #{endTime}
+            </if>
+        </where>
+    </select>
+
+    <!-- 统计已支付订单总金额 -->
+    <select id="sumPaidOrderAmount" resultType="java.math.BigDecimal">
+        SELECT COALESCE(SUM(pay_amount), 0)
+        FROM `order`
+        <where>
+            status IN ('PAID', 'USED', 'COMPLETED')
+            <if test="startTime != null and startTime != ''">
+                AND create_time >= #{startTime}
+            </if>
+            <if test="endTime != null and endTime != ''">
+                AND create_time &lt;= #{endTime}
+            </if>
+        </where>
+    </select>
+
+    <!-- 统计每日订单数趋势 -->
+    <select id="getOrderTrend" resultType="map">
+        SELECT 
+            DATE(create_time) as date,
+            COUNT(*) as count
+        FROM `order`
+        <where>
+            <if test="startTime != null and startTime != ''">
+                AND create_time >= #{startTime}
+            </if>
+            <if test="endTime != null and endTime != ''">
+                AND create_time &lt;= #{endTime}
+            </if>
+        </where>
+        GROUP BY DATE(create_time)
+        ORDER BY date ASC
+    </select>
+
+    <!-- 统计每日订单金额趋势 -->
+    <select id="getAmountTrend" resultType="map">
+        SELECT 
+            DATE(create_time) as date,
+            COALESCE(SUM(total_amount), 0) as amount
+        FROM `order`
+        <where>
+            <if test="startTime != null and startTime != ''">
+                AND create_time >= #{startTime}
+            </if>
+            <if test="endTime != null and endTime != ''">
+                AND create_time &lt;= #{endTime}
+            </if>
+        </where>
+        GROUP BY DATE(create_time)
+        ORDER BY date ASC
+    </select>
+
+    <!-- 统计每日已支付订单金额趋势 -->
+    <select id="getPaidAmountTrend" resultType="map">
+        SELECT 
+            DATE(create_time) as date,
+            COALESCE(SUM(pay_amount), 0) as amount
+        FROM `order`
+        <where>
+            status IN ('PAID', 'USED', 'COMPLETED')
+            <if test="startTime != null and startTime != ''">
+                AND create_time >= #{startTime}
+            </if>
+            <if test="endTime != null and endTime != ''">
+                AND create_time &lt;= #{endTime}
+            </if>
+        </where>
+        GROUP BY DATE(create_time)
+        ORDER BY date ASC
+    </select>
+
+    <!-- 统计总用户数 -->
+    <select id="countUsers" resultType="long">
+        SELECT COUNT(*)
+        FROM `user`
+        <where>
+            <if test="startTime != null and startTime != ''">
+                AND create_time >= #{startTime}
+            </if>
+            <if test="endTime != null and endTime != ''">
+                AND create_time &lt;= #{endTime}
+            </if>
+        </where>
+    </select>
+
+    <!-- 统计活跃用户数（有订单的用户） -->
+    <select id="countActiveUsers" resultType="long">
+        SELECT COUNT(DISTINCT user_id)
+        FROM `order`
+        <where>
+            <if test="startTime != null and startTime != ''">
+                AND create_time >= #{startTime}
+            </if>
+            <if test="endTime != null and endTime != ''">
+                AND create_time &lt;= #{endTime}
+            </if>
+        </where>
+    </select>
+
+    <!-- 统计新增用户数 -->
+    <select id="countNewUsers" resultType="long">
+        SELECT COUNT(*)
+        FROM `user`
+        <where>
+            <if test="startTime != null and startTime != ''">
+                AND create_time >= #{startTime}
+            </if>
+            <if test="endTime != null and endTime != ''">
+                AND create_time &lt;= #{endTime}
+            </if>
+        </where>
+    </select>
+
+    <!-- 统计每日新增用户趋势 -->
+    <select id="getNewUserTrend" resultType="map">
+        SELECT 
+            DATE(create_time) as date,
+            COUNT(*) as count
+        FROM `user`
+        <where>
+            <if test="startTime != null and startTime != ''">
+                AND create_time >= #{startTime}
+            </if>
+            <if test="endTime != null and endTime != ''">
+                AND create_time &lt;= #{endTime}
+            </if>
+        </where>
+        GROUP BY DATE(create_time)
+        ORDER BY date ASC
+    </select>
+
+    <!-- 统计热门商品（前10） -->
+    <select id="getHotProducts" resultType="map">
+        SELECT 
+            oi.item_type as type,
+            oi.item_id as id,
+            oi.item_name as name,
+            SUM(oi.quantity) as sales,
+            SUM(oi.total_price) as amount
+        FROM order_item oi
+        INNER JOIN `order` o ON oi.order_id = o.id
+        <where>
+            o.status IN ('PAID', 'USED', 'COMPLETED')
+            <if test="startTime != null and startTime != ''">
+                AND o.create_time >= #{startTime}
+            </if>
+            <if test="endTime != null and endTime != ''">
+                AND o.create_time &lt;= #{endTime}
+            </if>
+        </where>
+        GROUP BY oi.item_type, oi.item_id, oi.item_name
+        ORDER BY sales DESC
+        LIMIT #{limit}
+    </select>
+
+    <!-- 统计商品类型分布 -->
+    <select id="getProductTypeDistribution" resultType="map">
+        SELECT 
+            oi.item_type as type,
+            COUNT(DISTINCT oi.item_id) as count,
+            SUM(oi.quantity) as sales,
+            SUM(oi.total_price) as amount
+        FROM order_item oi
+        INNER JOIN `order` o ON oi.order_id = o.id
+        <where>
+            o.status IN ('PAID', 'USED', 'COMPLETED')
+            <if test="startTime != null and startTime != ''">
+                AND o.create_time >= #{startTime}
+            </if>
+            <if test="endTime != null and endTime != ''">
+                AND o.create_time &lt;= #{endTime}
+            </if>
+        </where>
+        GROUP BY oi.item_type
+    </select>
+
+</mapper>

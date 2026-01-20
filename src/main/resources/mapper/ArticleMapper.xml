@@ -1,0 +1,299 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.travel.mapper.ArticleMapper">
+
+    <resultMap id="BaseResultMap" type="com.travel.entity.Article">
+        <id column="id" property="id"/>
+        <result column="title" property="title"/>
+        <result column="summary" property="summary"/>
+        <result column="cover_image" property="coverImage"/>
+        <result column="content" property="content"/>
+        <result column="category_id" property="categoryId"/>
+        <result column="category_name" property="categoryName"/>
+        <result column="author" property="author"/>
+        <result column="author_id" property="authorId"/>
+        <result column="status" property="status"/>
+        <result column="publish_time" property="publishTime"/>
+        <result column="view_count" property="viewCount"/>
+        <result column="like_count" property="likeCount"/>
+        <result column="favorite_count" property="favoriteCount"/>
+        <result column="is_recommend" property="isRecommend"/>
+        <result column="sort" property="sort"/>
+        <result column="create_time" property="createTime"/>
+        <result column="update_time" property="updateTime"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id, title, summary, cover_image, content, category_id, author, author_id,
+        status, publish_time, view_count, like_count, favorite_count, is_recommend,
+        sort, create_time, update_time
+    </sql>
+
+    <!-- 根据ID查询 -->
+    <select id="selectById" resultMap="BaseResultMap">
+        SELECT
+        a.id, a.title, a.summary, a.cover_image, a.content, a.category_id,
+        c.name as category_name,
+        a.author, a.author_id, a.status, a.publish_time, a.view_count,
+        a.like_count, a.favorite_count, a.is_recommend, a.sort,
+        a.create_time, a.update_time
+        FROM article a
+        LEFT JOIN article_category c ON a.category_id = c.id
+        WHERE a.id = #{id}
+    </select>
+
+    <!-- 分页查询文章列表 -->
+    <select id="selectList" resultMap="BaseResultMap">
+        SELECT
+        a.id, a.title, a.summary, a.cover_image, a.content, a.category_id,
+        c.name as category_name,
+        a.author, a.author_id, a.status, a.publish_time, a.view_count,
+        a.like_count, a.favorite_count, a.is_recommend, a.sort,
+        a.create_time, a.update_time
+        FROM article a
+        LEFT JOIN article_category c ON a.category_id = c.id
+        <where>
+            <if test="title != null and title != ''">
+                AND a.title LIKE CONCAT('%', #{title}, '%')
+            </if>
+            <if test="categoryId != null">
+                AND a.category_id = #{categoryId}
+            </if>
+            <if test="author != null and author != ''">
+                AND a.author LIKE CONCAT('%', #{author}, '%')
+            </if>
+            <if test="status != null">
+                AND a.status = #{status}
+            </if>
+            <if test="publishTimeStart != null and publishTimeStart != ''">
+                AND a.publish_time &gt;= #{publishTimeStart}
+            </if>
+            <if test="publishTimeEnd != null and publishTimeEnd != ''">
+                AND a.publish_time &lt;= #{publishTimeEnd}
+            </if>
+        </where>
+        ORDER BY a.sort DESC, a.publish_time DESC, a.create_time DESC
+        LIMIT #{offset}, #{limit}
+    </select>
+
+    <!-- 统计文章总数 -->
+    <select id="count" resultType="long">
+        SELECT COUNT(*)
+        FROM article
+        <where>
+            <if test="title != null and title != ''">
+                AND title LIKE CONCAT('%', #{title}, '%')
+            </if>
+            <if test="categoryId != null">
+                AND category_id = #{categoryId}
+            </if>
+            <if test="author != null and author != ''">
+                AND author LIKE CONCAT('%', #{author}, '%')
+            </if>
+            <if test="status != null">
+                AND status = #{status}
+            </if>
+            <if test="publishTimeStart != null and publishTimeStart != ''">
+                AND publish_time &gt;= #{publishTimeStart}
+            </if>
+            <if test="publishTimeEnd != null and publishTimeEnd != ''">
+                AND publish_time &lt;= #{publishTimeEnd}
+            </if>
+        </where>
+    </select>
+
+    <!-- 插入文章 -->
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO article (
+            title, summary, cover_image, content, category_id, author, author_id,
+            status, publish_time, view_count, like_count, favorite_count,
+            is_recommend, sort
+        ) VALUES (
+            #{title}, #{summary}, #{coverImage}, #{content}, #{categoryId},
+            #{author}, #{authorId}, #{status}, #{publishTime}, #{viewCount},
+            #{likeCount}, #{favoriteCount}, #{isRecommend}, #{sort}
+        )
+    </insert>
+
+    <!-- 更新文章信息 -->
+    <update id="updateById">
+        UPDATE article
+        <set>
+            <if test="title != null">title = #{title},</if>
+            <if test="summary != null">summary = #{summary},</if>
+            <if test="coverImage != null">cover_image = #{coverImage},</if>
+            <if test="content != null">content = #{content},</if>
+            <if test="categoryId != null">category_id = #{categoryId},</if>
+            <if test="author != null">author = #{author},</if>
+            <if test="authorId != null">author_id = #{authorId},</if>
+            <if test="status != null">status = #{status},</if>
+            <if test="publishTime != null">publish_time = #{publishTime},</if>
+            <if test="viewCount != null">view_count = #{viewCount},</if>
+            <if test="likeCount != null">like_count = #{likeCount},</if>
+            <if test="favoriteCount != null">favorite_count = #{favoriteCount},</if>
+            <if test="isRecommend != null">is_recommend = #{isRecommend},</if>
+            <if test="sort != null">sort = #{sort},</if>
+        </set>
+        WHERE id = #{id}
+    </update>
+
+    <!-- 删除文章（物理删除） -->
+    <delete id="deleteById">
+        DELETE FROM article WHERE id = #{id}
+    </delete>
+
+    <!-- 批量删除文章 -->
+    <delete id="deleteByIds">
+        DELETE FROM article WHERE id IN
+        <foreach collection="ids" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </delete>
+
+    <!-- 增加阅读量 -->
+    <update id="incrementViewCount">
+        UPDATE article SET view_count = view_count + 1 WHERE id = #{id}
+    </update>
+
+    <!-- 增加点赞量 -->
+    <update id="incrementLikeCount">
+        UPDATE article SET like_count = like_count + 1 WHERE id = #{id}
+    </update>
+
+    <!-- 减少点赞量 -->
+    <update id="decrementLikeCount">
+        UPDATE article SET like_count = GREATEST(like_count - 1, 0) WHERE id = #{id}
+    </update>
+
+    <!-- 增加收藏量 -->
+    <update id="incrementFavoriteCount">
+        UPDATE article SET favorite_count = favorite_count + 1 WHERE id = #{id}
+    </update>
+
+    <!-- 减少收藏量 -->
+    <update id="decrementFavoriteCount">
+        UPDATE article SET favorite_count = GREATEST(favorite_count - 1, 0) WHERE id = #{id}
+    </update>
+
+    <!-- 小程序：分页查询文章列表（支持分类、标签筛选，排序） -->
+    <select id="selectListForMiniProgram" resultMap="BaseResultMap">
+        SELECT DISTINCT
+        a.id, a.title, a.summary, a.cover_image, a.content, a.category_id,
+        c.name as category_name,
+        a.author, a.author_id, a.status, a.publish_time, a.view_count,
+        a.like_count, a.favorite_count, a.is_recommend, a.sort,
+        a.create_time, a.update_time
+        FROM article a
+        LEFT JOIN article_category c ON a.category_id = c.id
+        <if test="tagId != null">
+        INNER JOIN article_tag_relation atr ON a.id = atr.article_id
+        </if>
+        <where>
+            AND a.status = 1
+            <if test="categoryId != null">
+                AND a.category_id = #{categoryId}
+            </if>
+            <if test="tagId != null">
+                AND atr.tag_id = #{tagId}
+            </if>
+            <if test="keyword != null and keyword != ''">
+                AND (a.title LIKE CONCAT('%', #{keyword}, '%') 
+                     OR a.summary LIKE CONCAT('%', #{keyword}, '%'))
+            </if>
+        </where>
+        <choose>
+            <when test="sortType == 'view_count'">
+                ORDER BY a.view_count DESC, a.publish_time DESC
+            </when>
+            <when test="sortType == 'like_count'">
+                ORDER BY a.like_count DESC, a.publish_time DESC
+            </when>
+            <when test="sortType == 'publish_time'">
+                ORDER BY a.publish_time DESC
+            </when>
+            <otherwise>
+                ORDER BY a.sort DESC, a.publish_time DESC, a.create_time DESC
+            </otherwise>
+        </choose>
+        LIMIT #{offset}, #{limit}
+    </select>
+
+    <!-- 小程序：统计文章总数（支持分类、标签筛选） -->
+    <select id="countForMiniProgram" resultType="long">
+        SELECT COUNT(DISTINCT a.id)
+        FROM article a
+        <if test="tagId != null">
+        INNER JOIN article_tag_relation atr ON a.id = atr.article_id
+        </if>
+        <where>
+            AND a.status = 1
+            <if test="categoryId != null">
+                AND a.category_id = #{categoryId}
+            </if>
+            <if test="tagId != null">
+                AND atr.tag_id = #{tagId}
+            </if>
+            <if test="keyword != null and keyword != ''">
+                AND (a.title LIKE CONCAT('%', #{keyword}, '%') 
+                     OR a.summary LIKE CONCAT('%', #{keyword}, '%'))
+            </if>
+        </where>
+    </select>
+
+    <!-- 小程序：获取推荐文章列表 -->
+    <select id="selectRecommendList" resultMap="BaseResultMap">
+        SELECT
+        a.id, a.title, a.summary, a.cover_image, a.content, a.category_id,
+        c.name as category_name,
+        a.author, a.author_id, a.status, a.publish_time, a.view_count,
+        a.like_count, a.favorite_count, a.is_recommend, a.sort,
+        a.create_time, a.update_time
+        FROM article a
+        LEFT JOIN article_category c ON a.category_id = c.id
+        WHERE a.status = 1 AND a.is_recommend = 1
+        ORDER BY a.sort DESC, a.publish_time DESC
+        LIMIT #{limit}
+    </select>
+
+    <!-- 小程序：获取相关文章推荐（同分类，排除当前文章） -->
+    <select id="selectRelatedList" resultMap="BaseResultMap">
+        SELECT
+        a.id, a.title, a.summary, a.cover_image, a.content, a.category_id,
+        c.name as category_name,
+        a.author, a.author_id, a.status, a.publish_time, a.view_count,
+        a.like_count, a.favorite_count, a.is_recommend, a.sort,
+        a.create_time, a.update_time
+        FROM article a
+        LEFT JOIN article_category c ON a.category_id = c.id
+        WHERE a.status = 1 
+          AND a.category_id = #{categoryId}
+          AND a.id != #{excludeArticleId}
+        ORDER BY a.view_count DESC, a.publish_time DESC
+        LIMIT #{limit}
+    </select>
+
+    <!-- 根据ID列表查询文章 -->
+    <select id="selectByIds" resultMap="BaseResultMap">
+        SELECT
+        a.id, a.title, a.summary, a.cover_image, a.content, a.category_id,
+        c.name as category_name,
+        a.author, a.author_id, a.status, a.publish_time, a.view_count,
+        a.like_count, a.favorite_count, a.is_recommend, a.sort,
+        a.create_time, a.update_time
+        FROM article a
+        LEFT JOIN article_category c ON a.category_id = c.id
+        WHERE a.id IN
+        <foreach collection="ids" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+        AND a.status = 1
+        ORDER BY FIELD(a.id,
+        <foreach collection="ids" item="id" separator=",">
+            #{id}
+        </foreach>
+        )
+    </select>
+
+</mapper>

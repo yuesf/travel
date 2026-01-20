@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.travel.mapper.CouponMapper">
+
+    <resultMap id="BaseResultMap" type="com.travel.entity.Coupon">
+        <id column="id" property="id"/>
+        <result column="name" property="name"/>
+        <result column="type" property="type"/>
+        <result column="amount" property="amount"/>
+        <result column="min_amount" property="minAmount"/>
+        <result column="scope" property="scope"/>
+        <result column="scope_ids" property="scopeIds"/>
+        <result column="total_count" property="totalCount"/>
+        <result column="used_count" property="usedCount"/>
+        <result column="limit_per_user" property="limitPerUser"/>
+        <result column="valid_start_time" property="validStartTime"/>
+        <result column="valid_end_time" property="validEndTime"/>
+        <result column="status" property="status"/>
+        <result column="create_time" property="createTime"/>
+        <result column="update_time" property="updateTime"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id, name, type, amount, min_amount, scope, scope_ids, total_count, used_count,
+        limit_per_user, valid_start_time, valid_end_time, status, create_time, update_time
+    </sql>
+
+    <!-- 根据ID查询 -->
+    <select id="selectById" resultMap="BaseResultMap">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM coupon
+        WHERE id = #{id}
+    </select>
+
+</mapper>

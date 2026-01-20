@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.travel.mapper.UserMapper">
+
+    <resultMap id="BaseResultMap" type="com.travel.entity.User">
+        <id column="id" property="id"/>
+        <result column="openid" property="openid"/>
+        <result column="unionid" property="unionid"/>
+        <result column="nickname" property="nickname"/>
+        <result column="avatar" property="avatar"/>
+        <result column="phone" property="phone"/>
+        <result column="gender" property="gender"/>
+        <result column="is_first_order" property="isFirstOrder"/>
+        <result column="status" property="status"/>
+        <result column="create_time" property="createTime"/>
+        <result column="update_time" property="updateTime"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id, openid, unionid, nickname, avatar, phone, gender, is_first_order, status, create_time, update_time
+    </sql>
+
+    <!-- 根据ID查询 -->
+    <select id="selectById" resultMap="BaseResultMap">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM user
+        WHERE id = #{id}
+    </select>
+
+    <!-- 根据openid查询 -->
+    <select id="selectByOpenid" resultMap="BaseResultMap">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM user
+        WHERE openid = #{openid}
+    </select>
+
+    <!-- 根据手机号查询 -->
+    <select id="selectByPhone" resultMap="BaseResultMap">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM user
+        WHERE phone = #{phone}
+    </select>
+
+    <!-- 插入用户 -->
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO user (
+            openid, unionid, nickname, avatar, phone, gender, is_first_order, status
+        ) VALUES (
+            #{openid}, #{unionid}, #{nickname}, #{avatar}, #{phone}, #{gender}, #{isFirstOrder}, #{status}
+        )
+    </insert>
+
+    <!-- 更新用户信息 -->
+    <update id="updateById">
+        UPDATE user
+        <set>
+            <if test="openid != null">openid = #{openid},</if>
+            <if test="unionid != null">unionid = #{unionid},</if>
+            <if test="nickname != null">nickname = #{nickname},</if>
+            <if test="avatar != null">avatar = #{avatar},</if>
+            <if test="phone != null">phone = #{phone},</if>
+            <if test="gender != null">gender = #{gender},</if>
+            <if test="isFirstOrder != null">is_first_order = #{isFirstOrder},</if>
+            <if test="status != null">status = #{status},</if>
+        </set>
+        WHERE id = #{id}
+    </update>
+
+    <!-- 更新首次下单状态 -->
+    <update id="updateFirstOrderStatus">
+        UPDATE user
+        SET is_first_order = #{isFirstOrder}
+        WHERE id = #{id}
+    </update>
+
+</mapper>

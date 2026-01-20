@@ -1,0 +1,133 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.travel.mapper.HotelMapper">
+
+    <resultMap id="BaseResultMap" type="com.travel.entity.Hotel">
+        <id column="id" property="id"/>
+        <result column="name" property="name"/>
+        <result column="address" property="address"/>
+        <result column="province" property="province"/>
+        <result column="city" property="city"/>
+        <result column="district" property="district"/>
+        <result column="star_level" property="starLevel"/>
+        <result column="description" property="description"/>
+        <result column="images" property="images" typeHandler="com.travel.mapper.typehandler.JsonListTypeHandler"/>
+        <result column="facilities" property="facilities" typeHandler="com.travel.mapper.typehandler.JsonListTypeHandler"/>
+        <result column="contact_phone" property="contactPhone"/>
+        <result column="longitude" property="longitude"/>
+        <result column="latitude" property="latitude"/>
+        <result column="status" property="status"/>
+        <result column="sync_source" property="syncSource"/>
+        <result column="sync_time" property="syncTime"/>
+        <result column="create_time" property="createTime"/>
+        <result column="update_time" property="updateTime"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id, name, address, province, city, district, star_level, description, images,
+        facilities, contact_phone, longitude, latitude, status, sync_source, sync_time,
+        create_time, update_time
+    </sql>
+
+    <!-- 根据ID查询 -->
+    <select id="selectById" resultMap="BaseResultMap">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM hotel
+        WHERE id = #{id}
+    </select>
+
+    <!-- 分页查询酒店列表 -->
+    <select id="selectList" resultMap="BaseResultMap">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM hotel
+        <where>
+            <if test="name != null and name != ''">
+                AND name LIKE CONCAT('%', #{name}, '%')
+            </if>
+            <if test="city != null and city != ''">
+                AND city = #{city}
+            </if>
+            <if test="starLevel != null">
+                AND star_level = #{starLevel}
+            </if>
+            <if test="status != null">
+                AND status = #{status}
+            </if>
+        </where>
+        ORDER BY create_time DESC
+        LIMIT #{offset}, #{limit}
+    </select>
+
+    <!-- 统计酒店总数 -->
+    <select id="count" resultType="long">
+        SELECT COUNT(*)
+        FROM hotel
+        <where>
+            <if test="name != null and name != ''">
+                AND name LIKE CONCAT('%', #{name}, '%')
+            </if>
+            <if test="city != null and city != ''">
+                AND city = #{city}
+            </if>
+            <if test="starLevel != null">
+                AND star_level = #{starLevel}
+            </if>
+            <if test="status != null">
+                AND status = #{status}
+            </if>
+        </where>
+    </select>
+
+    <!-- 插入酒店 -->
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO hotel (
+            name, address, province, city, district, star_level, description, images,
+            facilities, contact_phone, longitude, latitude, status, sync_source, sync_time
+        ) VALUES (
+            #{name}, #{address}, #{province}, #{city}, #{district}, #{starLevel}, #{description},
+            #{images, typeHandler=com.travel.mapper.typehandler.JsonListTypeHandler},
+            #{facilities, typeHandler=com.travel.mapper.typehandler.JsonListTypeHandler},
+            #{contactPhone}, #{longitude}, #{latitude}, #{status}, #{syncSource}, #{syncTime}
+        )
+    </insert>
+
+    <!-- 更新酒店信息 -->
+    <update id="updateById">
+        UPDATE hotel
+        <set>
+            <if test="name != null">name = #{name},</if>
+            <if test="address != null">address = #{address},</if>
+            <if test="province != null">province = #{province},</if>
+            <if test="city != null">city = #{city},</if>
+            <if test="district != null">district = #{district},</if>
+            <if test="starLevel != null">star_level = #{starLevel},</if>
+            <if test="description != null">description = #{description},</if>
+            <if test="images != null">images = #{images, typeHandler=com.travel.mapper.typehandler.JsonListTypeHandler},</if>
+            <if test="facilities != null">facilities = #{facilities, typeHandler=com.travel.mapper.typehandler.JsonListTypeHandler},</if>
+            <if test="contactPhone != null">contact_phone = #{contactPhone},</if>
+            <if test="longitude != null">longitude = #{longitude},</if>
+            <if test="latitude != null">latitude = #{latitude},</if>
+            <if test="status != null">status = #{status},</if>
+            <if test="syncSource != null">sync_source = #{syncSource},</if>
+            <if test="syncTime != null">sync_time = #{syncTime},</if>
+        </set>
+        WHERE id = #{id}
+    </update>
+
+    <!-- 删除酒店（物理删除） -->
+    <delete id="deleteById">
+        DELETE FROM hotel WHERE id = #{id}
+    </delete>
+
+    <!-- 检查酒店是否有关联订单 -->
+    <select id="countOrdersByHotelId" resultType="long">
+        SELECT COUNT(*)
+        FROM order_item
+        WHERE item_type = 'HOTEL' AND item_id = #{hotelId}
+    </select>
+
+</mapper>

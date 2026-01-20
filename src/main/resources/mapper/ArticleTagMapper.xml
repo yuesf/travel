@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.travel.mapper.ArticleTagMapper">
+
+    <resultMap id="BaseResultMap" type="com.travel.entity.ArticleTag">
+        <id column="id" property="id"/>
+        <result column="name" property="name"/>
+        <result column="color" property="color"/>
+        <result column="use_count" property="useCount"/>
+        <result column="create_time" property="createTime"/>
+        <result column="update_time" property="updateTime"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id, name, color, use_count, create_time, update_time
+    </sql>
+
+    <!-- 根据ID查询 -->
+    <select id="selectById" resultMap="BaseResultMap">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM article_tag
+        WHERE id = #{id}
+    </select>
+
+    <!-- 根据名称查询 -->
+    <select id="selectByName" resultMap="BaseResultMap">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM article_tag
+        WHERE name = #{name}
+    </select>
+
+    <!-- 查询所有标签列表 -->
+    <select id="selectAll" resultMap="BaseResultMap">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM article_tag
+        ORDER BY use_count DESC, create_time DESC
+    </select>
+
+    <!-- 插入标签 -->
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO article_tag (
+            name, color, use_count
+        ) VALUES (
+            #{name}, #{color}, #{useCount}
+        )
+    </insert>
+
+    <!-- 更新标签信息 -->
+    <update id="updateById">
+        UPDATE article_tag
+        <set>
+            <if test="name != null">name = #{name},</if>
+            <if test="color != null">color = #{color},</if>
+            <if test="useCount != null">use_count = #{useCount},</if>
+        </set>
+        WHERE id = #{id}
+    </update>
+
+    <!-- 删除标签 -->
+    <delete id="deleteById">
+        DELETE FROM article_tag WHERE id = #{id}
+    </delete>
+
+    <!-- 增加使用次数 -->
+    <update id="incrementUseCount">
+        UPDATE article_tag SET use_count = use_count + 1 WHERE id = #{id}
+    </update>
+
+    <!-- 减少使用次数 -->
+    <update id="decrementUseCount">
+        UPDATE article_tag SET use_count = GREATEST(use_count - 1, 0) WHERE id = #{id}
+    </update>
+
+</mapper>

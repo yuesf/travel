@@ -1,0 +1,108 @@
+server:
+  port: 8080
+  servlet:
+    context-path: /
+    encoding:
+      charset: UTF-8
+      enabled: true
+      force: true
+
+spring:
+  application:
+    name: travel-platform
+  
+  # 数据源配置（使用HikariCP，Spring Boot默认连接池）
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://localhost:3306/travel?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
+    username: ${MYSQL_USR:root}
+    password: ${MYSQL_PWD:root}
+    hikari:
+      minimum-idle: 5
+      maximum-pool-size: 20
+      connection-timeout: 30000
+      idle-timeout: 600000
+      max-lifetime: 1800000
+      connection-test-query: SELECT 1
+  
+  # 本地缓存配置（使用Caffeine）
+  cache:
+    type: caffeine
+    caffeine:
+      spec: maximumSize=10000,expireAfterWrite=24h
+
+  # 文件上传配置
+  servlet:
+    multipart:
+      enabled: true
+      max-file-size: 50MB
+      max-request-size: 50MB
+
+# MyBatis配置（XML模式）
+mybatis:
+  config-location: classpath:mybatis-config.xml
+  mapper-locations: classpath:mapper/*.xml
+  type-aliases-package: com.travel.entity
+  # configuration配置已在mybatis-config.xml中定义，此处不再重复配置
+
+# 日志配置
+logging:
+  level:
+    root: INFO
+    com.travel: DEBUG
+    org.springframework: INFO
+    org.mybatis: DEBUG
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{50} - %msg%n"
+    file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{50} - %msg%n"
+  file:
+    name: logs/travel-platform.log
+    max-size: 10MB
+    max-history: 30
+
+# 应用配置
+travel:
+  # JWT配置
+  jwt:
+    secret: travel-platform-secret-key-2024-very-secure-jwt-key-must-be-at-least-32-chars
+    expiration: 86400000 # 24小时，单位：毫秒
+    header: Authorization
+    token-prefix: Bearer 
+  
+  # 文件上传配置
+  file:
+    upload-path: data/uploads
+    access-url: http://localhost:8080/uploads
+  
+  # RocketMQ配置（可选）
+  rocketmq:
+    name-server: localhost:9876
+    producer:
+      group: travel-platform-producer-group
+  
+  # 管理员初始化配置
+  admin:
+    init:
+      enabled: true # 是否启用自动初始化
+      default-username: admin # 默认用户名
+      default-password: admin123 # 默认密码
+      default-real-name: 系统管理员 # 默认真实姓名
+      default-email: admin@travel.com # 默认邮箱
+  
+  # 微信小程序配置（已迁移到miniprogram.wechat配置）
+  
+# 小程序配置
+miniprogram:
+  wechat:
+    appid: ${WECHAT_APPID:your_mini_program_appid} # 小程序AppID（从环境变量读取）
+    secret: ${WECHAT_SECRET:your_mini_program_secret} # 小程序AppSecret（从环境变量读取，如果没有则使用空字符串）
+    session:
+      expiration: 2592000 # Session过期时间（秒），默认30天，与微信session_key有效期同步
+      header: X-Session-Id # Session ID请求头名称
+    # 开发测试模式：如果secret为空，则使用测试模式（使用code的hash值作为openid）
+    # 微信支付配置
+    pay:
+      mch-id: ${WECHAT_MCH_ID:} # 商户号（从环境变量读取）
+      api-key: ${WECHAT_API_KEY:} # API密钥（从环境变量读取）
+      notify-url: ${WECHAT_NOTIFY_URL:http://localhost:8080/api/v1/miniprogram/payment/notify} # 支付回调地址
+      # 开发测试模式：如果mch-id或api-key为空，则使用测试模式（模拟支付成功）

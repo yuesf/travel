@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.travel.mapper.MerchantConfigMapper">
+
+    <resultMap id="BaseResultMap" type="com.travel.entity.MerchantConfig">
+        <id column="id" property="id"/>
+        <result column="merchant_name" property="merchantName"/>
+        <result column="contact_phone" property="contactPhone"/>
+        <result column="contact_email" property="contactEmail"/>
+        <result column="address" property="address"/>
+        <result column="description" property="description"/>
+        <result column="create_time" property="createTime"/>
+        <result column="update_time" property="updateTime"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id, merchant_name, contact_phone, contact_email, address, description, create_time, update_time
+    </sql>
+
+    <!-- 查询第一条记录 -->
+    <select id="selectFirst" resultMap="BaseResultMap">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM merchant_config
+        ORDER BY id ASC
+        LIMIT 1
+    </select>
+
+    <!-- 插入 -->
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO merchant_config (
+            merchant_name, contact_phone, contact_email, address, description
+        ) VALUES (
+            #{merchantName}, #{contactPhone}, #{contactEmail}, #{address}, #{description}
+        )
+    </insert>
+
+    <!-- 更新 -->
+    <update id="updateById">
+        UPDATE merchant_config
+        <set>
+            <if test="merchantName != null">merchant_name = #{merchantName},</if>
+            <if test="contactPhone != null">contact_phone = #{contactPhone},</if>
+            <if test="contactEmail != null">contact_email = #{contactEmail},</if>
+            <if test="address != null">address = #{address},</if>
+            <if test="description != null">description = #{description},</if>
+        </set>
+        WHERE id = #{id}
+    </update>
+
+</mapper>

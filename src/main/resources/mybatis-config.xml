@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE configuration
+        PUBLIC "-//mybatis.org//DTD Config 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-config.dtd">
+<configuration>
+    <settings>
+        <!-- 开启驼峰命名转换 -->
+        <setting name="mapUnderscoreToCamelCase" value="true"/>
+        <!-- 开启二级缓存 -->
+        <setting name="cacheEnabled" value="true"/>
+        <!-- 延迟加载 -->
+        <setting name="lazyLoadingEnabled" value="true"/>
+        <setting name="aggressiveLazyLoading" value="false"/>
+        <!-- 允许在嵌套语句中使用分页 -->
+        <setting name="safeRowBoundsEnabled" value="false"/>
+        <!-- 允许使用默认语句超时 -->
+        <setting name="defaultStatementTimeout" value="25"/>
+        <!-- 默认执行器类型 -->
+        <setting name="defaultExecutorType" value="REUSE"/>
+        <!-- 日志实现 -->
+        <setting name="logImpl" value="STDOUT_LOGGING"/>
+        <!-- 开启自动生成主键 -->
+        <setting name="useGeneratedKeys" value="true"/>
+    </settings>
+
+    <!-- 类型别名 -->
+    <typeAliases>
+        <package name="com.travel.entity"/>
+    </typeAliases>
+
+    <!-- 插件配置 - 如果需要分页插件，可以在这里添加 -->
+    <!--
+    <plugins>
+        <plugin interceptor="com.github.pagehelper.PageInterceptor">
+            <property name="helperDialect" value="mysql"/>
+        </plugin>
+    </plugins>
+    -->
+</configuration>

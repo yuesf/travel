@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.travel.mapper.AdminUserMapper">
+
+    <resultMap id="BaseResultMap" type="com.travel.entity.AdminUser">
+        <id column="id" property="id"/>
+        <result column="username" property="username"/>
+        <result column="password" property="password"/>
+        <result column="phone" property="phone"/>
+        <result column="email" property="email"/>
+        <result column="real_name" property="realName"/>
+        <result column="role_id" property="roleId"/>
+        <result column="status" property="status"/>
+        <result column="last_login_time" property="lastLoginTime"/>
+        <result column="last_login_ip" property="lastLoginIp"/>
+        <result column="create_time" property="createTime"/>
+        <result column="update_time" property="updateTime"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id, username, password, phone, email, real_name, role_id, status,
+        last_login_time, last_login_ip, create_time, update_time
+    </sql>
+
+    <!-- 根据ID查询 -->
+    <select id="selectById" resultMap="BaseResultMap">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM admin_user
+        WHERE id = #{id}
+    </select>
+
+    <!-- 根据用户名查询 -->
+    <select id="selectByUsername" resultMap="BaseResultMap">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM admin_user
+        WHERE username = #{username}
+    </select>
+
+    <!-- 根据手机号查询 -->
+    <select id="selectByPhone" resultMap="BaseResultMap">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM admin_user
+        WHERE phone = #{phone}
+    </select>
+
+    <!-- 插入管理员 -->
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO admin_user (
+            username, password, phone, email, real_name, role_id, status
+        ) VALUES (
+            #{username}, #{password}, #{phone}, #{email}, #{realName}, #{roleId}, #{status}
+        )
+    </insert>
+
+    <!-- 更新管理员信息 -->
+    <update id="updateById">
+        UPDATE admin_user
+        <set>
+            <if test="username != null">username = #{username},</if>
+            <if test="password != null">password = #{password},</if>
+            <if test="phone != null">phone = #{phone},</if>
+            <if test="email != null">email = #{email},</if>
+            <if test="realName != null">real_name = #{realName},</if>
+            <if test="roleId != null">role_id = #{roleId},</if>
+            <if test="status != null">status = #{status},</if>
+        </set>
+        WHERE id = #{id}
+    </update>
+
+    <!-- 更新最后登录信息 -->
+    <update id="updateLastLoginInfo">
+        UPDATE admin_user
+        SET last_login_time = #{lastLoginTime},
+            last_login_ip = #{lastLoginIp}
+        WHERE id = #{id}
+    </update>
+
+</mapper>

@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.travel.mapper.ArticleTagRelationMapper">
+
+    <resultMap id="BaseResultMap" type="com.travel.entity.ArticleTagRelation">
+        <result column="article_id" property="articleId"/>
+        <result column="tag_id" property="tagId"/>
+    </resultMap>
+
+    <!-- 根据文章ID查询标签关联列表 -->
+    <select id="selectByArticleId" resultMap="BaseResultMap">
+        SELECT article_id, tag_id
+        FROM article_tag_relation
+        WHERE article_id = #{articleId}
+    </select>
+
+    <!-- 根据标签ID查询文章关联列表 -->
+    <select id="selectByTagId" resultMap="BaseResultMap">
+        SELECT article_id, tag_id
+        FROM article_tag_relation
+        WHERE tag_id = #{tagId}
+    </select>
+
+    <!-- 插入标签关联 -->
+    <insert id="insert">
+        INSERT INTO article_tag_relation (article_id, tag_id)
+        VALUES (#{articleId}, #{tagId})
+    </insert>
+
+    <!-- 删除文章的所有标签关联 -->
+    <delete id="deleteByArticleId">
+        DELETE FROM article_tag_relation WHERE article_id = #{articleId}
+    </delete>
+
+    <!-- 删除指定标签关联 -->
+    <delete id="delete">
+        DELETE FROM article_tag_relation
+        WHERE article_id = #{articleId} AND tag_id = #{tagId}
+    </delete>
+
+    <!-- 检查关联是否存在 -->
+    <select id="countByArticleIdAndTagId" resultType="int">
+        SELECT COUNT(*)
+        FROM article_tag_relation
+        WHERE article_id = #{articleId} AND tag_id = #{tagId}
+    </select>
+
+</mapper>

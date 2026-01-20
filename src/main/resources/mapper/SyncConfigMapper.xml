@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.travel.mapper.SyncConfigMapper">
+
+    <resultMap id="BaseResultMap" type="com.travel.entity.SyncConfig">
+        <id column="id" property="id"/>
+        <result column="sync_type" property="syncType"/>
+        <result column="api_url" property="apiUrl"/>
+        <result column="api_key" property="apiKey"/>
+        <result column="api_secret" property="apiSecret"/>
+        <result column="sync_frequency" property="syncFrequency"/>
+        <result column="sync_time" property="syncTime"/>
+        <result column="status" property="status"/>
+        <result column="last_sync_time" property="lastSyncTime"/>
+        <result column="create_time" property="createTime"/>
+        <result column="update_time" property="updateTime"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id, sync_type, api_url, api_key, api_secret, sync_frequency, sync_time,
+        status, last_sync_time, create_time, update_time
+    </sql>
+
+    <!-- 根据ID查询 -->
+    <select id="selectById" resultMap="BaseResultMap">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM sync_config
+        WHERE id = #{id}
+    </select>
+
+    <!-- 根据同步类型查询 -->
+    <select id="selectBySyncType" resultMap="BaseResultMap">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM sync_config
+        WHERE sync_type = #{syncType}
+        LIMIT 1
+    </select>
+
+    <!-- 查询所有同步配置 -->
+    <select id="selectAll" resultMap="BaseResultMap">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM sync_config
+        ORDER BY create_time DESC
+    </select>
+
+    <!-- 查询启用的同步配置 -->
+    <select id="selectEnabled" resultMap="BaseResultMap">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM sync_config
+        WHERE status = 1
+        ORDER BY create_time DESC
+    </select>
+
+    <!-- 插入同步配置 -->
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO sync_config (
+            sync_type, api_url, api_key, api_secret, sync_frequency, sync_time, status
+        ) VALUES (
+            #{syncType}, #{apiUrl}, #{apiKey}, #{apiSecret}, #{syncFrequency}, #{syncTime}, #{status}
+        )
+    </insert>
+
+    <!-- 更新同步配置 -->
+    <update id="updateById">
+        UPDATE sync_config
+        <set>
+            <if test="syncType != null">sync_type = #{syncType},</if>
+            <if test="apiUrl != null">api_url = #{apiUrl},</if>
+            <if test="apiKey != null">api_key = #{apiKey},</if>
+            <if test="apiSecret != null">api_secret = #{apiSecret},</if>
+            <if test="syncFrequency != null">sync_frequency = #{syncFrequency},</if>
+            <if test="syncTime != null">sync_time = #{syncTime},</if>
+            <if test="status != null">status = #{status},</if>
+            <if test="lastSyncTime != null">last_sync_time = #{lastSyncTime},</if>
+        </set>
+        WHERE id = #{id}
+    </update>
+
+    <!-- 删除同步配置 -->
+    <delete id="deleteById">
+        DELETE FROM sync_config WHERE id = #{id}
+    </delete>
+
+    <!-- 更新最后同步时间 -->
+    <update id="updateLastSyncTime">
+        UPDATE sync_config
+        SET last_sync_time = #{lastSyncTime}
+        WHERE id = #{id}
+    </update>
+
+</mapper>
