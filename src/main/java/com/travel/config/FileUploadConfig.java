@@ -3,6 +3,7 @@ package com.travel.config;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.lang.NonNull;
 import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
@@ -65,23 +66,32 @@ public class FileUploadConfig implements WebMvcConfigurer {
      * 注意：前端静态资源已分离到 nginx，不再由后端提供
      */
     @Override
-    public void addResourceHandlers(ResourceHandlerRegistry registry) {
+    public void addResourceHandlers(@NonNull ResourceHandlerRegistry registry) {
         // 从 access-url 中提取路径前缀（例如：http://localhost:8080/uploads -> /uploads）
+        // 或者：https://yuesf.cn/travel/uploads -> /travel/uploads
         String pathPattern = extractPathFromUrl(accessUrl);
         
         // 获取实际上传路径（如果是相对路径，则基于项目根目录）
         Path actualUploadPath = getActualUploadPath();
         
-        // 添加上传文件的静态资源处理器
+        // 添加上传文件的静态资源处理器（使用提取的路径）
         registry.addResourceHandler(pathPattern + "/**")
                 .addResourceLocations("file:" + actualUploadPath.toAbsolutePath() + "/");
+        
+        // 同时注册 /uploads/** 路径，以兼容 Nginx 代理去掉 /travel/ 前缀的情况
+        // 这样无论 Nginx 是否保留前缀，都能正常访问
+        if (!pathPattern.equals("/uploads")) {
+            registry.addResourceHandler("/uploads/**")
+                    .addResourceLocations("file:" + actualUploadPath.toAbsolutePath() + "/");
+            log.info("同时注册兼容路径: /uploads/** -> {}", actualUploadPath.toAbsolutePath());
+        }
         
         log.info("配置静态资源访问: {} -> {}", pathPattern + "/**", actualUploadPath.toAbsolutePath());
         log.info("前端静态资源已分离到 nginx，不再由后端提供");
         
         // 注意：
         // 1. 前端静态资源已分离，由 nginx 直接提供（/admin/ 路径）
-        // 2. 后端只处理上传文件的静态资源访问（/uploads/**）
+        // 2. 后端处理上传文件的静态资源访问，同时支持 /uploads/** 和 /travel/uploads/**
         // 3. /static/** 路径由 StaticResourceController 处理，返回 404
     }
     

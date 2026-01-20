@@ -97,7 +97,8 @@ public class SecurityConfig {
                 .requestMatchers("/api/v1/miniprogram/products/**").permitAll()
                 // 注意：前端静态资源已分离到 nginx，不再由后端提供，因此不需要配置权限
                 // 静态资源访问允许匿名访问（上传的文件）
-                .requestMatchers("/uploads/**").permitAll()
+                // 支持开发环境：/uploads/** 和生产环境：/travel/uploads/**
+                .requestMatchers("/uploads/**", "/travel/uploads/**").permitAll()
                 // 小程序静态资源路径
                 .requestMatchers("/static/**").permitAll()
                 // SpringDoc OpenAPI文档允许匿名访问
