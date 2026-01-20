@@ -1,0 +1,6 @@
+# 生产环境配置
+travel:
+  # 文件上传配置
+  file:
+    # 生产环境文件访问URL
+    access-url: https://yuesf.cn/travel/uploads

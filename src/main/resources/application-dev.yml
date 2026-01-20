@@ -1,0 +1,6 @@
+# 开发环境配置
+travel:
+  # 文件上传配置
+  file:
+    # 开发环境文件访问URL
+    access-url: http://127.0.0.1:8080/uploads
