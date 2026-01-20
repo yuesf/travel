@@ -1,1 +1,7 @@
 /.idea/
+/.spec-workflow/
+/.vscode/
+/data/
+/logs/
+/src/main/resources/static/assets/
+/src/main/resources/static/index.html
