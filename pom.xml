@@ -148,53 +148,6 @@
 
     <build>
         <plugins>
-            <!-- 前端构建插件 -->
-            <plugin>
-                <groupId>com.github.eirslett</groupId>
-                <artifactId>frontend-maven-plugin</artifactId>
-                <version>1.15.0</version>
-                <configuration>
-                    <workingDirectory>admin-frontend</workingDirectory>
-                    <installDirectory>target-node</installDirectory>
-                </configuration>
-                <executions>
-                    <!-- 安装 Node.js 和 npm -->
-                    <execution>
-                        <id>install node and npm</id>
-                        <goals>
-                            <goal>install-node-and-npm</goal>
-                        </goals>
-                        <configuration>
-                            <nodeVersion>v20.10.0</nodeVersion>
-                            <npmVersion>10.2.4</npmVersion>
-                        </configuration>
-                    </execution>
-                    <!-- 安装前端依赖 -->
-                    <execution>
-                        <id>npm install</id>
-                        <goals>
-                            <goal>npm</goal>
-                        </goals>
-                        <configuration>
-                            <arguments>install</arguments>
-                        </configuration>
-                    </execution>
-                    <!-- 构建前端 -->
-                    <execution>
-                        <id>npm run build</id>
-                        <goals>
-                            <goal>npm</goal>
-                        </goals>
-                        <configuration>
-                            <arguments>run build</arguments>
-                        </configuration>
-                    </execution>
-                </executions>
-            </plugin>
-
-            <!-- 注意：前端构建文件直接输出到 src/main/resources/static，
-                 Maven 会自动将 src/main/resources 下的文件复制到 target/classes，
-                 因此不需要额外的复制配置 -->
 
             <plugin>
                 <groupId>org.springframework.boot</groupId>
