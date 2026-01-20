@@ -1,0 +1,85 @@
+/**
+ * 主题样式文件
+ * 定义主题色彩和CSS变量，便于主题切换
+ */
+
+:root {
+  /* 主题色彩 */
+  --color-primary: #409EFF;
+  --color-success: #67C23A;
+  --color-warning: #E6A23C;
+  --color-danger: #F56C6C;
+  --color-info: #909399;
+
+  /* 主色调变体 */
+  --color-primary-light-1: #53a8ff;
+  --color-primary-light-2: #66b1ff;
+  --color-primary-light-3: #79bbff;
+  --color-primary-light-4: #8cc5ff;
+  --color-primary-light-5: #a0cfff;
+  --color-primary-light-6: #b3d8ff;
+  --color-primary-light-7: #c6e2ff;
+  --color-primary-light-8: #d9ecff;
+  --color-primary-light-9: #ecf5ff;
+  --color-primary-dark-1: #3a8ee6;
+  --color-primary-dark-2: #337ecc;
+
+  /* 成功色变体 */
+  --color-success-light: #85ce61;
+  --color-success-dark: #5daf34;
+  --color-success-lighter: #e1f3d8;
+
+  /* 警告色变体 */
+  --color-warning-light: #ebb563;
+  --color-warning-dark: #cf9236;
+  --color-warning-lighter: #fdf6ec;
+
+  /* 危险色变体 */
+  --color-danger-light: #f78989;
+  --color-danger-dark: #dd6161;
+  --color-danger-lighter: #fef0f0;
+
+  /* 信息色变体 */
+  --color-info-light: #a6a9ad;
+  --color-info-dark: #82848a;
+  --color-info-lighter: #f4f4f5;
+
+  /* 文本颜色 */
+  --color-text-primary: #303133;
+  --color-text-regular: #606266;
+  --color-text-secondary: #909399;
+  --color-text-placeholder: #C0C4CC;
+
+  /* 边框颜色 */
+  --color-border-base: #DCDFE6;
+  --color-border-light: #E4E7ED;
+  --color-border-lighter: #EBEEF5;
+  --color-border-extra-light: #F2F6FC;
+
+  /* 背景颜色 */
+  --color-bg-base: #F5F7FA;
+  --color-bg-page: #FFFFFF;
+  --color-bg-overlay: #FFFFFF;
+
+  /* 阴影 */
+  --shadow-base: 0 2px 4px rgba(0, 0, 0, 0.12), 0 0 6px rgba(0, 0, 0, 0.04);
+  --shadow-light: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
+  --shadow-dark: 0 2px 4px rgba(0, 0, 0, 0.12), 0 0 6px rgba(0, 0, 0, 0.12);
+}
+
+/* 暗色主题（可选，为未来扩展预留） */
+[data-theme='dark'] {
+  --color-text-primary: #E5EAF3;
+  --color-text-regular: #CFD3DC;
+  --color-text-secondary: #A3A6AD;
+  --color-text-placeholder: #6C6E72;
+  
+  --color-border-base: #4C4D4F;
+  --color-border-light: #414243;
+  --color-border-lighter: #363637;
+  --color-border-extra-light: #2B2B2C;
+  
+  --color-bg-base: #1D1E1F;
+  --color-bg-page: #141414;
+  --color-bg-overlay: #1D1E1F;
+}

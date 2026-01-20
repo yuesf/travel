@@ -1,0 +1,67 @@
+# 高德地图API Key配置说明
+
+## 配置步骤
+
+### 1. 获取高德地图API Key
+
+1. 访问 [高德开放平台](https://lbs.amap.com/api/javascript-api/guide/abc/prepare)
+2. 注册/登录账号
+3. 进入控制台，创建新应用
+4. 添加Key，选择"Web服务(JS API)"
+5. 配置安全密钥（可选，建议配置）
+6. 复制生成的API Key
+
+### 2. 配置环境变量
+
+在项目根目录（`admin-frontend/`）下创建 `.env.local` 文件：
+
+```bash
+# 在 admin-frontend 目录下执行
+touch .env.local
+```
+
+编辑 `.env.local` 文件，添加以下内容：
+
+```env
+# 高德地图API Key
+VITE_AMAP_API_KEY=your_amap_api_key_here
+```
+
+将 `your_amap_api_key_here` 替换为您从高德开放平台获取的真实API Key。
+
+### 3. 重启开发服务器
+
+配置完成后，需要重启开发服务器才能生效：
+
+```bash
+# 停止当前服务器（Ctrl+C）
+# 然后重新启动
+npm run dev
+```
+
+## 验证配置
+
+配置成功后，在景点表单的"地图位置"区域应该能看到真实的地图，而不是提示信息。
+
+## 注意事项
+
+1. **`.env.local` 文件不会被提交到Git**（已在.gitignore中配置），请妥善保管您的API Key
+2. **如果没有配置API Key**，地图功能会显示友好的提示信息，但仍可通过手动输入经纬度来设置位置
+3. **API Key有使用限制**，请根据高德开放平台的配额合理使用
+4. **生产环境**建议配置安全密钥，限制API Key的使用域名
+
+## 常见问题
+
+### Q: 地图显示"请配置高德地图API Key"？
+A: 请检查：
+- `.env.local` 文件是否在 `admin-frontend/` 目录下
+- 环境变量名称是否为 `VITE_AMAP_API_KEY`
+- API Key是否正确
+- 是否重启了开发服务器
+
+### Q: 地图加载失败？
+A: 请检查：
+- 网络连接是否正常
+- API Key是否有效
+- 浏览器控制台是否有错误信息
+- API Key是否配置了安全密钥（如果配置了，需要添加当前域名到白名单）

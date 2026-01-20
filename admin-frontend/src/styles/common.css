@@ -1,0 +1,343 @@
+/**
+ * 通用样式文件
+ * 定义字体规范、间距规范、圆角规范等通用样式
+ */
+
+/* ========== 字体规范 ========== */
+
+/* 标题字体 */
+h1, .h1 {
+  font-size: 20px;
+  font-weight: bold;
+  line-height: 1.5;
+  color: var(--color-text-primary);
+}
+
+h2, .h2 {
+  font-size: 18px;
+  font-weight: bold;
+  line-height: 1.5;
+  color: var(--color-text-primary);
+}
+
+h3, .h3 {
+  font-size: 16px;
+  font-weight: bold;
+  line-height: 1.5;
+  color: var(--color-text-primary);
+}
+
+h4, .h4 {
+  font-size: 16px;
+  font-weight: bold;
+  line-height: 1.5;
+  color: var(--color-text-primary);
+}
+
+/* 正文字体 */
+body, .text-body {
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--color-text-regular);
+}
+
+/* 辅助文字 */
+.text-secondary {
+  font-size: 13px;
+  color: var(--color-text-secondary);
+}
+
+.text-small {
+  font-size: 12px;
+  color: var(--color-text-secondary);
+}
+
+/* 字体粗细 */
+.font-normal {
+  font-weight: normal;
+}
+
+.font-bold {
+  font-weight: bold;
+}
+
+.font-medium {
+  font-weight: 500;
+}
+
+/* ========== 间距规范 ========== */
+
+/* 页面边距 */
+.page-container {
+  padding: 20px;
+}
+
+/* 组件间距工具类 */
+.mt-xs { margin-top: 8px; }
+.mt-sm { margin-top: 12px; }
+.mt-md { margin-top: 16px; }
+.mt-lg { margin-top: 20px; }
+.mt-xl { margin-top: 24px; }
+
+.mb-xs { margin-bottom: 8px; }
+.mb-sm { margin-bottom: 12px; }
+.mb-md { margin-bottom: 16px; }
+.mb-lg { margin-bottom: 20px; }
+.mb-xl { margin-bottom: 24px; }
+
+.ml-xs { margin-left: 8px; }
+.ml-sm { margin-left: 12px; }
+.ml-md { margin-left: 16px; }
+.ml-lg { margin-left: 20px; }
+.ml-xl { margin-left: 24px; }
+
+.mr-xs { margin-right: 8px; }
+.mr-sm { margin-right: 12px; }
+.mr-md { margin-right: 16px; }
+.mr-lg { margin-right: 20px; }
+.mr-xl { margin-right: 24px; }
+
+.pt-xs { padding-top: 8px; }
+.pt-sm { padding-top: 12px; }
+.pt-md { padding-top: 16px; }
+.pt-lg { padding-top: 20px; }
+.pt-xl { padding-top: 24px; }
+
+.pb-xs { padding-bottom: 8px; }
+.pb-sm { padding-bottom: 12px; }
+.pb-md { padding-bottom: 16px; }
+.pb-lg { padding-bottom: 20px; }
+.pb-xl { padding-bottom: 24px; }
+
+.pl-xs { padding-left: 8px; }
+.pl-sm { padding-left: 12px; }
+.pl-md { padding-left: 16px; }
+.pl-lg { padding-left: 20px; }
+.pl-xl { padding-left: 24px; }
+
+.pr-xs { padding-right: 8px; }
+.pr-sm { padding-right: 12px; }
+.pr-md { padding-right: 16px; }
+.pr-lg { padding-right: 20px; }
+.pr-xl { padding-right: 24px; }
+
+/* 表单项间距 */
+.form-item {
+  margin-bottom: 20px;
+}
+
+.form-item:last-child {
+  margin-bottom: 0;
+}
+
+/* 卡片间距 */
+.card-spacing {
+  margin-bottom: 16px;
+}
+
+.card-spacing-lg {
+  margin-bottom: 24px;
+}
+
+/* ========== 圆角规范 ========== */
+
+/* 按钮圆角 */
+.btn, button, .el-button {
+  border-radius: 4px;
+}
+
+/* 卡片圆角 */
+.card, .el-card {
+  border-radius: 4px;
+}
+
+/* 输入框圆角 */
+input, textarea, select, .el-input__inner, .el-textarea__inner {
+  border-radius: 4px;
+}
+
+/* 通用圆角工具类 */
+.rounded {
+  border-radius: 4px;
+}
+
+.rounded-sm {
+  border-radius: 2px;
+}
+
+.rounded-lg {
+  border-radius: 8px;
+}
+
+.rounded-full {
+  border-radius: 50%;
+}
+
+/* ========== 通用工具类 ========== */
+
+/* 文本对齐 */
+.text-left {
+  text-align: left;
+}
+
+.text-center {
+  text-align: center;
+}
+
+.text-right {
+  text-align: right;
+}
+
+/* 文本颜色 */
+.text-primary {
+  color: var(--color-primary);
+}
+
+.text-success {
+  color: var(--color-success);
+}
+
+.text-warning {
+  color: var(--color-warning);
+}
+
+.text-danger {
+  color: var(--color-danger);
+}
+
+.text-info {
+  color: var(--color-info);
+}
+
+/* 背景颜色 */
+.bg-primary {
+  background-color: var(--color-primary);
+}
+
+.bg-success {
+  background-color: var(--color-success);
+}
+
+.bg-warning {
+  background-color: var(--color-warning);
+}
+
+.bg-danger {
+  background-color: var(--color-danger);
+}
+
+.bg-info {
+  background-color: var(--color-info);
+}
+
+.bg-base {
+  background-color: var(--color-bg-base);
+}
+
+.bg-page {
+  background-color: var(--color-bg-page);
+}
+
+/* 边框 */
+.border {
+  border: 1px solid var(--color-border-base);
+}
+
+.border-light {
+  border: 1px solid var(--color-border-light);
+}
+
+.border-lighter {
+  border: 1px solid var(--color-border-lighter);
+}
+
+/* 阴影 */
+.shadow {
+  box-shadow: var(--shadow-base);
+}
+
+.shadow-light {
+  box-shadow: var(--shadow-light);
+}
+
+.shadow-dark {
+  box-shadow: var(--shadow-dark);
+}
+
+/* 显示/隐藏 */
+.hidden {
+  display: none;
+}
+
+.visible {
+  display: block;
+}
+
+.inline-block {
+  display: inline-block;
+}
+
+.flex {
+  display: flex;
+}
+
+.flex-column {
+  flex-direction: column;
+}
+
+.flex-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.flex-between {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+/* 宽度 */
+.w-full {
+  width: 100%;
+}
+
+.w-half {
+  width: 50%;
+}
+
+/* 清除浮动 */
+.clearfix::after {
+  content: '';
+  display: table;
+  clear: both;
+}
+
+/* 溢出处理 */
+.overflow-hidden {
+  overflow: hidden;
+}
+
+.overflow-auto {
+  overflow: auto;
+}
+
+.text-ellipsis {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 光标 */
+.cursor-pointer {
+  cursor: pointer;
+}
+
+.cursor-not-allowed {
+  cursor: not-allowed;
+}
+
+/* 用户选择 */
+.user-select-none {
+  user-select: none;
+}

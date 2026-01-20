@@ -1,0 +1,421 @@
+/**
+ * 响应式样式文件
+ * 实现不同屏幕尺寸的适配
+ * 
+ * 断点定义：
+ * xs: <768px (移动端)
+ * sm: ≥768px (平板)
+ * md: ≥992px (小桌面)
+ * lg: ≥1200px (桌面)
+ * xl: ≥1920px (大桌面)
+ */
+
+/* ========== 移动端样式 (<768px) ========== */
+@media screen and (max-width: 767px) {
+  /* 页面容器 */
+  .page-container {
+    padding: 12px;
+  }
+
+  /* 标题字体调整 */
+  h1, .h1 {
+    font-size: 18px;
+  }
+
+  h2, .h2 {
+    font-size: 16px;
+  }
+
+  h3, .h3 {
+    font-size: 15px;
+  }
+
+  /* 表格响应式 */
+  .table-responsive {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* 卡片间距调整 */
+  .card-spacing {
+    margin-bottom: 12px;
+  }
+
+  .card-spacing-lg {
+    margin-bottom: 16px;
+  }
+
+  /* 表单项间距调整 */
+  .form-item {
+    margin-bottom: 16px;
+  }
+
+  /* 按钮组垂直排列 */
+  .button-group-mobile {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .button-group-mobile .el-button {
+    width: 100%;
+  }
+
+  /* 隐藏移动端不需要的元素 */
+  .hide-mobile {
+    display: none !important;
+  }
+
+  /* 显示移动端专用元素 */
+  .show-mobile {
+    display: block !important;
+  }
+
+  /* 侧边栏移动端样式 */
+  .sidebar-mobile {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100vh;
+    z-index: 1000;
+    transform: translateX(-100%);
+    transition: transform 0.3s ease;
+  }
+
+  .sidebar-mobile.open {
+    transform: translateX(0);
+  }
+
+  /* 主内容区域移动端 */
+  .main-content-mobile {
+    width: 100%;
+    padding: 12px;
+  }
+
+  /* 搜索栏移动端 */
+  .search-bar-mobile {
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .search-bar-mobile .el-input {
+    width: 100%;
+  }
+
+  /* 操作栏移动端 */
+  .action-bar-mobile {
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .action-bar-mobile .el-button {
+    width: 100%;
+  }
+}
+
+/* ========== 平板样式 (≥768px) ========== */
+@media screen and (min-width: 768px) and (max-width: 991px) {
+  /* 页面容器 */
+  .page-container {
+    padding: 16px;
+  }
+
+  /* 表格响应式 */
+  .table-responsive {
+    overflow-x: auto;
+  }
+
+  /* 隐藏平板端不需要的元素 */
+  .hide-tablet {
+    display: none !important;
+  }
+
+  /* 显示平板端专用元素 */
+  .show-tablet {
+    display: block !important;
+  }
+
+  /* 侧边栏平板端 */
+  .sidebar-tablet {
+    width: 200px;
+  }
+
+  /* 主内容区域平板端 */
+  .main-content-tablet {
+    padding: 16px;
+  }
+}
+
+/* ========== 小桌面样式 (≥992px) ========== */
+@media screen and (min-width: 992px) and (max-width: 1199px) {
+  /* 页面容器 */
+  .page-container {
+    padding: 20px;
+  }
+
+  /* 隐藏小桌面端不需要的元素 */
+  .hide-desktop-sm {
+    display: none !important;
+  }
+
+  /* 显示小桌面端专用元素 */
+  .show-desktop-sm {
+    display: block !important;
+  }
+}
+
+/* ========== 桌面样式 (≥1200px) ========== */
+@media screen and (min-width: 1200px) {
+  /* 页面容器 */
+  .page-container {
+    padding: 20px;
+    max-width: 1400px;
+    margin: 0 auto;
+  }
+
+  /* 隐藏桌面端不需要的元素 */
+  .hide-desktop {
+    display: none !important;
+  }
+
+  /* 显示桌面端专用元素 */
+  .show-desktop {
+    display: block !important;
+  }
+
+  /* 侧边栏桌面端 */
+  .sidebar-desktop {
+    width: 240px;
+  }
+
+  /* 主内容区域桌面端 */
+  .main-content-desktop {
+    padding: 20px;
+  }
+}
+
+/* ========== 大桌面样式 (≥1920px) ========== */
+@media screen and (min-width: 1920px) {
+  /* 页面容器 */
+  .page-container {
+    padding: 24px;
+    max-width: 1600px;
+    margin: 0 auto;
+  }
+
+  /* 大桌面端字体调整 */
+  h1, .h1 {
+    font-size: 22px;
+  }
+
+  h2, .h2 {
+    font-size: 20px;
+  }
+
+  h3, .h3 {
+    font-size: 18px;
+  }
+
+  body, .text-body {
+    font-size: 15px;
+  }
+}
+
+/* ========== 通用响应式工具类 ========== */
+
+/* 在不同断点显示/隐藏 */
+@media screen and (max-width: 767px) {
+  .show-xs {
+    display: block !important;
+  }
+  .hide-xs {
+    display: none !important;
+  }
+}
+
+@media screen and (min-width: 768px) {
+  .show-sm {
+    display: block !important;
+  }
+  .hide-sm {
+    display: none !important;
+  }
+}
+
+@media screen and (min-width: 992px) {
+  .show-md {
+    display: block !important;
+  }
+  .hide-md {
+    display: none !important;
+  }
+}
+
+@media screen and (min-width: 1200px) {
+  .show-lg {
+    display: block !important;
+  }
+  .hide-lg {
+    display: none !important;
+  }
+}
+
+@media screen and (min-width: 1920px) {
+  .show-xl {
+    display: block !important;
+  }
+  .hide-xl {
+    display: none !important;
+  }
+}
+
+/* ========== 响应式布局工具类 ========== */
+
+/* 响应式网格 */
+.responsive-grid {
+  display: grid;
+  gap: 16px;
+}
+
+@media screen and (max-width: 767px) {
+  .responsive-grid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+}
+
+@media screen and (min-width: 768px) and (max-width: 991px) {
+  .responsive-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 16px;
+  }
+}
+
+@media screen and (min-width: 992px) {
+  .responsive-grid {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 20px;
+  }
+}
+
+@media screen and (min-width: 1200px) {
+  .responsive-grid {
+    grid-template-columns: repeat(4, 1fr);
+    gap: 24px;
+  }
+}
+
+/* 响应式Flex布局 */
+.responsive-flex {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+@media screen and (max-width: 767px) {
+  .responsive-flex {
+    flex-direction: column;
+    gap: 12px;
+  }
+  
+  .responsive-flex > * {
+    width: 100%;
+  }
+}
+
+@media screen and (min-width: 768px) {
+  .responsive-flex {
+    flex-direction: row;
+  }
+  
+  .responsive-flex > * {
+    flex: 1;
+    min-width: 0;
+  }
+}
+
+/* 响应式列布局 */
+.responsive-col-2 {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 16px;
+}
+
+@media screen and (min-width: 768px) {
+  .responsive-col-2 {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.responsive-col-3 {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 16px;
+}
+
+@media screen and (min-width: 768px) {
+  .responsive-col-3 {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media screen and (min-width: 992px) {
+  .responsive-col-3 {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+/* 响应式图片 */
+.responsive-img {
+  max-width: 100%;
+  height: auto;
+}
+
+/* 响应式表格 */
+@media screen and (max-width: 767px) {
+  .responsive-table {
+    display: block;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  .responsive-table table {
+    min-width: 600px;
+  }
+}
+
+/* 响应式表单 */
+@media screen and (max-width: 767px) {
+  .responsive-form .el-form-item {
+    margin-bottom: 16px;
+  }
+  
+  .responsive-form .el-form-item__label {
+    width: 100% !important;
+    text-align: left;
+  }
+  
+  .responsive-form .el-form-item__content {
+    margin-left: 0 !important;
+  }
+}
+
+/* 响应式卡片 */
+@media screen and (max-width: 767px) {
+  .responsive-card {
+    margin-bottom: 12px;
+  }
+}
+
+@media screen and (min-width: 768px) {
+  .responsive-card {
+    margin-bottom: 16px;
+  }
+}
+
+@media screen and (min-width: 1200px) {
+  .responsive-card {
+    margin-bottom: 24px;
+  }
+}
