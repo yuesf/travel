@@ -51,6 +51,7 @@ import { ref, computed, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Upload } from '@element-plus/icons-vue'
 import { getToken } from '@/utils/auth'
+import { API_BASE_URL } from '@/config/api'
 
 const props = defineProps({
   modelValue: {
@@ -73,8 +74,12 @@ const props = defineProps({
 
 const emit = defineEmits(['update:modelValue', 'change'])
 
+// 上传视频地址：基于统一的 API_BASE_URL 拼接
+// 开发环境：/api/v1/common/file/upload/video
+// 生产环境：/travel/api/v1/common/file/upload/video
 const uploadUrl = computed(() => {
-  return '/api/v1/common/file/upload/video'
+  const baseUrl = API_BASE_URL.replace(/\/$/, '')
+  return `${baseUrl}/common/file/upload/video`
 })
 
 const uploadHeaders = computed(() => {

@@ -42,7 +42,9 @@ export default defineConfig(({ mode }) => {
       assetsDir: 'assets',
       // 确保资源路径使用 base 路径
       assetsInlineLimit: 4096,
+      // 确保正确识别入口文件
       rollupOptions: {
+        input: resolve(__dirname, 'index.html'),
         output: {
           manualChunks(id) {
             // 将 node_modules 中的依赖打包到单独的 chunk

@@ -11,6 +11,7 @@ import Quill from 'quill'
 import 'quill/dist/quill.snow.css'
 import request from '@/utils/request'
 import { getToken } from '@/utils/auth'
+import { API_BASE_URL } from '@/config/api'
 
 const props = defineProps({
   modelValue: {
@@ -99,9 +100,15 @@ const initEditor = () => {
                 formData.append('file', file)
                 formData.append('module', 'article') // 默认使用article模块
 
+                // 构建上传URL：统一基于 API_BASE_URL
+                // 开发环境：/api/v1/common/file/upload/image
+                // 生产环境：/travel/api/v1/common/file/upload/image
+                const baseUrl = API_BASE_URL.replace(/\/$/, '')
+                const uploadUrl = `${baseUrl}/common/file/upload/image`
+
                 // 调用上传API
                 const token = getToken()
-                const response = await fetch('/api/v1/common/file/upload/image', {
+                const response = await fetch(uploadUrl, {
                   method: 'POST',
                   headers: {
                     Authorization: `Bearer ${token}`,

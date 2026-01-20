@@ -37,6 +37,7 @@ import { ElMessage } from 'element-plus'
 import { Plus } from '@element-plus/icons-vue'
 import Sortable from 'sortablejs'
 import { getToken } from '@/utils/auth'
+import { API_BASE_URL } from '@/config/api'
 
 const props = defineProps({
   modelValue: {
@@ -59,8 +60,12 @@ const props = defineProps({
 
 const emit = defineEmits(['update:modelValue', 'change'])
 
+// 上传图片地址：基于统一的 API_BASE_URL 拼接
+// 开发环境：/api/v1/common/file/upload/image（通过 Vite 代理到 http://127.0.0.1）
+// 生产环境：/travel/api/v1/common/file/upload/image（Nginx 转发到 https://yuesf.cn/travel/）
 const uploadUrl = computed(() => {
-  return '/api/v1/common/file/upload/image'
+  const baseUrl = API_BASE_URL.replace(/\/$/, '')
+  return `${baseUrl}/common/file/upload/image`
 })
 
 const uploadHeaders = computed(() => {

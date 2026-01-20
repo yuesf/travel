@@ -1,3 +1,8 @@
 cd admin-frontend
+rm -rf dist node_modules/.vite
+
 npm run build
-sudo cp -r /root/travel/travel/admin-frontend/* /var/www/travel/admin/
+
+rm -rf /var/www/travel/admin/*
+
+sudo cp -r /root/travel/travel/admin-frontend/dist/* /var/www/travel/admin/
