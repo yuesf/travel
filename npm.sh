@@ -1,3 +1,5 @@
+ps -ef | grep java | grep -v grep | awk '{print $2}' | xargs kill -9
+
 cd admin-frontend
 rm -rf dist node_modules/.vite
 

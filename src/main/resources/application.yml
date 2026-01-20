@@ -72,7 +72,11 @@ travel:
   # 文件上传配置
   file:
     upload-path: data/uploads
-    access-url: http://localhost:8080/uploads
+    # 文件访问URL，根据环境自动切换
+    # 开发环境（dev profile）：http://127.0.0.1:8080/uploads
+    # 生产环境（prod profile）：https://yuesf.cn/travel/uploads
+    # 也可通过环境变量 FILE_ACCESS_URL 覆盖
+    access-url: ${FILE_ACCESS_URL:http://127.0.0.1:8080/uploads}
   
   # RocketMQ配置（可选）
   rocketmq:
