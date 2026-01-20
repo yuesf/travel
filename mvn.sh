@@ -1,0 +1,1 @@
+mvn clean package -DskipTests -Dskip.frontend.build=true
