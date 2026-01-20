@@ -31,7 +31,11 @@ public class ViewController {
      */
     @RequestMapping(value = {"/", "/login", "/dashboard", "/attractions/**", "/hotels/**", 
                               "/products/**", "/categories/**", "/articles/**", "/miniprogram/**", 
-                              "/system/**", "/403", "/404"})
+                              "/system/**", "/403", "/404",
+                              "/travel", "/travel/", "/travel/login", "/travel/dashboard", "/travel/attractions/**", 
+                              "/travel/hotels/**", "/travel/products/**", "/travel/categories/**", 
+                              "/travel/articles/**", "/travel/miniprogram/**", "/travel/system/**", 
+                              "/travel/403", "/travel/404"})
     public void index(HttpServletRequest request, HttpServletResponse response) throws IOException {
         String path = request.getRequestURI();
         log.debug("ViewController 处理请求: {}", path);

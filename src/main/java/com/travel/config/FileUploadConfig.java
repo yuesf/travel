@@ -67,14 +67,26 @@ public class FileUploadConfig implements WebMvcConfigurer {
     @Override
     public void addResourceHandlers(ResourceHandlerRegistry registry) {
         // 显式配置前端静态资源（JS、CSS、图片等），确保优先级高于控制器
-        // 配置 /assets/** 路径
+        // 配置 /assets/** 路径（开发环境）
         registry.addResourceHandler("/assets/**")
+                .addResourceLocations("classpath:/static/assets/")
+                .setCachePeriod(3600);
+        
+        // 配置 /travel/assets/** 路径（生产环境）
+        registry.addResourceHandler("/travel/assets/**")
                 .addResourceLocations("classpath:/static/assets/")
                 .setCachePeriod(3600);
         
         // 配置根路径下的静态资源文件（favicon.ico 等）
         registry.addResourceHandler("/*.js", "/*.css", "/*.ico", "/*.png", "/*.jpg", "/*.jpeg", 
                                    "/*.gif", "/*.svg", "/*.woff", "/*.woff2", "/*.ttf", "/*.eot", "/*.map")
+                .addResourceLocations("classpath:/static/")
+                .setCachePeriod(3600);
+        
+        // 配置 /travel/ 路径下的静态资源文件（生产环境）
+        registry.addResourceHandler("/travel/*.js", "/travel/*.css", "/travel/*.ico", "/travel/*.png", 
+                                   "/travel/*.jpg", "/travel/*.jpeg", "/travel/*.gif", "/travel/*.svg", 
+                                   "/travel/*.woff", "/travel/*.woff2", "/travel/*.ttf", "/travel/*.eot", "/travel/*.map")
                 .addResourceLocations("classpath:/static/")
                 .setCachePeriod(3600);
         
