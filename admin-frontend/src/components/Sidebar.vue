@@ -59,20 +59,23 @@
         <el-menu-item index="/hotels/create">创建酒店</el-menu-item>
       </el-sub-menu>
 
-      <el-menu-item index="/coupons">
+      <!-- 优惠券管理 - 待实现 -->
+      <!-- <el-menu-item index="/coupons">
         <el-icon><Ticket /></el-icon>
         <template #title>优惠券管理</template>
-      </el-menu-item>
+      </el-menu-item> -->
 
-      <el-menu-item index="/orders">
+      <!-- 订单管理 - 待实现 -->
+      <!-- <el-menu-item index="/orders">
         <el-icon><Document /></el-icon>
         <template #title>订单管理</template>
-      </el-menu-item>
+      </el-menu-item> -->
 
-      <el-menu-item index="/users">
+      <!-- 用户管理 - 待实现 -->
+      <!-- <el-menu-item index="/users">
         <el-icon><User /></el-icon>
         <template #title>用户管理</template>
-      </el-menu-item>
+      </el-menu-item> -->
 
       <el-sub-menu index="system">
         <template #title>
@@ -81,9 +84,10 @@
         </template>
         <el-menu-item index="/system/payment-config">支付配置</el-menu-item>
         <el-menu-item index="/system/merchant-config">商家配置</el-menu-item>
-        <el-menu-item index="/system/admins">管理员管理</el-menu-item>
-        <el-menu-item index="/system/roles">角色权限</el-menu-item>
-        <el-menu-item index="/system/logs">操作日志</el-menu-item>
+        <!-- 系统管理 - 待实现 -->
+        <!-- <el-menu-item index="/system/admins">管理员管理</el-menu-item> -->
+        <!-- <el-menu-item index="/system/roles">角色权限</el-menu-item> -->
+        <!-- <el-menu-item index="/system/logs">操作日志</el-menu-item> -->
       </el-sub-menu>
     </el-menu>
   </el-aside>
@@ -92,6 +96,7 @@
 <script setup>
 import { computed, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { ElMessage } from 'element-plus'
 import {
   Odometer,
   Location,
@@ -119,6 +124,14 @@ const handleMenuSelect = (index) => {
     // 忽略重复导航的错误
     if (err.name !== 'NavigationDuplicated') {
       console.error('路由导航错误:', err)
+      // 如果是模块导入失败或路由不存在，显示友好提示
+      if (err.message && err.message.includes('Importing a module script failed')) {
+        ElMessage.warning('该功能暂未实现，敬请期待')
+      } else if (err.name === 'NavigationFailure' || err.message?.includes('No match')) {
+        ElMessage.warning('页面不存在或暂未实现')
+      } else {
+        ElMessage.error('页面加载失败，请稍后重试')
+      }
     }
   })
 }

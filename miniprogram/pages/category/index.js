@@ -18,6 +18,11 @@ Page({
     // 页面标题
     title: '商品分类',
     
+    // 浏览模式标识（从 Icon 进入时隐藏购买功能）
+    isBrowseMode: false,
+    // 是否显示分类侧边栏
+    showCategorySidebar: true,
+    
     // 分类列表
     categories: [],
     // 当前选中的分类ID
@@ -108,25 +113,48 @@ Page({
   onLoad(options) {
     console.log('商品分类页加载', options);
     
+    // 判断是否为浏览模式（从 Icon 进入）
+    const isBrowseMode = options.fromIcon === 'true';
+    const categoryId = options.categoryId ? parseInt(options.categoryId) : null;
+    
     // 固定为商品类型
     this.setData({
       type: 'product',
       title: '商品分类',
+      isBrowseMode: isBrowseMode,
+      showCategorySidebar: !isBrowseMode, // 浏览模式时隐藏分类侧边栏
+      currentCategoryId: categoryId,
     });
     
     // 设置导航栏标题
-    wx.setNavigationBarTitle({
-      title: '商品分类',
-    });
+    if (isBrowseMode && categoryId) {
+      // 浏览模式时，尝试获取分类名称作为标题
+      wx.setNavigationBarTitle({
+        title: '商品列表',
+      });
+    } else {
+      wx.setNavigationBarTitle({
+        title: '商品分类',
+      });
+    }
     
-    // 先加载分类列表，然后加载商品数据
-    this.loadCategories().then(() => {
+    if (isBrowseMode && categoryId) {
+      // 浏览模式：直接加载指定分类的商品，不加载分类列表
       this.loadProducts(true).then(() => {
         this.setData({
           isPageLoaded: true,
         });
       });
-    });
+    } else {
+      // 正常模式：先加载分类列表，然后加载商品数据
+      this.loadCategories().then(() => {
+        this.loadProducts(true).then(() => {
+          this.setData({
+            isPageLoaded: true,
+          });
+        });
+      });
+    }
   },
 
   /**

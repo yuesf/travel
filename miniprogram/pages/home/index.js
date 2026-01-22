@@ -128,6 +128,8 @@ Page({
         relatedName: icon.relatedName || '',
         name: icon.name || '',
         icon: normalizeUrl(icon.icon || ''),
+        linkUrl: icon.linkUrl || '', // H5链接地址
+        categoryId: icon.categoryId || null, // 文章分类ID
       }));
       console.log('处理后的图标数据:', icons);
 
@@ -351,26 +353,125 @@ Page({
   /**
    * Icon 图标点击事件
    */
-  onIconTap(e) {
+  async onIconTap(e) {
     const { icon } = e.currentTarget.dataset;
     if (!icon) {
       return;
     }
 
     // 根据类型进行跳转
-    const { type, relatedId } = icon;
+    const { type, relatedId, linkUrl } = icon;
     
     if (type === 'product_category') {
-      // 跳转到商品分类页面
-      wx.switchTab({
-        url: `/pages/category/index?type=product&categoryId=${relatedId}`,
+      // 跳转到独立的商品列表页
+      const iconName = icon.name || '商品列表';
+      wx.navigateTo({
+        url: `/pages/product/list?categoryId=${relatedId}&iconName=${encodeURIComponent(iconName)}`,
+        fail: (err) => {
+          console.error('跳转商品列表失败:', err);
+          wx.showToast({
+            title: '跳转失败，请重试',
+            icon: 'none',
+          });
+        },
       });
     } else if (type === 'article_category') {
-      // 跳转到文章分类页面（如果后续有文章页面）
-      wx.showToast({
-        title: '文章功能开发中',
-        icon: 'none',
+      // 文章分类类型：判断是分类ID还是文章ID
+      // 如果 relatedId === categoryId，说明只选择了分类，跳转到文章列表
+      // 如果 relatedId !== categoryId，说明选择了具体文章，跳转到文章详情
+      const categoryId = icon.categoryId;
+      
+      // 如果 relatedId 为空，但 categoryId 不为空，使用 categoryId 作为 relatedId（兼容只选择分类的情况）
+      const finalRelatedId = relatedId || categoryId;
+      
+      if (!finalRelatedId) {
+        wx.showToast({
+          title: '关联ID不能为空',
+          icon: 'none',
+        });
+        return;
+      }
+      
+      // 判断 relatedId 是分类ID还是文章ID
+      if (categoryId && finalRelatedId === categoryId) {
+        // 只选择了分类，跳转到文章列表
+        wx.navigateTo({
+          url: `/pages/article/list?categoryId=${finalRelatedId}`,
+          fail: (err) => {
+            console.error('跳转文章列表失败:', err);
+            wx.showToast({
+              title: '跳转失败，请重试',
+              icon: 'none',
+            });
+          },
+        });
+      } else {
+        // 选择了具体文章，跳转到文章详情
+        wx.navigateTo({
+          url: `/pages/article/detail?id=${finalRelatedId}`,
+          fail: (err) => {
+            console.error('跳转文章详情失败:', err);
+            wx.showToast({
+              title: '文章不存在',
+              icon: 'none',
+            });
+          },
+        });
+      }
+    } else if (type === 'article') {
+      // 跳转到文章详情页
+      wx.navigateTo({
+        url: `/pages/article/detail?id=${relatedId}`,
+        fail: (err) => {
+          console.error('跳转文章详情失败:', err);
+          wx.showToast({
+            title: '文章不存在',
+            icon: 'none',
+          });
+        },
       });
+    } else if (type === 'h5_link') {
+      // H5 链接类型：跳转到外部链接
+      if (linkUrl) {
+        // 验证 URL 格式
+        if (!linkUrl.startsWith('http://') && !linkUrl.startsWith('https://')) {
+          wx.showToast({
+            title: '链接地址无效',
+            icon: 'none',
+          });
+          return;
+        }
+        
+        // 方案1：使用 web-view 组件（需要配置业务域名）
+        wx.navigateTo({
+          url: `/pages/webview/index?url=${encodeURIComponent(linkUrl)}`,
+          fail: (err) => {
+            console.error('跳转 web-view 失败:', err);
+            // 方案2：复制链接到剪贴板（备选方案）
+            wx.setClipboardData({
+              data: linkUrl,
+              success: () => {
+                wx.showModal({
+                  title: '提示',
+                  content: '链接已复制到剪贴板，请在浏览器中打开',
+                  showCancel: false,
+                });
+              },
+              fail: () => {
+                wx.showToast({
+                  title: '链接复制失败',
+                  icon: 'none',
+                });
+              },
+            });
+          },
+        });
+      } else {
+        wx.showToast({
+          title: '链接地址为空',
+          icon: 'none',
+        });
+      }
     } else if (type === 'attraction') {
       // 跳转到景点详情
       wx.navigateTo({

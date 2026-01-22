@@ -2,8 +2,8 @@
 <view class="page-container">
   <!-- 左右分栏布局 -->
   <view class="category-layout">
-    <!-- 左侧分类列表 -->
-    <scroll-view class="category-sidebar" scroll-y="true">
+    <!-- 左侧分类列表（浏览模式时隐藏） -->
+    <scroll-view wx:if="{{showCategorySidebar}}" class="category-sidebar" scroll-y="true">
       <view 
         wx:for="{{categories}}" 
         wx:key="id"
@@ -58,8 +58,8 @@
             </view>
           </view>
           
-          <!-- 购物车图标 -->
-          <view class="product-cart-icon" catchtap="onAddToCart" data-product="{{item}}">
+          <!-- 购物车图标（浏览模式时隐藏） -->
+          <view wx:if="{{!isBrowseMode}}" class="product-cart-icon" catchtap="onAddToCart" data-product="{{item}}">
             <text class="cart-icon">🛒</text>
           </view>
         </view>

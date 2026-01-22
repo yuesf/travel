@@ -56,6 +56,14 @@ const props = defineProps({
     type: Number,
     default: 5, // MB
   },
+  compress: {
+    type: Boolean,
+    default: false,
+  },
+  compressSize: {
+    type: Object,
+    default: () => ({ width: 32, height: 32 }),
+  },
 })
 
 const emit = defineEmits(['update:modelValue', 'change'])
@@ -152,8 +160,78 @@ const updateValue = () => {
   }
 }
 
+// 压缩图片
+const compressImage = (file, maxWidth = 32, maxHeight = 32, quality = 0.8) => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.readAsDataURL(file)
+    reader.onload = (e) => {
+      const img = new Image()
+      img.src = e.target.result
+      img.onload = () => {
+        const canvas = document.createElement('canvas')
+        const ctx = canvas.getContext('2d')
+        
+        // 计算压缩后的尺寸（保持宽高比）
+        let width = img.width
+        let height = img.height
+        if (width > height) {
+          if (width > maxWidth) {
+            height = (height * maxWidth) / width
+            width = maxWidth
+          }
+        } else {
+          if (height > maxHeight) {
+            width = (width * maxHeight) / height
+            height = maxHeight
+          }
+        }
+        
+        // 设置画布尺寸为目标尺寸
+        canvas.width = maxWidth
+        canvas.height = maxHeight
+        
+        // 居中绘制（如果原图不是正方形）
+        const x = (maxWidth - width) / 2
+        const y = (maxHeight - height) / 2
+        
+        // 填充白色背景（可选，如果需要）
+        ctx.fillStyle = '#FFFFFF'
+        ctx.fillRect(0, 0, maxWidth, maxHeight)
+        
+        // 绘制图片
+        ctx.drawImage(img, x, y, width, height)
+        
+        // 转换为 Blob
+        canvas.toBlob(
+          (blob) => {
+            if (blob) {
+              // 将 Blob 转换为 File 对象
+              const compressedFile = new File([blob], file.name, {
+                type: 'image/jpeg',
+                lastModified: Date.now(),
+              })
+              resolve(compressedFile)
+            } else {
+              reject(new Error('图片压缩失败'))
+            }
+          },
+          'image/jpeg',
+          quality
+        )
+      }
+      img.onerror = () => {
+        reject(new Error('图片加载失败'))
+      }
+    }
+    reader.onerror = () => {
+      reject(new Error('文件读取失败'))
+    }
+  })
+}
+
 // 上传前检查
-const beforeUpload = (file) => {
+const beforeUpload = async (file) => {
   const isImage = file.type.startsWith('image/')
   const isValidType = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'].includes(file.type)
   const isLtMaxSize = file.size / 1024 / 1024 < props.maxSize
@@ -168,6 +246,26 @@ const beforeUpload = (file) => {
     return false
   }
 
+  // 如果需要压缩，先压缩图片
+  if (props.compress) {
+    try {
+      const compressedFile = await compressImage(
+        file,
+        props.compressSize.width,
+        props.compressSize.height,
+        0.8
+      )
+      // 替换原文件为压缩后的文件
+      // 注意：不能直接修改 File 对象的 uid，需要在返回前创建一个新对象
+      // Element Plus 会自动处理 uid，所以直接返回压缩后的文件即可
+      return compressedFile
+    } catch (error) {
+      console.error('图片压缩失败:', error)
+      ElMessage.warning('图片压缩失败，将使用原图上传')
+      return true
+    }
+  }
+
   return true
 }
 
@@ -179,27 +277,51 @@ const handleSuccess = (response, file) => {
     // 确保URL是字符串
     const imageUrl = typeof url === 'string' ? url : ''
     
-    // 更新file对象
-    file.url = imageUrl
-    file.status = 'success'
+    // 创建新的文件对象，避免修改只读属性
+    const fileItem = {
+      uid: file.uid,
+      name: file.name,
+      url: imageUrl,
+      status: 'success',
+      response: response,
+    }
     
     // 确保fileList中有这个文件
     const existingIndex = fileList.value.findIndex(item => item.uid === file.uid)
     if (existingIndex > -1) {
-      fileList.value[existingIndex] = file
+      // 使用新对象替换，避免修改只读属性
+      fileList.value[existingIndex] = fileItem
     } else {
-      fileList.value.push(file)
+      fileList.value.push(fileItem)
     }
     
     // 如果是单文件模式，移除其他文件
     if (props.limit === 1 && fileList.value.length > 1) {
-      fileList.value = [file]
+      fileList.value = [fileItem]
     }
     
+    // 更新值并触发验证
     updateValue()
+    
+    // 延迟触发验证，确保值已更新
+    nextTick(() => {
+      // 触发 change 事件以触发表单验证
+      emit('change', props.limit === 1 ? imageUrl : [imageUrl])
+    })
+    
     ElMessage.success('上传成功')
   } else {
-    file.status = 'error'
+    // 创建错误状态的文件对象
+    const fileItem = {
+      uid: file.uid,
+      name: file.name,
+      status: 'error',
+      response: response,
+    }
+    const existingIndex = fileList.value.findIndex(item => item.uid === file.uid)
+    if (existingIndex > -1) {
+      fileList.value[existingIndex] = fileItem
+    }
     ElMessage.error(response?.message || '上传失败')
   }
 }

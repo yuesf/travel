@@ -1,0 +1,56 @@
+<!--商品列表页-->
+<view class="page-container">
+  <!-- 商品列表 -->
+  <scroll-view
+    class="product-scroll"
+    scroll-y
+    enable-back-to-top
+    refresher-enabled
+    refresher-triggered="{{loading && page === 1}}"
+    bindrefresherrefresh="onPullDownRefresh"
+    bindscrolltolower="onReachBottom"
+  >
+    <!-- 商品卡片列表 -->
+    <view wx:if="{{productList.length > 0}}" class="product-list">
+      <view
+        wx:for="{{productList}}"
+        wx:key="id"
+        class="product-card"
+        data-id="{{item.id}}"
+        bindtap="onProductTap"
+      >
+        <!-- 商品图片 -->
+        <image
+          class="product-image"
+          src="{{item.image}}"
+          mode="aspectFill"
+          lazy-load="{{true}}"
+        />
+        
+        <!-- 商品信息 -->
+        <view class="product-info">
+          <!-- 商品名称 -->
+          <view class="product-name">{{item.name}}</view>
+          
+          <!-- 商品简介 -->
+          <view wx:if="{{item.description}}" class="product-description">
+            {{item.description}}
+          </view>
+        </view>
+      </view>
+    </view>
+
+    <!-- 空状态 -->
+    <view wx:else class="empty-container">
+      <empty text="该分类暂无商品" show-action="{{false}}" />
+    </view>
+
+    <!-- 加载更多提示 -->
+    <view wx:if="{{productList.length > 0 && loading && page > 1}}" class="loading-more">
+      <text>加载中...</text>
+    </view>
+    <view wx:if="{{productList.length > 0 && !hasMore && !loading}}" class="no-more">
+      <text>没有更多了</text>
+    </view>
+  </scroll-view>
+</view>

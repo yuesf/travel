@@ -68,8 +68,22 @@
         <div class="toolbar-left">
           <el-button type="primary" @click="handleCreate" :icon="Plus">添加文章</el-button>
           <el-button
+            type="success"
+            :disabled="selectedIds.length === 0 || loading"
+            @click="handleBatchOnline"
+          >
+            批量上架
+          </el-button>
+          <el-button
+            type="warning"
+            :disabled="selectedIds.length === 0 || loading"
+            @click="handleBatchOffline"
+          >
+            批量下架
+          </el-button>
+          <el-button
             type="danger"
-            :disabled="selectedIds.length === 0"
+            :disabled="selectedIds.length === 0 || loading"
             @click="handleBatchDelete"
             :icon="Delete"
           >
@@ -117,10 +131,40 @@
             {{ formatDate(row.createTime) }}
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="200" fixed="right">
+        <el-table-column label="操作" width="280" fixed="right">
           <template #default="{ row }">
             <el-button link type="primary" size="small" @click="handleView(row)">查看</el-button>
             <el-button link type="primary" size="small" @click="handleEdit(row)">编辑</el-button>
+            <el-button
+              v-if="row.status === 1"
+              link
+              type="warning"
+              size="small"
+              @click="handleOffline(row)"
+              :disabled="loading"
+            >
+              下架
+            </el-button>
+            <el-button
+              v-else-if="row.status === 2"
+              link
+              type="success"
+              size="small"
+              @click="handleOnline(row)"
+              :disabled="loading"
+            >
+              上架
+            </el-button>
+            <el-button
+              v-else-if="row.status === 0"
+              link
+              type="success"
+              size="small"
+              @click="handlePublish(row)"
+              :disabled="loading"
+            >
+              发布
+            </el-button>
             <el-button
               link
               type="danger"
@@ -160,6 +204,7 @@ import {
   deleteArticle,
   deleteArticlesBatch,
   getArticleCategoryList,
+  updateArticle,
 } from '@/api/articles'
 
 const router = useRouter()
@@ -326,6 +371,203 @@ const handleDelete = async (row) => {
     } catch (error) {
       console.error('删除文章失败:', error)
       ElMessage.error('删除文章失败')
+    } finally {
+      loading.value = false
+    }
+  } catch (error) {
+    // 用户取消
+  }
+}
+
+// 上架
+const handleOnline = async (row) => {
+  try {
+    await ElMessageBox.confirm(
+      `确定要将文章"${row.title}"上架吗？`,
+      '提示',
+      {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'info',
+      }
+    )
+
+    loading.value = true
+    try {
+      await updateArticle(row.id, { status: 1 })
+      ElMessage.success('文章已上架')
+      loadData()
+    } catch (error) {
+      console.error('上架失败:', error)
+      ElMessage.error(error?.response?.data?.message || '上架失败')
+    } finally {
+      loading.value = false
+    }
+  } catch (error) {
+    // 用户取消
+  }
+}
+
+// 下架
+const handleOffline = async (row) => {
+  try {
+    await ElMessageBox.confirm(
+      `确定要将文章"${row.title}"下架吗？`,
+      '提示',
+      {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning',
+      }
+    )
+
+    loading.value = true
+    try {
+      await updateArticle(row.id, { status: 2 })
+      ElMessage.success('文章已下架')
+      loadData()
+    } catch (error) {
+      console.error('下架失败:', error)
+      ElMessage.error(error?.response?.data?.message || '下架失败')
+    } finally {
+      loading.value = false
+    }
+  } catch (error) {
+    // 用户取消
+  }
+}
+
+// 发布（草稿状态）
+const handlePublish = async (row) => {
+  try {
+    await ElMessageBox.confirm(
+      `确定要发布文章"${row.title}"吗？`,
+      '提示',
+      {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'info',
+      }
+    )
+
+    loading.value = true
+    try {
+      await updateArticle(row.id, { status: 1 })
+      ElMessage.success('文章已发布')
+      loadData()
+    } catch (error) {
+      console.error('发布失败:', error)
+      ElMessage.error(error?.response?.data?.message || '发布失败')
+    } finally {
+      loading.value = false
+    }
+  } catch (error) {
+    // 用户取消
+  }
+}
+
+// 批量上架
+const handleBatchOnline = async () => {
+  if (selectedIds.value.length === 0) {
+    ElMessage.warning('请选择要上架的文章')
+    return
+  }
+
+  // 筛选出可以上架的文章（状态为已下架或草稿）
+  const selectedArticles = tableData.value.filter(item => selectedIds.value.includes(item.id))
+  const canOnlineArticles = selectedArticles.filter(item => item.status === 2 || item.status === 0)
+  
+  if (canOnlineArticles.length === 0) {
+    ElMessage.warning('选中的文章中没有可以上架的文章')
+    return
+  }
+
+  const count = canOnlineArticles.length
+  const skipCount = selectedArticles.length - count
+
+  try {
+    let message = `确定要将选中的 ${count} 篇文章上架吗？`
+    if (skipCount > 0) {
+      message += `（选中的文章中有 ${skipCount} 篇不符合条件，将只对符合条件的文章进行操作）`
+    }
+    
+    await ElMessageBox.confirm(
+      message,
+      '提示',
+      {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'info',
+      }
+    )
+
+    loading.value = true
+    try {
+      const promises = canOnlineArticles.map(article => 
+        updateArticle(article.id, { status: 1 })
+      )
+      await Promise.all(promises)
+      ElMessage.success(`已成功上架 ${count} 篇文章`)
+      selectedIds.value = []
+      loadData()
+    } catch (error) {
+      console.error('批量上架失败:', error)
+      ElMessage.error(error?.response?.data?.message || '批量上架失败')
+    } finally {
+      loading.value = false
+    }
+  } catch (error) {
+    // 用户取消
+  }
+}
+
+// 批量下架
+const handleBatchOffline = async () => {
+  if (selectedIds.value.length === 0) {
+    ElMessage.warning('请选择要下架的文章')
+    return
+  }
+
+  // 筛选出可以下架的文章（状态为已发布）
+  const selectedArticles = tableData.value.filter(item => selectedIds.value.includes(item.id))
+  const canOfflineArticles = selectedArticles.filter(item => item.status === 1)
+  
+  if (canOfflineArticles.length === 0) {
+    ElMessage.warning('选中的文章中没有可以下架的文章')
+    return
+  }
+
+  const count = canOfflineArticles.length
+  const skipCount = selectedArticles.length - count
+
+  try {
+    let message = `确定要将选中的 ${count} 篇文章下架吗？`
+    if (skipCount > 0) {
+      message += `（选中的文章中有 ${skipCount} 篇不符合条件，将只对符合条件的文章进行操作）`
+    }
+    
+    await ElMessageBox.confirm(
+      message,
+      '提示',
+      {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning',
+      }
+    )
+
+    loading.value = true
+    try {
+      const promises = canOfflineArticles.map(article => 
+        updateArticle(article.id, { status: 2 })
+      )
+      await Promise.all(promises)
+      ElMessage.success(`已成功下架 ${count} 篇文章`)
+      selectedIds.value = []
+      loadData()
+    } catch (error) {
+      console.error('批量下架失败:', error)
+      ElMessage.error(error?.response?.data?.message || '批量下架失败')
     } finally {
       loading.value = false
     }

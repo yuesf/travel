@@ -117,10 +117,61 @@
             <el-option label="文章" value="article" />
             <el-option label="景点" value="attraction" />
             <el-option label="酒店" value="hotel" />
+            <el-option label="H5链接" value="h5_link" />
           </el-select>
         </el-form-item>
+        <!-- 文章分类两级选择 -->
+        <template v-if="formData.type === 'article_category'">
+          <el-form-item label="文章分类" prop="categoryId">
+            <el-select
+              v-model="formData.categoryId"
+              placeholder="请选择文章分类"
+              filterable
+              style="width: 100%"
+              :loading="categoryLoading"
+              @change="onArticleCategoryChange"
+            >
+              <el-option
+                v-for="item in categoryList"
+                :key="item.id"
+                :label="item.name"
+                :value="item.id"
+              />
+            </el-select>
+          </el-form-item>
+          <el-form-item 
+            v-if="formData.categoryId"
+            label="具体文章"
+            prop="relatedId"
+          >
+            <el-select
+              v-model="formData.relatedId"
+              :placeholder="articlesLoading ? '正在加载文章列表...' : (articleList.length === 0 ? '该分类下暂无文章' : '请选择具体文章（可选）')"
+              filterable
+              style="width: 100%"
+              :loading="articlesLoading"
+              :disabled="articlesLoading"
+              @change="handleArticleChange"
+            >
+              <el-option
+                label="仅选择分类（跳转到文章列表）"
+                :value="formData.categoryId"
+              />
+              <el-option
+                v-for="item in articleList"
+                :key="item.id"
+                :label="item.title"
+                :value="item.id"
+              />
+            </el-select>
+            <div v-if="!articlesLoading && articleList.length === 0 && formData.categoryId" style="color: #909399; font-size: 12px; margin-top: 4px;">
+              该分类下暂无已发布的文章
+            </div>
+          </el-form-item>
+        </template>
+        <!-- 其他类型的单级选择 -->
         <el-form-item 
-          v-if="formData.type"
+          v-else-if="formData.type && formData.type !== 'h5_link'"
           :label="getTypeLabel(formData.type)"
           prop="relatedId"
         >
@@ -143,8 +194,19 @@
         <el-form-item label="图标名称" prop="name">
           <el-input 
             v-model="formData.name" 
-            :placeholder="formData.relatedId ? '将自动填充关联对象名称' : '请输入图标名称'"
-            :disabled="!!formData.relatedId"
+            :placeholder="(formData.relatedId || formData.categoryId) ? '将自动填充关联对象名称' : '请输入图标名称'"
+            :disabled="!!(formData.relatedId || formData.categoryId)"
+          />
+        </el-form-item>
+        <!-- H5链接地址输入 -->
+        <el-form-item 
+          v-if="formData.type === 'h5_link'"
+          label="链接地址"
+          prop="linkUrl"
+        >
+          <el-input 
+            v-model="formData.linkUrl" 
+            placeholder="请输入完整的HTTP/HTTPS链接，例如：https://www.example.com"
           />
         </el-form-item>
         <el-form-item label="图标图片" prop="icon">
@@ -152,6 +214,8 @@
             v-model="formData.icon"
             :limit="1"
             :max-size="2"
+            :compress="true"
+            :compress-size="{ width: 32, height: 32 }"
           />
         </el-form-item>
         <el-form-item label="排序" prop="sort">
@@ -208,13 +272,20 @@ const iconList = ref([])
 const editingIndex = ref(-1)
 const optionsLoading = ref(false)
 const typeOptions = ref([])
+// 文章分类相关状态
+const categoryList = ref([])
+const categoryLoading = ref(false)
+const articleList = ref([])
+const articlesLoading = ref(false)
 
 // 表单数据
 const formData = reactive({
-  type: '', // 'product_category', 'article_category', 'product', 'article', 'attraction', 'hotel'
+  type: '', // 'product_category', 'article_category', 'product', 'article', 'attraction', 'hotel', 'h5_link'
   relatedId: null,
+  categoryId: null, // 文章分类ID（仅用于 article_category 类型）
   name: '',
   icon: '',
+  linkUrl: '', // H5链接地址（仅用于 h5_link 类型）
   sort: 0,
   status: 1,
 })
@@ -222,9 +293,32 @@ const formData = reactive({
 // 表单验证规则
 const formRules = {
   type: [{ required: true, message: '请选择图标类型', trigger: 'change' }],
+  categoryId: [
+    {
+      validator: (rule, value, callback) => {
+        if (formData.type === 'article_category' && !value) {
+          callback(new Error('请选择文章分类'))
+        } else {
+          callback()
+        }
+      },
+      trigger: 'change',
+    },
+  ],
   relatedId: [
     {
       validator: (rule, value, callback) => {
+        // H5链接类型时，relatedId 可以为空
+        if (formData.type === 'h5_link') {
+          callback()
+          return
+        }
+        // 文章分类类型时，relatedId 可以为空（只选择分类）
+        if (formData.type === 'article_category') {
+          callback()
+          return
+        }
+        // 其他类型必须选择
         if (!value) {
           callback(new Error('请选择关联对象'))
         } else {
@@ -234,8 +328,37 @@ const formRules = {
       trigger: 'change',
     },
   ],
+  linkUrl: [
+    {
+      validator: (rule, value, callback) => {
+        if (formData.type === 'h5_link') {
+          if (!value || !value.trim()) {
+            callback(new Error('请输入链接地址'))
+          } else if (!value.startsWith('http://') && !value.startsWith('https://')) {
+            callback(new Error('链接地址必须以 http:// 或 https:// 开头'))
+          } else {
+            callback()
+          }
+        } else {
+          callback()
+        }
+      },
+      trigger: 'blur',
+    },
+  ],
   name: [{ required: true, message: '请输入图标名称', trigger: 'blur' }],
-  icon: [{ required: true, message: '请上传图标图片', trigger: 'change' }],
+  icon: [
+    {
+      validator: (rule, value, callback) => {
+        if (!value || (typeof value === 'string' && value.trim() === '')) {
+          callback(new Error('请上传图标图片'))
+        } else {
+          callback()
+        }
+      },
+      trigger: ['change', 'blur'],
+    },
+  ],
 }
 
 // 获取图标图片
@@ -284,6 +407,7 @@ const getIconTypeLabel = (row) => {
     article: '文章',
     attraction: '景点',
     hotel: '酒店',
+    h5_link: 'H5链接',
   }
   return typeMap[type] || '未知'
 }
@@ -298,6 +422,7 @@ const getIconTypeTag = (row) => {
     article: 'info',
     attraction: 'warning',
     hotel: 'danger',
+    h5_link: 'warning',
   }
   return typeMap[type] || ''
 }
@@ -323,6 +448,7 @@ const getTypeLabel = (type) => {
     article: '文章',
     attraction: '景点',
     hotel: '酒店',
+    h5_link: 'H5链接',
   }
   return typeMap[type] || ''
 }
@@ -343,13 +469,8 @@ const loadTypeOptions = async (type) => {
         }))
       }
     } else if (type === 'article_category') {
-      const res = await getArticleCategoryList(1)
-      if (res.data) {
-        typeOptions.value = res.data.map(item => ({
-          id: item.id,
-          name: item.name,
-        }))
-      }
+      // 文章分类类型使用两级选择，这里只加载分类列表
+      await loadArticleCategories()
     } else if (type === 'product') {
       const res = await getProductList({ page: 1, pageSize: 100, status: 1 })
       if (res.data && res.data.list) {
@@ -387,11 +508,142 @@ const loadTypeOptions = async (type) => {
   }
 }
 
+// 加载文章分类列表
+const loadArticleCategories = async () => {
+  categoryLoading.value = true
+  try {
+    const res = await getArticleCategoryList(1)
+    if (res.data) {
+      categoryList.value = res.data.map(item => ({
+        id: item.id,
+        name: item.name,
+      }))
+    }
+  } catch (error) {
+    console.error('加载文章分类列表失败:', error)
+    ElMessage.error('加载文章分类列表失败')
+  } finally {
+    categoryLoading.value = false
+  }
+}
+
+// 加载指定分类下的文章列表
+const loadArticlesByCategory = async (categoryId) => {
+  if (!categoryId) {
+    articleList.value = []
+    return
+  }
+  
+  articlesLoading.value = true
+  try {
+    // 确保 categoryId 是数字类型
+    const categoryIdNum = typeof categoryId === 'string' ? Number(categoryId) : categoryId
+    
+    console.log('开始加载文章列表，分类ID:', categoryIdNum, '类型:', typeof categoryIdNum)
+    
+    const params = { 
+      page: 1, 
+      pageSize: 100, 
+      categoryId: categoryIdNum,
+      status: 1 
+    }
+    console.log('请求参数:', params)
+    
+    const res = await getArticleList(params)
+    
+    console.log('加载文章列表完整响应:', JSON.stringify(res, null, 2))
+    
+    // 处理响应数据：res 是 Result 对象，res.data 是 PageResult 对象，包含 list 和 total
+    if (res && res.code === 200 && res.data) {
+      const list = res.data.list || []
+      console.log('解析到的文章列表（原始）:', list)
+      console.log('文章总数:', res.data.total)
+      
+      articleList.value = list.map(item => ({
+        id: item.id,
+        title: item.title,
+      }))
+      
+      console.log('处理后的文章列表:', articleList.value)
+      console.log('文章列表数量:', articleList.value.length)
+      
+      if (articleList.value.length === 0) {
+        console.warn('该分类下没有文章')
+        ElMessage.warning('该分类下暂无文章')
+      }
+    } else {
+      articleList.value = []
+      console.warn('文章列表数据格式异常:', res)
+      if (res && res.code !== 200) {
+        ElMessage.error(res.message || '加载文章列表失败')
+      }
+    }
+  } catch (error) {
+    console.error('加载文章列表失败，错误详情:', error)
+    console.error('错误堆栈:', error.stack)
+    ElMessage.error('加载文章列表失败: ' + (error.message || '未知错误'))
+    articleList.value = []
+  } finally {
+    articlesLoading.value = false
+  }
+}
+
+// 文章分类变化处理
+const onArticleCategoryChange = async (categoryId) => {
+  // 确保 categoryId 是数字类型
+  const categoryIdNum = categoryId ? (typeof categoryId === 'string' ? Number(categoryId) : categoryId) : null
+  formData.categoryId = categoryIdNum
+  formData.relatedId = null // 清空文章选择
+  articleList.value = []
+  
+  if (categoryIdNum) {
+    // 自动加载该分类下的文章列表
+    await loadArticlesByCategory(categoryIdNum)
+    
+    // 自动填充分类名称
+    const category = categoryList.value.find(item => item.id === categoryIdNum)
+    if (category) {
+      formData.name = category.name
+    }
+  } else {
+    formData.name = ''
+  }
+}
+
+// 文章选择变化处理
+const handleArticleChange = (articleId) => {
+  if (articleId === formData.categoryId) {
+    // 选择了"仅选择分类"选项
+    const category = categoryList.value.find(item => item.id === articleId)
+    if (category) {
+      formData.name = category.name
+    }
+    // 只选择分类时，relatedId = categoryId
+    formData.relatedId = formData.categoryId
+  } else {
+    // 选择了具体文章
+    const article = articleList.value.find(item => item.id === articleId)
+    if (article) {
+      formData.name = article.title
+    }
+    // 选择具体文章时，relatedId = 文章ID（保持 type 为 article_category）
+    formData.relatedId = articleId
+  }
+}
+
 // 类型变化处理
 const handleTypeChange = async (type) => {
   formData.relatedId = null
+  formData.categoryId = null
   formData.name = ''
-  if (type) {
+  formData.linkUrl = ''
+  articleList.value = []
+  categoryList.value = []
+  
+  if (type === 'article_category') {
+    // 文章分类类型，加载分类列表
+    await loadArticleCategories()
+  } else if (type) {
     await loadTypeOptions(type)
   }
 }
@@ -530,13 +782,21 @@ const handleEdit = async (row, index) => {
     
     formData.type = configValue?.type || ''
     formData.relatedId = configValue?.relatedId || null
+    formData.categoryId = configValue?.categoryId || null
     formData.name = configValue?.name || ''
     formData.icon = configValue?.icon || ''
+    formData.linkUrl = configValue?.linkUrl || ''
     formData.sort = row.sort || 0
     formData.status = row.status !== undefined ? row.status : 1
     
     // 加载对应类型的选项
-    if (formData.type) {
+    if (formData.type === 'article_category') {
+      await loadArticleCategories()
+      // 如果已有分类ID，加载该分类下的文章列表
+      if (formData.categoryId) {
+        await loadArticlesByCategory(formData.categoryId)
+      }
+    } else if (formData.type) {
       await loadTypeOptions(formData.type)
     }
   } catch (e) {
@@ -580,12 +840,39 @@ const handleSubmit = async () => {
   if (!formRef.value) return
 
   try {
+    // 手动验证 icon 字段
+    if (!formData.icon || (typeof formData.icon === 'string' && formData.icon.trim() === '')) {
+      ElMessage.error('请上传图标图片')
+      await formRef.value.validateField('icon')
+      return
+    }
+    
     await formRef.value.validate()
     submitting.value = true
 
     // 获取关联对象名称
-    const relatedOption = typeOptions.value.find(item => item.id === formData.relatedId)
-    const relatedName = relatedOption ? relatedOption.name : ''
+    let relatedName = ''
+    if (formData.type === 'article_category') {
+      // 文章分类类型：判断是分类还是文章
+      // 如果 relatedId 为空，但 categoryId 不为空，视为只选择了分类
+      const finalRelatedId = formData.relatedId || formData.categoryId
+      if (finalRelatedId === formData.categoryId) {
+        // 只选择了分类
+        const category = categoryList.value.find(item => item.id === formData.categoryId)
+        relatedName = category ? category.name : ''
+      } else {
+        // 选择了具体文章
+        const article = articleList.value.find(item => item.id === finalRelatedId)
+        relatedName = article ? article.title : ''
+      }
+    } else if (formData.type === 'h5_link') {
+      // H5链接类型，relatedName 可以为空
+      relatedName = formData.name
+    } else {
+      // 其他类型
+      const relatedOption = typeOptions.value.find(item => item.id === formData.relatedId)
+      relatedName = relatedOption ? relatedOption.name : ''
+    }
 
     const configValue = {
       type: formData.type,
@@ -593,6 +880,23 @@ const handleSubmit = async () => {
       relatedName: relatedName,
       name: formData.name,
       icon: formData.icon,
+    }
+    
+    // 文章分类类型时，保存 categoryId
+    if (formData.type === 'article_category' && formData.categoryId) {
+      configValue.categoryId = formData.categoryId
+      // 如果 relatedId 为空，但 categoryId 不为空，自动设置 relatedId = categoryId（兼容只选择分类的情况）
+      if (!configValue.relatedId && formData.categoryId) {
+        configValue.relatedId = formData.categoryId
+        // 同时更新 relatedName 为分类名称
+        const category = categoryList.value.find(item => item.id === formData.categoryId)
+        configValue.relatedName = category ? category.name : ''
+      }
+    }
+    
+    // H5链接类型时，保存 linkUrl
+    if (formData.type === 'h5_link' && formData.linkUrl) {
+      configValue.linkUrl = formData.linkUrl
     }
 
     if (editingIndex.value >= 0) {
@@ -637,13 +941,17 @@ const handleSubmit = async () => {
 const resetForm = () => {
   formData.type = ''
   formData.relatedId = null
+  formData.categoryId = null
   formData.name = ''
   formData.icon = ''
+  formData.linkUrl = ''
   formData.sort = iconList.value.length > 0
     ? Math.max(...iconList.value.map(item => item.sort || 0)) + 1
     : 1
   formData.status = 1
   typeOptions.value = []
+  categoryList.value = []
+  articleList.value = []
   if (formRef.value) {
     formRef.value.clearValidate()
   }

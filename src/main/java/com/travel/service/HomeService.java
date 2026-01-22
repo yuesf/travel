@@ -283,6 +283,14 @@ public class HomeService {
                     icon.setRelatedName((String) configData.get("relatedName"));
                     icon.setName((String) configData.get("name"));
                     icon.setIcon((String) configData.get("icon"));
+                    // 解析 linkUrl 字段（H5链接类型使用）
+                    if (configData.get("linkUrl") != null) {
+                        icon.setLinkUrl((String) configData.get("linkUrl"));
+                    }
+                    // 解析 categoryId 字段（文章分类类型使用）
+                    if (configData.get("categoryId") != null) {
+                        icon.setCategoryId(((Number) configData.get("categoryId")).longValue());
+                    }
                     icons.add(icon);
                 }
             } catch (Exception e) {

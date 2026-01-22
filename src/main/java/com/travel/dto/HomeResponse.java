@@ -128,7 +128,7 @@ public class HomeResponse {
     public static class IconItem {
         private Long id;
         /**
-         * 类型：product_category-商品分类，article_category-文章分类，product-商品，article-文章，attraction-景点，hotel-酒店
+         * 类型：product_category-商品分类，article_category-文章分类，product-商品，article-文章，attraction-景点，hotel-酒店，h5_link-H5链接
          */
         private String type;
         /**
@@ -147,6 +147,14 @@ public class HomeResponse {
          * 图标图片URL
          */
         private String icon;
+        /**
+         * H5链接地址（仅h5_link类型使用）
+         */
+        private String linkUrl;
+        /**
+         * 文章分类ID（仅article_category类型使用，用于判断relatedId是分类ID还是文章ID）
+         */
+        private Long categoryId;
     }
     
     /**
