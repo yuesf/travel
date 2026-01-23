@@ -12,10 +12,8 @@ Page({
   data: {
     articleId: null, // 文章ID
     article: null, // 文章详情
-    relatedArticles: [], // 相关文章
-    isLiked: false, // 是否已点赞
-    isFavorited: false, // 是否已收藏
     loading: false, // 加载状态
+    isInitialized: false, // 是否已初始化加载
   },
 
   /**
@@ -36,30 +34,38 @@ Page({
       return;
     }
 
+    // 重置状态
     this.setData({
       articleId,
+      article: null,
+      isInitialized: false,
+      loading: false,
     });
 
-    // 加载文章详情和相关文章
+    // 加载文章详情
     this.loadArticleDetail();
-    this.loadRelatedArticles();
   },
 
   /**
    * 生命周期函数--监听页面显示
    */
   onShow() {
-    // 刷新文章详情（更新点赞和收藏状态）
-    if (this.data.articleId) {
-      this.loadArticleDetail();
-    }
+    // 简化后的页面不需要在 onShow 时做任何操作
   },
 
   /**
    * 加载文章详情
    */
   async loadArticleDetail() {
+    // 检查 articleId 是否存在
+    if (!this.data.articleId) {
+      console.warn('文章ID不存在，无法加载文章详情');
+      return;
+    }
+
+    // 防止重复加载
     if (this.data.loading) {
+      console.log('文章详情正在加载中，跳过重复请求');
       return;
     }
 
@@ -71,147 +77,68 @@ Page({
       const article = await articleApi.getArticleDetail(this.data.articleId);
       console.log('文章详情:', article);
 
+      if (!article) {
+        throw new Error('文章数据为空');
+      }
+
       // 格式化文章数据
       const formattedArticle = this.formatArticleData(article);
 
       this.setData({
         article: formattedArticle,
-        isLiked: formattedArticle.isLiked || false,
-        isFavorited: formattedArticle.isFavorited || false,
         loading: false,
+        isInitialized: true, // 标记已初始化
       });
     } catch (error) {
       console.error('加载文章详情失败:', error);
+      wx.showToast({
+        title: '加载文章失败',
+        icon: 'none',
+        duration: 2000,
+      });
       this.setData({
         loading: false,
+        isInitialized: true, // 即使失败也标记为已初始化，避免重复尝试
       });
     }
   },
 
-  /**
-   * 加载相关文章
-   */
-  async loadRelatedArticles() {
-    try {
-      const result = await articleApi.getRelatedArticles(this.data.articleId, { limit: 5 });
-      const relatedArticles = Array.isArray(result) ? result : (result.list || result.data || []);
-      
-      // 格式化相关文章数据
-      const formattedArticles = relatedArticles.map(article => this.formatArticleData(article));
-
-      this.setData({
-        relatedArticles: formattedArticles,
-      });
-    } catch (error) {
-      console.error('加载相关文章失败:', error);
-    }
-  },
 
   /**
    * 格式化文章数据
    */
   formatArticleData(article) {
+    // 处理文章内容，为图片添加适配样式
+    let content = article.content || '';
+    if (content && typeof content === 'string') {
+      // 为所有 img 标签添加样式，确保图片适配屏幕
+      content = content.replace(/<img([^>]*)>/gi, (match, attrs) => {
+        // 检查是否已有 style 属性（支持单引号和双引号）
+        const hasStyle = /style\s*=\s*["']/i.test(attrs);
+        
+        if (hasStyle) {
+          // 如果已有 style，添加或更新 max-width
+          return match.replace(/style\s*=\s*["']([^"']*)["']/i, (styleMatch, styleValue) => {
+            // 检查是否已有 max-width
+            if (!/max-width\s*:/i.test(styleValue)) {
+              // 移除末尾的分号（如果有），然后添加样式
+              const cleanStyle = styleValue.trim().replace(/;?\s*$/, '');
+              const quote = styleMatch.includes("'") ? "'" : '"';
+              return `style=${quote}${cleanStyle}; max-width: 100%; height: auto; display: block;${quote}`;
+            }
+            return styleMatch;
+          });
+        } else {
+          // 如果没有 style，添加 style 属性
+          return `<img${attrs} style="max-width: 100%; height: auto; display: block;">`;
+        }
+      });
+    }
+
     return {
       ...article,
-      publishTimeText: this.formatDateTime(article.publishTime || article.createTime),
-      viewCount: article.viewCount || 0,
-      likeCount: article.likeCount || 0,
-      favoriteCount: article.favoriteCount || 0,
+      content,
     };
-  },
-
-  /**
-   * 点赞/取消点赞
-   */
-  async onLikeTap() {
-    // 检查登录状态
-    if (!auth.isLoggedIn()) {
-      wx.showToast({
-        title: '请先登录',
-        icon: 'none',
-      });
-      setTimeout(() => {
-        wx.switchTab({
-          url: '/pages/mine/index',
-        });
-      }, 1500);
-      return;
-    }
-
-    try {
-      if (this.data.isLiked) {
-        // 取消点赞
-        await articleApi.unlikeArticle(this.data.articleId);
-        this.setData({
-          isLiked: false,
-          'article.likeCount': Math.max(0, (this.data.article.likeCount || 0) - 1),
-        });
-        wx.showToast({
-          title: '已取消点赞',
-          icon: 'none',
-        });
-      } else {
-        // 点赞
-        await articleApi.likeArticle(this.data.articleId);
-        this.setData({
-          isLiked: true,
-          'article.likeCount': (this.data.article.likeCount || 0) + 1,
-        });
-        wx.showToast({
-          title: '点赞成功',
-          icon: 'success',
-        });
-      }
-    } catch (error) {
-      console.error('点赞操作失败:', error);
-    }
-  },
-
-  /**
-   * 收藏/取消收藏
-   */
-  async onFavoriteTap() {
-    // 检查登录状态
-    if (!auth.isLoggedIn()) {
-      wx.showToast({
-        title: '请先登录',
-        icon: 'none',
-      });
-      setTimeout(() => {
-        wx.switchTab({
-          url: '/pages/mine/index',
-        });
-      }, 1500);
-      return;
-    }
-
-    try {
-      if (this.data.isFavorited) {
-        // 取消收藏
-        await articleApi.unfavoriteArticle(this.data.articleId);
-        this.setData({
-          isFavorited: false,
-          'article.favoriteCount': Math.max(0, (this.data.article.favoriteCount || 0) - 1),
-        });
-        wx.showToast({
-          title: '已取消收藏',
-          icon: 'none',
-        });
-      } else {
-        // 收藏
-        await articleApi.favoriteArticle(this.data.articleId);
-        this.setData({
-          isFavorited: true,
-          'article.favoriteCount': (this.data.article.favoriteCount || 0) + 1,
-        });
-        wx.showToast({
-          title: '收藏成功',
-          icon: 'success',
-        });
-      }
-    } catch (error) {
-      console.error('收藏操作失败:', error);
-    }
   },
 
   /**
@@ -223,29 +150,5 @@ Page({
       path: `/pages/article/detail?id=${this.data.articleId}`,
       imageUrl: this.data.article ? this.data.article.coverImage : '',
     };
-  },
-
-  /**
-   * 点击相关文章
-   */
-  onRelatedArticleTap(e) {
-    const articleId = e.currentTarget.dataset.id;
-    wx.redirectTo({
-      url: `/pages/article/detail?id=${articleId}`,
-    });
-  },
-
-  /**
-   * 格式化日期时间
-   */
-  formatDateTime(dateTime) {
-    if (!dateTime) return '';
-    const date = new Date(dateTime);
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    const hours = String(date.getHours()).padStart(2, '0');
-    const minutes = String(date.getMinutes()).padStart(2, '0');
-    return `${year}-${month}-${day} ${hours}:${minutes}`;
   },
 });

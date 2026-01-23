@@ -92,6 +92,8 @@ function performRequest(options) {
   // 构建请求头
   const requestHeader = {
     'Content-Type': 'application/json',
+    'Cache-Control': 'no-cache', // 禁用缓存
+    'Pragma': 'no-cache', // 兼容旧版HTTP
     ...header,
   };
 

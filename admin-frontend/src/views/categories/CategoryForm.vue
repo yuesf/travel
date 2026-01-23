@@ -40,8 +40,9 @@
         <el-radio-group v-model="form.type">
           <el-radio value="DISPLAY">展示类型</el-radio>
           <el-radio value="CONFIG">配置类型（用于Icon配置）</el-radio>
+          <el-radio value="H5">H5类型</el-radio>
         </el-radio-group>
-        <div class="form-tip">展示类型：用于商品分类展示；配置类型：用于Icon配置选择</div>
+        <div class="form-tip">展示类型：用于商品分类展示；配置类型：用于Icon配置选择；H5类型：用于H5页面跳转</div>
       </el-form-item>
 
       <el-form-item label="排序" prop="sort">

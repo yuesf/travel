@@ -20,12 +20,13 @@
         <result column="create_time" property="createTime"/>
         <result column="update_time" property="updateTime"/>
         <result column="category_name" property="categoryName"/>
+        <result column="h5_link" property="h5Link"/>
     </resultMap>
 
     <sql id="Base_Column_List">
         p.id, p.name, p.code, p.category_id, p.price, p.original_price, p.stock, p.sales,
         p.description, p.images, p.specifications, p.status, p.create_time, p.update_time,
-        pc.name as category_name
+        p.h5_link, pc.name as category_name
     </sql>
 
     <!-- 根据ID查询 -->
@@ -103,12 +104,12 @@
     <insert id="insert" useGeneratedKeys="true" keyProperty="id">
         INSERT INTO product (
             name, category_id, price, original_price, stock, sales, description,
-            images, specifications, status
+            images, specifications, status, h5_link
         ) VALUES (
             #{name}, #{categoryId}, #{price}, #{originalPrice}, #{stock}, #{sales}, #{description},
             #{images, typeHandler=com.travel.mapper.typehandler.JsonListTypeHandler},
             #{specifications, typeHandler=com.travel.mapper.typehandler.JsonObjectTypeHandler},
-            #{status}
+            #{status}, #{h5Link}
         )
     </insert>
 
@@ -126,6 +127,7 @@
             <if test="images != null">images = #{images, typeHandler=com.travel.mapper.typehandler.JsonListTypeHandler},</if>
             <if test="specifications != null">specifications = #{specifications, typeHandler=com.travel.mapper.typehandler.JsonObjectTypeHandler},</if>
             <if test="status != null">status = #{status},</if>
+            <if test="h5Link != null">h5_link = #{h5Link},</if>
         </set>
         WHERE id = #{id}
     </update>

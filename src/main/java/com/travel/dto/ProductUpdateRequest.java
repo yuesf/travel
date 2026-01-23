@@ -58,4 +58,9 @@ public class ProductUpdateRequest {
      * 状态：0-下架，1-上架
      */
     private Integer status;
+    
+    /**
+     * H5链接（H5类型商品使用）
+     */
+    private String h5Link;
 }

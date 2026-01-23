@@ -6,6 +6,7 @@ import com.travel.dto.ProductCreateRequest;
 import com.travel.dto.ProductListRequest;
 import com.travel.dto.ProductUpdateRequest;
 import com.travel.entity.Product;
+import com.travel.entity.ProductCategory;
 import com.travel.exception.BusinessException;
 import com.travel.mapper.ProductMapper;
 import lombok.extern.slf4j.Slf4j;
@@ -14,6 +15,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 /**
@@ -27,6 +29,9 @@ public class ProductService {
     
     @Autowired
     private ProductMapper productMapper;
+    
+    @Autowired
+    private ProductCategoryService productCategoryService;
     
     /**
      * 分页查询商品列表
@@ -87,7 +92,34 @@ public class ProductService {
      */
     @Transactional(rollbackFor = Exception.class)
     public Product create(ProductCreateRequest request) {
-        // 验证库存不能为负数
+        // 获取分类信息，判断是否为H5类型
+        boolean isH5Type = false;
+        if (request.getCategoryId() != null) {
+            ProductCategory category = productCategoryService.getById(request.getCategoryId());
+            if ("H5".equals(category.getType())) {
+                isH5Type = true;
+                // H5类型分类，h5Link必填
+                if (request.getH5Link() == null || request.getH5Link().trim().isEmpty()) {
+                    throw new BusinessException(ResultCode.PARAM_ERROR.getCode(), "H5类型商品必须填写H5链接");
+                }
+                // 验证URL格式
+                if (!request.getH5Link().startsWith("http://") && !request.getH5Link().startsWith("https://")) {
+                    throw new BusinessException(ResultCode.PARAM_ERROR.getCode(), "H5链接格式不正确，必须以http://或https://开头");
+                }
+            }
+        }
+        
+        // 非H5类型商品，验证价格和库存必填
+        if (!isH5Type) {
+            if (request.getPrice() == null) {
+                throw new BusinessException(ResultCode.PARAM_ERROR.getCode(), "价格不能为空");
+            }
+            if (request.getStock() == null) {
+                throw new BusinessException(ResultCode.PARAM_ERROR.getCode(), "库存不能为空");
+            }
+        }
+        
+        // 验证库存不能为负数（如果提供了库存）
         if (request.getStock() != null && request.getStock() < 0) {
             throw new BusinessException(ResultCode.PARAM_ERROR.getCode(), "库存不能为负数");
         }
@@ -122,9 +154,42 @@ public class ProductService {
         // 检查商品是否存在
         Product product = getById(id);
         
-        // 验证库存不能为负数
-        if (request.getStock() != null && request.getStock() < 0) {
-            throw new BusinessException(ResultCode.PARAM_ERROR.getCode(), "库存不能为负数");
+        // 获取分类ID（可能是新的分类ID或原有的分类ID）
+        Long categoryId = request.getCategoryId() != null ? request.getCategoryId() : product.getCategoryId();
+        
+        // 获取分类信息，判断是否为H5类型
+        boolean isH5Type = false;
+        if (categoryId != null) {
+            ProductCategory category = productCategoryService.getById(categoryId);
+            if ("H5".equals(category.getType())) {
+                isH5Type = true;
+                // H5类型分类，h5Link必填
+                String h5Link = request.getH5Link() != null ? request.getH5Link() : product.getH5Link();
+                if (h5Link == null || h5Link.trim().isEmpty()) {
+                    throw new BusinessException(ResultCode.PARAM_ERROR.getCode(), "H5类型商品必须填写H5链接");
+                }
+                // 验证URL格式
+                if (!h5Link.startsWith("http://") && !h5Link.startsWith("https://")) {
+                    throw new BusinessException(ResultCode.PARAM_ERROR.getCode(), "H5链接格式不正确，必须以http://或https://开头");
+                }
+            }
+        }
+        
+        // 非H5类型商品，如果更新了价格或库存，需要验证
+        if (!isH5Type) {
+            // 如果更新了价格，验证价格不能为空
+            if (request.getPrice() != null && request.getPrice().compareTo(BigDecimal.ZERO) < 0) {
+                throw new BusinessException(ResultCode.PARAM_ERROR.getCode(), "价格不能为负数");
+            }
+            // 如果更新了库存，验证库存不能为负数
+            if (request.getStock() != null && request.getStock() < 0) {
+                throw new BusinessException(ResultCode.PARAM_ERROR.getCode(), "库存不能为负数");
+            }
+        } else {
+            // H5类型商品，验证库存不能为负数（如果提供了库存）
+            if (request.getStock() != null && request.getStock() < 0) {
+                throw new BusinessException(ResultCode.PARAM_ERROR.getCode(), "库存不能为负数");
+            }
         }
         
         // 更新字段
@@ -154,6 +219,9 @@ public class ProductService {
         }
         if (request.getStatus() != null) {
             product.setStatus(request.getStatus());
+        }
+        if (request.getH5Link() != null) {
+            product.setH5Link(request.getH5Link());
         }
         
         // 更新数据库

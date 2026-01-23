@@ -1,7 +1,6 @@
 package com.travel.dto;
 
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
 import lombok.Data;
 
 import java.math.BigDecimal;
@@ -28,9 +27,8 @@ public class ProductCreateRequest {
     private Long categoryId;
     
     /**
-     * 价格
+     * 价格（非H5类型商品必填）
      */
-    @NotNull(message = "价格不能为空")
     private BigDecimal price;
     
     /**
@@ -39,9 +37,8 @@ public class ProductCreateRequest {
     private BigDecimal originalPrice;
     
     /**
-     * 库存
+     * 库存（非H5类型商品必填）
      */
-    @NotNull(message = "库存不能为空")
     private Integer stock;
     
     /**
@@ -63,4 +60,9 @@ public class ProductCreateRequest {
      * 状态：0-下架，1-上架
      */
     private Integer status;
+    
+    /**
+     * H5链接（H5类型商品使用）
+     */
+    private String h5Link;
 }

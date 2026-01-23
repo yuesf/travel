@@ -28,7 +28,11 @@ function getArticleList(params = {}) {
  * @returns {Promise} 文章详情
  */
 function getArticleDetail(id) {
-  return request.get(`/miniprogram/articles/${id}`, {}, {
+  // 添加时间戳参数，避免缓存
+  const params = {
+    _t: Date.now(), // 时间戳，确保每次请求都是新的
+  };
+  return request.get(`/miniprogram/articles/${id}`, params, {
     needAuth: false,
   });
 }

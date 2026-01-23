@@ -91,4 +91,9 @@ public class Product implements Serializable {
      * 分类名称（关联查询）
      */
     private String categoryName;
+    
+    /**
+     * H5链接（H5类型商品使用）
+     */
+    private String h5Link;
 }

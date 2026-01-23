@@ -31,6 +31,9 @@ public class DetailService {
     @Autowired
     private ProductService productService;
     
+    @Autowired
+    private ProductCategoryService productCategoryService;
+    
     /**
      * 获取景点详情
      */
@@ -131,6 +134,21 @@ public class DetailService {
         map.put("createTime", product.getCreateTime());
         map.put("updateTime", product.getUpdateTime());
         map.put("categoryName", product.getCategoryName());
+        map.put("h5Link", product.getH5Link()); // H5链接
+        
+        // 获取分类类型（如果分类ID存在）
+        String categoryType = null;
+        if (product.getCategoryId() != null) {
+            try {
+                com.travel.entity.ProductCategory category = productCategoryService.getById(product.getCategoryId());
+                if (category != null) {
+                    categoryType = category.getType();
+                }
+            } catch (Exception e) {
+                log.warn("获取商品分类类型失败: {}", e.getMessage());
+            }
+        }
+        map.put("categoryType", categoryType); // 分类类型
         
         // 小程序需要的其他字段
         map.put("rating", 0); // 评分（商品暂时没有评分）

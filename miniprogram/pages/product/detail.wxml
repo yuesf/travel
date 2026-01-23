@@ -39,6 +39,17 @@
       <view wx:if="{{product.description}}" class="product-description">
         <view class="description-content">{{product.description}}</view>
       </view>
+      
+      <!-- 预约按钮（H5类型时显示） -->
+      <view wx:if="{{isH5Type && product.h5Link}}" class="product-reserve-section">
+        <button 
+          class="reserve-button" 
+          type="primary"
+          bindtap="onReserveTap"
+        >
+          预约
+        </button>
+      </view>
     </view>
   </view>
 

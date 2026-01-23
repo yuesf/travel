@@ -45,8 +45,8 @@
         </el-table-column>
         <el-table-column prop="type" label="类型" width="120">
           <template #default="{ row }">
-            <el-tag :type="row.type === 'CONFIG' ? 'warning' : 'info'">
-              {{ row.type === 'CONFIG' ? '配置类型' : '展示类型' }}
+            <el-tag :type="row.type === 'CONFIG' ? 'warning' : row.type === 'H5' ? 'danger' : 'info'">
+              {{ row.type === 'CONFIG' ? '配置类型' : row.type === 'H5' ? 'H5类型' : '展示类型' }}
             </el-tag>
           </template>
         </el-table-column>

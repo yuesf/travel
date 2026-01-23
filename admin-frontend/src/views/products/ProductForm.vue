@@ -55,7 +55,22 @@
               </el-col>
             </el-row>
 
-            <el-row :gutter="20">
+            <!-- H5类型：显示H5链接字段 -->
+            <el-row :gutter="20" v-if="isH5Type">
+              <el-col :span="24">
+                <el-form-item label="H5链接" prop="h5Link">
+                  <el-input 
+                    id="product-h5-link"
+                    v-model="formData.h5Link" 
+                    placeholder="请输入完整的H5页面链接（必须以http://或https://开头）" 
+                  />
+                  <div class="form-tip">H5类型商品必须填写H5链接，用于小程序端跳转</div>
+                </el-form-item>
+              </el-col>
+            </el-row>
+
+            <!-- 非H5类型：显示价格、原价、库存 -->
+            <el-row :gutter="20" v-if="!isH5Type">
               <el-col :span="12">
                 <el-form-item label="价格" prop="price">
                   <el-input-number
@@ -87,7 +102,7 @@
             </el-row>
 
             <el-row :gutter="20">
-              <el-col :span="12">
+              <el-col :span="12" v-if="!isH5Type">
                 <el-form-item label="库存" prop="stock">
                   <el-input-number
                     id="product-stock"
@@ -100,7 +115,7 @@
                   <span class="form-unit">件</span>
                 </el-form-item>
               </el-col>
-              <el-col :span="12">
+              <el-col :span="isH5Type ? 24 : 12">
                 <el-form-item label="状态" prop="status">
                   <el-radio-group id="product-status" v-model="formData.status">
                     <el-radio :value="1">上架</el-radio>
@@ -202,7 +217,7 @@ import { Plus, Delete } from '@element-plus/icons-vue'
 import ImageUpload from '@/components/ImageUpload.vue'
 import RichTextEditor from '@/components/RichTextEditor.vue'
 import { getProductById, createProduct, updateProduct } from '@/api/products'
-import { getCategoryTree } from '@/api/categories'
+import { getCategoryTree, getCategoryById } from '@/api/categories'
 
 const router = useRouter()
 const route = useRoute()
@@ -222,6 +237,9 @@ const specMode = ref('form')
 const specFormItems = ref([])
 const specJsonText = ref('')
 
+// 是否H5类型分类
+const isH5Type = ref(false)
+
 // 表单数据
 const formData = reactive({
   name: '',
@@ -233,14 +251,32 @@ const formData = reactive({
   images: [],
   specifications: {},
   status: 1, // 默认上架
+  h5Link: '', // H5链接
 })
 
 // 表单验证规则
-const formRules = {
-  name: [{ required: true, message: '请输入商品名称', trigger: 'blur' }],
-  price: [{ required: true, message: '请输入价格', trigger: 'blur' }],
-  stock: [{ required: true, message: '请输入库存', trigger: 'blur' }],
-}
+const formRules = computed(() => {
+  const rules = {
+    name: [{ required: true, message: '请输入商品名称', trigger: 'blur' }],
+  }
+  
+  // H5类型时，h5Link必填，价格和库存不需要
+  if (isH5Type.value) {
+    rules.h5Link = [
+      { required: true, message: 'H5链接不能为空', trigger: 'blur' },
+      { 
+        pattern: /^https?:\/\/.+/, 
+        message: 'H5链接格式不正确，必须以http://或https://开头', 
+        trigger: 'blur' 
+      }
+    ]
+  } else {
+    rules.price = [{ required: true, message: '请输入价格', trigger: 'blur' }]
+    rules.stock = [{ required: true, message: '请输入库存', trigger: 'blur' }]
+  }
+  
+  return rules
+})
 
 // 加载分类树
 const loadCategories = async () => {
@@ -263,6 +299,41 @@ const loadCategories = async () => {
   }
 }
 
+// 检查分类类型
+const checkCategoryType = async (categoryId) => {
+  if (!categoryId) {
+    isH5Type.value = false
+    return
+  }
+  
+  try {
+    const res = await getCategoryById(categoryId)
+    if (res.data) {
+      isH5Type.value = res.data.type === 'H5'
+    } else {
+      isH5Type.value = false
+    }
+  } catch (error) {
+    console.error('获取分类信息失败:', error)
+    isH5Type.value = false
+  }
+}
+
+// 监听分类变化
+watch(() => formData.categoryId, (newCategoryId) => {
+  checkCategoryType(newCategoryId)
+  // 如果切换到非H5类型，清空H5链接
+  if (!isH5Type.value) {
+    formData.h5Link = ''
+  }
+  // 如果切换到H5类型，清空价格和库存
+  if (isH5Type.value) {
+    formData.price = null
+    formData.originalPrice = null
+    formData.stock = null
+  }
+})
+
 // 加载详情数据
 const loadDetail = async () => {
   if (!isEdit.value) return
@@ -280,6 +351,12 @@ const loadDetail = async () => {
       formData.images = Array.isArray(data.images) ? data.images : (data.images ? [data.images] : [])
       formData.specifications = data.specifications || {}
       formData.status = data.status !== undefined ? data.status : 1
+      formData.h5Link = data.h5Link || ''
+
+      // 检查分类类型
+      if (formData.categoryId) {
+        await checkCategoryType(formData.categoryId)
+      }
 
       // 初始化规格表单
       if (formData.specifications && Object.keys(formData.specifications).length > 0) {

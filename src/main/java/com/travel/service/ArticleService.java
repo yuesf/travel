@@ -241,6 +241,10 @@ public class ArticleService {
             }
         }
         
+        // 清除文章详情缓存，确保小程序端获取最新数据
+        articleDetailCache.invalidate(id);
+        log.info("已清除文章详情缓存: id={}", id);
+        
         log.info("更新文章成功: id={}, title={}", article.getId(), article.getTitle());
         
         return article;
