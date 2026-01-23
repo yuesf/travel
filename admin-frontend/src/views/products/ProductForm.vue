@@ -240,6 +240,9 @@ const specJsonText = ref('')
 // 是否H5类型分类
 const isH5Type = ref(false)
 
+// 是否正在加载详情（用于区分初始化加载和用户主动切换分类）
+const isLoadingDetail = ref(false)
+
 // 表单数据
 const formData = reactive({
   name: '',
@@ -320,17 +323,28 @@ const checkCategoryType = async (categoryId) => {
 }
 
 // 监听分类变化
-watch(() => formData.categoryId, (newCategoryId) => {
-  checkCategoryType(newCategoryId)
-  // 如果切换到非H5类型，清空H5链接
-  if (!isH5Type.value) {
-    formData.h5Link = ''
+watch(() => formData.categoryId, async (newCategoryId, oldCategoryId) => {
+  // 如果正在加载详情，不执行清空逻辑
+  if (isLoadingDetail.value) {
+    return
   }
-  // 如果切换到H5类型，清空价格和库存
-  if (isH5Type.value) {
-    formData.price = null
-    formData.originalPrice = null
-    formData.stock = null
+  
+  // 只有在用户主动切换分类时才清空数据（oldCategoryId不为null表示是切换，不是初始化）
+  if (oldCategoryId !== null && oldCategoryId !== undefined) {
+    await checkCategoryType(newCategoryId)
+    // 如果切换到非H5类型，清空H5链接
+    if (!isH5Type.value) {
+      formData.h5Link = ''
+    }
+    // 如果切换到H5类型，清空价格和库存
+    if (isH5Type.value) {
+      formData.price = null
+      formData.originalPrice = null
+      formData.stock = null
+    }
+  } else {
+    // 初始化时只检查分类类型，不清空数据
+    await checkCategoryType(newCategoryId)
   }
 })
 
@@ -338,24 +352,38 @@ watch(() => formData.categoryId, (newCategoryId) => {
 const loadDetail = async () => {
   if (!isEdit.value) return
 
+  isLoadingDetail.value = true
+  
   try {
     const res = await getProductById(route.params.id)
     if (res.data) {
       const data = res.data
+      
+      // 先检查分类类型，再设置数据，确保isH5Type正确
+      if (data.categoryId) {
+        await checkCategoryType(data.categoryId)
+      }
+      
+      // 设置表单数据
       formData.name = data.name || ''
       formData.categoryId = data.categoryId || null
-      formData.price = data.price ? parseFloat(data.price) : null
-      formData.originalPrice = data.originalPrice ? parseFloat(data.originalPrice) : null
-      formData.stock = data.stock || null
       formData.description = data.description || ''
       formData.images = Array.isArray(data.images) ? data.images : (data.images ? [data.images] : [])
       formData.specifications = data.specifications || {}
       formData.status = data.status !== undefined ? data.status : 1
       formData.h5Link = data.h5Link || ''
-
-      // 检查分类类型
-      if (formData.categoryId) {
-        await checkCategoryType(formData.categoryId)
+      
+      // 根据分类类型设置价格和库存
+      if (isH5Type.value) {
+        // H5类型：不设置价格和库存
+        formData.price = null
+        formData.originalPrice = null
+        formData.stock = null
+      } else {
+        // 非H5类型：设置价格和库存
+        formData.price = data.price ? parseFloat(data.price) : null
+        formData.originalPrice = data.originalPrice ? parseFloat(data.originalPrice) : null
+        formData.stock = data.stock || null
       }
 
       // 初始化规格表单
@@ -370,6 +398,8 @@ const loadDetail = async () => {
   } catch (error) {
     console.error('加载商品详情失败:', error)
     ElMessage.error('加载商品详情失败')
+  } finally {
+    isLoadingDetail.value = false
   }
 }
 
