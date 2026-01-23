@@ -1,7 +1,7 @@
 <!--文章列表页-->
 <view class="page-container">
-  <!-- 分类/标签筛选栏 -->
-  <view class="filter-bar">
+  <!-- 分类/标签筛选栏（从Icon跳转时隐藏） -->
+  <view wx:if="{{!fromIcon}}" class="filter-bar">
     <scroll-view class="filter-scroll" scroll-x>
       <view class="filter-content">
         <!-- 全部分类 -->
@@ -65,8 +65,8 @@
             {{item.summary}}
           </view>
           
-          <!-- 底部信息 -->
-          <view class="article-footer">
+          <!-- 底部信息（从Icon跳转时隐藏） -->
+          <view wx:if="{{!fromIcon}}" class="article-footer">
             <view class="article-meta">
               <text class="meta-item">{{item.author || '管理员'}}</text>
               <text class="meta-separator">·</text>

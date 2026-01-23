@@ -69,6 +69,11 @@ service.interceptors.response.use(
         case 404:
           ElMessage.error('请求的资源不存在')
           break
+        case 502:
+          // 502 网关错误，可能是后端服务不可用，静默处理避免影响用户体验
+          // 只在控制台输出警告，不显示错误提示
+          console.warn('网关错误 (502):', error.config?.url || '未知接口')
+          break
         case 500:
           ElMessage.error('服务器内部错误')
           break

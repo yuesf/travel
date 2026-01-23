@@ -6,6 +6,7 @@ import com.travel.dto.ProductCategoryUpdateRequest;
 import com.travel.entity.ProductCategory;
 import com.travel.exception.BusinessException;
 import com.travel.mapper.ProductCategoryMapper;
+import com.travel.mapper.ProductMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -25,6 +26,9 @@ public class ProductCategoryService {
     
     @Autowired
     private ProductCategoryMapper productCategoryMapper;
+    
+    @Autowired
+    private ProductMapper productMapper;
     
     /**
      * 查询所有分类列表
@@ -193,7 +197,8 @@ public class ProductCategoryService {
         // 检查是否有商品使用该分类
         long productCount = productCategoryMapper.countProductsByCategoryId(id);
         if (productCount > 0) {
-            throw new BusinessException(ResultCode.OPERATION_FAILED.getCode(), "该分类下有商品，无法删除，请先处理商品分类");
+            throw new BusinessException(ResultCode.OPERATION_FAILED.getCode(), 
+                String.format("该分类下有 %d 个商品，无法直接删除", productCount));
         }
         
         // 删除分类
@@ -203,5 +208,37 @@ public class ProductCategoryService {
         }
         
         log.info("删除商品分类成功: id={}, name={}", category.getId(), category.getName());
+    }
+    
+    /**
+     * 删除分类及其下的所有商品（级联删除）
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public void deleteWithProducts(Long id) {
+        // 检查分类是否存在
+        ProductCategory category = getById(id);
+        
+        // 检查是否有子分类
+        long childrenCount = productCategoryMapper.countChildrenByParentId(id);
+        if (childrenCount > 0) {
+            throw new BusinessException(ResultCode.OPERATION_FAILED.getCode(), "该分类下有子分类，无法删除");
+        }
+        
+        // 查询分类下的所有商品 ID
+        List<Long> productIds = productMapper.selectIdsByCategoryId(id);
+        
+        // 删除分类下的所有商品
+        for (Long productId : productIds) {
+            productMapper.deleteById(productId);
+        }
+        
+        // 删除分类
+        int result = productCategoryMapper.deleteById(id);
+        if (result <= 0) {
+            throw new BusinessException(ResultCode.OPERATION_FAILED);
+        }
+        
+        log.info("删除分类及商品成功: categoryId={}, categoryName={}, productCount={}", 
+            id, category.getName(), productIds.size());
     }
 }

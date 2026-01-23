@@ -30,6 +30,8 @@ Page({
     
     // 商品列表
     products: [],
+    // 当前分类类型（DISPLAY、CONFIG、H5）
+    currentCategoryType: null,
     // 分页信息
     page: 1,
     pageSize: constants.PAGINATION.DEFAULT_PAGE_SIZE,
@@ -313,7 +315,17 @@ Page({
         city: item.city || '',
         starLevel: item.starLevel || 0,
         productType: 'PRODUCT',
+        categoryType: item.categoryType || null, // 保存分类类型
+        h5Link: item.h5Link || null, // 保存H5链接
+        description: item.description || '', // 保存商品描述
       }));
+      
+      // 判断当前分类类型（从第一个商品的categoryType判断，仅在刷新时更新）
+      if (refresh && items.length > 0 && items[0].categoryType) {
+        this.setData({
+          currentCategoryType: items[0].categoryType,
+        });
+      }
       
       // 更新列表数据
       const products = refresh ? items : [...this.data.products, ...items];
@@ -518,6 +530,56 @@ Page({
     const url = `/pages/detail/index?type=product&id=${product.id}`;
     wx.navigateTo({
       url,
+    });
+  },
+
+  /**
+   * H5类型商品预约按钮点击事件
+   */
+  onReserveTap(e) {
+    const { h5Link } = e.currentTarget.dataset;
+    if (!h5Link) {
+      wx.showToast({
+        title: 'H5链接不存在',
+        icon: 'none',
+      });
+      return;
+    }
+    
+    // 验证 URL 格式
+    if (!h5Link.startsWith('http://') && !h5Link.startsWith('https://')) {
+      wx.showToast({
+        title: '链接地址无效',
+        icon: 'none',
+      });
+      return;
+    }
+    
+    // 跳转到H5页面（使用web-view组件）
+    wx.navigateTo({
+      url: `/pages/webview/index?url=${encodeURIComponent(h5Link)}`,
+      fail: (err) => {
+        console.error('跳转H5页面失败:', err);
+        // 如果webview页面不存在，尝试使用外部浏览器打开
+        wx.showModal({
+          title: '提示',
+          content: '是否在外部浏览器中打开？',
+          success: (res) => {
+            if (res.confirm) {
+              // 复制链接到剪贴板
+              wx.setClipboardData({
+                data: h5Link,
+                success: () => {
+                  wx.showToast({
+                    title: '链接已复制',
+                    icon: 'success',
+                  });
+                },
+              });
+            }
+          },
+        });
+      },
     });
   },
 

@@ -118,6 +118,7 @@
             <el-option label="景点" value="attraction" />
             <el-option label="酒店" value="hotel" />
             <el-option label="H5链接" value="h5_link" />
+            <el-option label="分类导航" value="category_navigation" />
           </el-select>
         </el-form-item>
         <!-- 文章分类两级选择 -->
@@ -171,7 +172,7 @@
         </template>
         <!-- 其他类型的单级选择 -->
         <el-form-item 
-          v-else-if="formData.type && formData.type !== 'h5_link'"
+          v-else-if="formData.type && formData.type !== 'h5_link' && formData.type !== 'category_navigation'"
           :label="getTypeLabel(formData.type)"
           prop="relatedId"
         >
@@ -313,6 +314,11 @@ const formRules = {
           callback()
           return
         }
+        // 分类导航类型时，relatedId 可以为空（直接跳转到分类页面）
+        if (formData.type === 'category_navigation') {
+          callback()
+          return
+        }
         // 文章分类类型时，relatedId 可以为空（只选择分类）
         if (formData.type === 'article_category') {
           callback()
@@ -423,6 +429,7 @@ const getIconTypeTag = (row) => {
     attraction: 'warning',
     hotel: 'danger',
     h5_link: 'warning',
+    category_navigation: 'info',
   }
   return typeMap[type] || ''
 }
@@ -449,6 +456,7 @@ const getTypeLabel = (type) => {
     attraction: '景点',
     hotel: '酒店',
     h5_link: 'H5链接',
+    category_navigation: '分类导航',
   }
   return typeMap[type] || ''
 }
@@ -867,6 +875,9 @@ const handleSubmit = async () => {
       }
     } else if (formData.type === 'h5_link') {
       // H5链接类型，relatedName 可以为空
+      relatedName = formData.name
+    } else if (formData.type === 'category_navigation') {
+      // 分类导航类型，relatedName 可以为空
       relatedName = formData.name
     } else {
       // 其他类型

@@ -158,4 +158,11 @@
         WHERE id = #{id}
     </update>
 
+    <!-- 根据分类ID查询商品ID列表 -->
+    <select id="selectIdsByCategoryId" resultType="long">
+        SELECT id
+        FROM product
+        WHERE category_id = #{categoryId}
+    </select>
+
 </mapper>

@@ -394,9 +394,10 @@ Page({
       
       // 判断 relatedId 是分类ID还是文章ID
       if (categoryId && finalRelatedId === categoryId) {
-        // 只选择了分类，跳转到文章列表
+        // 只选择了分类，跳转到文章列表（从Icon配置跳转）
+        const iconName = icon.name || '文章列表';
         wx.navigateTo({
-          url: `/pages/article/list?categoryId=${finalRelatedId}`,
+          url: `/pages/article/list?categoryId=${finalRelatedId}&fromIcon=true&iconName=${encodeURIComponent(iconName)}`,
           fail: (err) => {
             console.error('跳转文章列表失败:', err);
             wx.showToast({
@@ -486,6 +487,18 @@ Page({
       // 跳转到商品详情
       wx.navigateTo({
         url: `/pages/detail/index?id=${relatedId}&type=product`,
+      });
+    } else if (type === 'category_navigation') {
+      // 跳转到分类导航页面（tabBar 页面）
+      wx.switchTab({
+        url: '/pages/category/index',
+        fail: (err) => {
+          console.error('跳转分类导航失败:', err);
+          wx.showToast({
+            title: '跳转失败，请重试',
+            icon: 'none',
+          });
+        },
       });
     } else {
       // 默认跳转到分类页面

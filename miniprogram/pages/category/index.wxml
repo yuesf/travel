@@ -49,20 +49,49 @@
           <!-- 商品信息 -->
           <view class="product-info">
             <view class="product-title">{{item.name}}</view>
-            <view class="product-sales">已售{{item.sales || 0}}件</view>
-            <view class="product-price-wrapper">
-              <view class="product-price">
-                <text class="price-symbol">¥</text>
-                <text class="price-value">{{item.price || item.minPrice || 0}}</text>
+            
+            <!-- CONFIG类型：只显示商品名称和描述，不显示价格、销量等 -->
+            <view wx:if="{{currentCategoryType === 'CONFIG'}}">
+              <view wx:if="{{item.description}}" class="product-description">
+                {{item.description}}
               </view>
-              <text wx:if="{{item.originalPrice && item.originalPrice > (item.price || item.minPrice || 0)}}" class="price-original">
-                ¥{{item.originalPrice}}
-              </text>
+            </view>
+            
+            <!-- H5类型：显示描述和预约按钮 -->
+            <view wx:elif="{{currentCategoryType === 'H5'}}">
+              <view wx:if="{{item.description}}" class="product-description">
+                {{item.description}}
+              </view>
+              <view wx:if="{{item.h5Link}}" class="product-reserve-btn">
+                <button 
+                  class="reserve-button" 
+                  size="mini" 
+                  type="primary"
+                  data-h5-link="{{item.h5Link}}"
+                  catchtap="onReserveTap"
+                >
+                  预约
+                </button>
+              </view>
+            </view>
+            
+            <!-- DISPLAY类型或其他：显示价格、销量等完整信息 -->
+            <view wx:else>
+              <view class="product-sales">已售{{item.sales || 0}}件</view>
+              <view class="product-price-wrapper">
+                <view class="product-price">
+                  <text class="price-symbol">¥</text>
+                  <text class="price-value">{{item.price || item.minPrice || 0}}</text>
+                </view>
+                <text wx:if="{{item.originalPrice && item.originalPrice > (item.price || item.minPrice || 0)}}" class="price-original">
+                  ¥{{item.originalPrice}}
+                </text>
+              </view>
             </view>
           </view>
           
-          <!-- 购物车图标（浏览模式时隐藏） -->
-          <view wx:if="{{!isBrowseMode}}" class="product-cart-icon" catchtap="onAddToCart" data-product="{{item}}">
+          <!-- 购物车图标（浏览模式时隐藏，且非CONFIG和H5类型时显示） -->
+          <view wx:if="{{!isBrowseMode && currentCategoryType !== 'CONFIG' && currentCategoryType !== 'H5'}}" class="product-cart-icon" catchtap="onAddToCart" data-product="{{item}}">
             <text class="cart-icon">🛒</text>
           </view>
         </view>

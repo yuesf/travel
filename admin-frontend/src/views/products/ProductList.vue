@@ -119,17 +119,25 @@
             {{ formatDate(row.createTime) }}
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="250" fixed="right">
+        <el-table-column label="操作" width="280" fixed="right">
           <template #default="{ row }">
             <el-button link type="primary" size="small" @click="handleView(row)">查看</el-button>
             <el-button link type="primary" size="small" @click="handleEdit(row)">编辑</el-button>
             <el-button link type="primary" size="small" @click="handleUpdateStock(row)">库存</el-button>
             <el-button
+              v-if="row.status === 1"
+              link
+              type="warning"
+              size="small"
+              @click="handleOffline(row)"
+            >
+              下架
+            </el-button>
+            <el-button
               link
               type="danger"
               size="small"
               @click="handleDelete(row)"
-              :disabled="row.status === 0"
             >
               删除
             </el-button>
@@ -188,6 +196,7 @@ import { Search, Refresh, Plus } from '@element-plus/icons-vue'
 import {
   getProductList,
   deleteProduct,
+  offlineProduct,
   updateProductStock,
 } from '@/api/products'
 import { getCategoryTree } from '@/api/categories'
@@ -342,11 +351,40 @@ const handleStockSubmit = async () => {
   }
 }
 
+// 下架
+const handleOffline = async (row) => {
+  try {
+    await ElMessageBox.confirm(
+      `确定要下架商品"${row.name}"吗？`,
+      '提示',
+      {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning',
+      }
+    )
+
+    loading.value = true
+    try {
+      await offlineProduct(row.id)
+      ElMessage.success('下架成功')
+      loadData()
+    } catch (error) {
+      console.error('下架商品失败:', error)
+      ElMessage.error(error?.response?.data?.message || '下架商品失败')
+    } finally {
+      loading.value = false
+    }
+  } catch (error) {
+    // 用户取消
+  }
+}
+
 // 删除
 const handleDelete = async (row) => {
   try {
     await ElMessageBox.confirm(
-      `确定要删除商品"${row.name}"吗？删除后状态将改为下架。`,
+      `确定要删除商品"${row.name}"吗？删除后无法恢复。`,
       '提示',
       {
         confirmButtonText: '确定',
@@ -362,7 +400,7 @@ const handleDelete = async (row) => {
       loadData()
     } catch (error) {
       console.error('删除商品失败:', error)
-      ElMessage.error('删除商品失败')
+      ElMessage.error(error?.response?.data?.message || '删除商品失败')
     } finally {
       loading.value = false
     }

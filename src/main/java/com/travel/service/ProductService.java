@@ -236,7 +236,7 @@ public class ProductService {
     }
     
     /**
-     * 删除商品（软删除，改为下架）
+     * 删除商品（物理删除）
      */
     @Transactional(rollbackFor = Exception.class)
     public void delete(Long id) {
@@ -246,15 +246,32 @@ public class ProductService {
         // 检查是否有关联订单
         long orderCount = productMapper.countOrdersByProductId(id);
         if (orderCount > 0) {
-            throw new BusinessException(ResultCode.OPERATION_FAILED.getCode(), "该商品存在关联订单，无法删除，只能下架");
+            throw new BusinessException(ResultCode.OPERATION_FAILED.getCode(), "该商品存在关联订单，无法删除");
         }
         
-        // 软删除：将状态改为下架
+        // 物理删除
+        int result = productMapper.deleteById(id);
+        if (result <= 0) {
+            throw new BusinessException(ResultCode.OPERATION_FAILED);
+        }
+        
+        log.info("删除商品成功: id={}, name={}", product.getId(), product.getName());
+    }
+    
+    /**
+     * 下架商品（仅修改状态）
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public void offline(Long id) {
+        // 检查商品是否存在
+        Product product = getById(id);
+        
+        // 更新商品状态为下架
         ProductUpdateRequest updateRequest = new ProductUpdateRequest();
         updateRequest.setStatus(0);
         update(id, updateRequest);
         
-        log.info("删除商品成功（软删除）: id={}, name={}", product.getId(), product.getName());
+        log.info("下架商品成功: id={}, name={}", product.getId(), product.getName());
     }
     
     /**

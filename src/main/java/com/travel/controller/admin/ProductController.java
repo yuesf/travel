@@ -71,12 +71,22 @@ public class ProductController {
     }
     
     /**
-     * 删除商品（软删除，改为下架）
+     * 删除商品（物理删除）
      */
     @DeleteMapping("/{id}")
-    @Operation(summary = "删除商品")
+    @Operation(summary = "删除商品（物理删除）")
     public Result<?> delete(@PathVariable Long id) {
         productService.delete(id);
+        return Result.success();
+    }
+    
+    /**
+     * 下架商品
+     */
+    @PutMapping("/{id}/offline")
+    @Operation(summary = "下架商品")
+    public Result<?> offline(@PathVariable Long id) {
+        productService.offline(id);
         return Result.success();
     }
     

@@ -19,13 +19,17 @@ Page({
     hasMore: true, // 是否还有更多数据
     page: 1, // 当前页码
     pageSize: 10, // 每页数量
+    fromIcon: false, // 是否从Icon配置跳转过来
   },
 
   /**
    * 生命周期函数--监听页面加载
    */
   onLoad(options) {
-    console.log('文章列表页加载');
+    console.log('文章列表页加载', options);
+    
+    // 判断是否从Icon配置跳转过来
+    const fromIcon = options.fromIcon === 'true';
     
     // 从页面参数获取筛选条件
     const categoryId = options.categoryId;
@@ -40,6 +44,18 @@ Page({
     if (tagId) {
       this.setData({
         selectedTagId: Number(tagId),
+      });
+    }
+    
+    // 设置是否从Icon跳转
+    this.setData({
+      fromIcon: fromIcon,
+    });
+    
+    // 如果从Icon跳转，设置页面标题
+    if (fromIcon && options.iconName) {
+      wx.setNavigationBarTitle({
+        title: decodeURIComponent(options.iconName),
       });
     }
     

@@ -90,4 +90,14 @@ public class ProductCategoryController {
         productCategoryService.delete(id);
         return Result.success();
     }
+    
+    /**
+     * 删除分类及其下的所有商品
+     */
+    @DeleteMapping("/{id}/with-products")
+    @Operation(summary = "删除分类及其下的所有商品")
+    public Result<?> deleteWithProducts(@PathVariable Long id) {
+        productCategoryService.deleteWithProducts(id);
+        return Result.success();
+    }
 }

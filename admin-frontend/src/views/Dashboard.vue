@@ -141,7 +141,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Delete, Refresh } from '@element-plus/icons-vue'
@@ -325,14 +325,28 @@ const loadStats = async () => {
       stats.value[3].value = data.totalUsers || 0
     }
   } catch (error) {
-    console.error('加载统计数据失败:', error)
-    // 使用模拟数据
-    stats.value[0].value = 128
-    stats.value[0].change = 12.5
-    stats.value[1].value = 56890
-    stats.value[1].change = 8.3
-    stats.value[2].value = 23
-    stats.value[3].value = 1234
+    // 静默处理 502 错误（网关错误），避免影响用户体验
+    if (error.response?.status === 502) {
+      console.warn('统计数据服务暂时不可用（502）')
+      // 不显示错误提示，使用现有数据或模拟数据
+      if (stats.value[0].value === 0) {
+        stats.value[0].value = 128
+        stats.value[0].change = 12.5
+        stats.value[1].value = 56890
+        stats.value[1].change = 8.3
+        stats.value[2].value = 23
+        stats.value[3].value = 1234
+      }
+    } else {
+      console.error('加载统计数据失败:', error)
+      // 使用模拟数据
+      stats.value[0].value = 128
+      stats.value[0].change = 12.5
+      stats.value[1].value = 56890
+      stats.value[1].change = 8.3
+      stats.value[2].value = 23
+      stats.value[3].value = 1234
+    }
   }
 }
 
@@ -485,6 +499,9 @@ const getHitRate = (cacheType) => {
   return ((stats.hitCount / total) * 100).toFixed(1)
 }
 
+// 定时器引用
+let statsTimer = null
+
 onMounted(() => {
   loadStats()
   loadOrderTrend()
@@ -492,9 +509,17 @@ onMounted(() => {
   loadCacheStats()
 
   // 定时刷新统计数据（每5分钟）
-  setInterval(() => {
+  statsTimer = setInterval(() => {
     loadStats()
   }, 5 * 60 * 1000)
+})
+
+onUnmounted(() => {
+  // 清除定时器，避免内存泄漏和无效请求
+  if (statsTimer) {
+    clearInterval(statsTimer)
+    statsTimer = null
+  }
 })
 </script>
 

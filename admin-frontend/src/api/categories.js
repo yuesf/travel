@@ -63,3 +63,13 @@ export function deleteCategory(id) {
     method: 'delete',
   })
 }
+
+/**
+ * 删除分类及其下的所有商品
+ */
+export function deleteCategoryWithProducts(id) {
+  return request({
+    url: `/admin/product-categories/${id}/with-products`,
+    method: 'delete',
+  })
+}

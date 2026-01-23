@@ -97,7 +97,7 @@
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Refresh, Plus } from '@element-plus/icons-vue'
-import { getCategoryTree, deleteCategory } from '@/api/categories'
+import { getCategoryTree, deleteCategory, deleteCategoryWithProducts } from '@/api/categories'
 import CategoryForm from './CategoryForm.vue'
 
 // 表格数据
@@ -171,12 +171,47 @@ const handleDelete = async (row) => {
       loadData()
     } catch (error) {
       console.error('删除分类失败:', error)
-      ElMessage.error(error.message || '删除分类失败')
+      const errorMessage = error?.response?.data?.message || error?.message || '删除分类失败'
+      
+      // 检查错误消息是否包含商品数量信息
+      if (errorMessage.includes('商品') && errorMessage.match(/\d+/)) {
+        // 提取商品数量
+        const match = errorMessage.match(/(\d+)\s*个商品/)
+        const productCount = match ? match[1] : '0'
+        
+        // 显示确认对话框
+        try {
+          await ElMessageBox.confirm(
+            `该分类下有 ${productCount} 个商品，删除分类将同时删除这些商品，确定要继续吗？`,
+            '提示',
+            {
+              confirmButtonText: '确定',
+              cancelButtonText: '取消',
+              type: 'warning',
+            }
+          )
+          
+          // 用户确认，执行级联删除
+          try {
+            await deleteCategoryWithProducts(row.id)
+            ElMessage.success('删除成功')
+            loadData()
+          } catch (deleteError) {
+            console.error('级联删除失败:', deleteError)
+            ElMessage.error(deleteError?.response?.data?.message || '删除分类失败')
+          }
+        } catch (confirmError) {
+          // 用户取消级联删除
+        }
+      } else {
+        ElMessage.error(errorMessage)
+      }
     } finally {
       loading.value = false
     }
   } catch (error) {
     // 用户取消
+    loading.value = false
   }
 }
 

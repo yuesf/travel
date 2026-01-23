@@ -74,4 +74,9 @@ public interface ProductMapper {
      * 增加销量
      */
     int increaseSales(@Param("id") Long id, @Param("quantity") Integer quantity);
+    
+    /**
+     * 根据分类ID查询商品ID列表
+     */
+    List<Long> selectIdsByCategoryId(@Param("categoryId") Long categoryId);
 }

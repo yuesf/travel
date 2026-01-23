@@ -44,12 +44,22 @@ export function updateProduct(id, data) {
 }
 
 /**
- * 删除商品（软删除）
+ * 删除商品（物理删除）
  */
 export function deleteProduct(id) {
   return request({
     url: `/admin/products/${id}`,
     method: 'delete',
+  })
+}
+
+/**
+ * 下架商品
+ */
+export function offlineProduct(id) {
+  return request({
+    url: `/admin/products/${id}/offline`,
+    method: 'put',
   })
 }
 
