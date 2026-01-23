@@ -134,10 +134,14 @@ public class CategoryService {
             request.setPageSize(10);
         }
         
+        // 当 categoryId 为 null 时（选择"全部"），只查询分类类型为 DISPLAY 的商品
+        String categoryType = (request.getCategoryId() == null) ? "DISPLAY" : null;
+        
         // 查询总数
         long total = productMapper.count(
                 null, // name
                 request.getCategoryId(),
+                categoryType, // categoryType: 当 categoryId 为 null 时，只查询 DISPLAY 类型
                 request.getMinPrice(),
                 request.getMaxPrice(),
                 1 // status: 只查询上架的商品
@@ -156,6 +160,7 @@ public class CategoryService {
             productList = productMapper.selectList(
                     null, // name
                     request.getCategoryId(),
+                    categoryType, // categoryType: 当 categoryId 为 null 时，只查询 DISPLAY 类型
                     request.getMinPrice(),
                     request.getMaxPrice(),
                     1, // status: 只查询上架的商品
@@ -180,6 +185,7 @@ public class CategoryService {
             productList = productMapper.selectList(
                     null, // name
                     request.getCategoryId(),
+                    categoryType, // categoryType: 当 categoryId 为 null 时，只查询 DISPLAY 类型
                     request.getMinPrice(),
                     request.getMaxPrice(),
                     1, // status: 只查询上架的商品

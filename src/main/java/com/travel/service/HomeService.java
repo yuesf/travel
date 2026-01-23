@@ -405,6 +405,7 @@ public class HomeService {
                     List<Product> categoryProducts = productMapper.selectList(
                         null, // name
                         categoryId, // categoryId
+                        null, // categoryType: 指定分类时不需要限制类型
                         null, // minPrice
                         null, // maxPrice
                         1, // status: 1-上架

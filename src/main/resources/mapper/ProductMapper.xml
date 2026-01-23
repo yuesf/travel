@@ -63,6 +63,10 @@
             <if test="categoryId != null">
                 AND p.category_id = #{categoryId}
             </if>
+            <!-- 当 categoryId 为 null 时，如果指定了 categoryType，则只查询该类型的分类下的商品 -->
+            <if test="categoryId == null and categoryType != null and categoryType != ''">
+                AND pc.type = #{categoryType}
+            </if>
             <if test="minPrice != null">
                 AND p.price >= #{minPrice}
             </if>
@@ -81,12 +85,17 @@
     <select id="count" resultType="long">
         SELECT COUNT(*)
         FROM product p
+        LEFT JOIN product_category pc ON p.category_id = pc.id
         <where>
             <if test="name != null and name != ''">
                 AND p.name LIKE CONCAT('%', #{name}, '%')
             </if>
             <if test="categoryId != null">
                 AND p.category_id = #{categoryId}
+            </if>
+            <!-- 当 categoryId 为 null 时，如果指定了 categoryType，则只查询该类型的分类下的商品 -->
+            <if test="categoryId == null and categoryType != null and categoryType != ''">
+                AND pc.type = #{categoryType}
             </if>
             <if test="minPrice != null">
                 AND p.price >= #{minPrice}

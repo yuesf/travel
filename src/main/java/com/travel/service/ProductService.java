@@ -49,9 +49,11 @@ public class ProductService {
         int offset = (request.getPage() - 1) * request.getPageSize();
         
         // 查询列表
+        // ProductService 用于后台管理，不需要限制分类类型，传递 null
         List<Product> list = productMapper.selectList(
             request.getName(),
             request.getCategoryId(),
+            null, // categoryType: 后台管理不限制分类类型
             request.getMinPrice(),
             request.getMaxPrice(),
             request.getStatus(),
@@ -63,6 +65,7 @@ public class ProductService {
         long total = productMapper.count(
             request.getName(),
             request.getCategoryId(),
+            null, // categoryType: 后台管理不限制分类类型
             request.getMinPrice(),
             request.getMaxPrice(),
             request.getStatus()

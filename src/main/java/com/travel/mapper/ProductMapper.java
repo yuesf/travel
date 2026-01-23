@@ -30,6 +30,7 @@ public interface ProductMapper {
      */
     List<Product> selectList(@Param("name") String name,
                             @Param("categoryId") Long categoryId,
+                            @Param("categoryType") String categoryType,
                             @Param("minPrice") BigDecimal minPrice,
                             @Param("maxPrice") BigDecimal maxPrice,
                             @Param("status") Integer status,
@@ -41,6 +42,7 @@ public interface ProductMapper {
      */
     long count(@Param("name") String name,
               @Param("categoryId") Long categoryId,
+              @Param("categoryType") String categoryType,
               @Param("minPrice") BigDecimal minPrice,
               @Param("maxPrice") BigDecimal maxPrice,
               @Param("status") Integer status);
