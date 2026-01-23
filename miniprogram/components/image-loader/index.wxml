@@ -1,0 +1,37 @@
+<!--图片加载组件-->
+<view class="image-loader-container {{className}}">
+  <!-- 占位图/加载状态 -->
+  <view wx:if="{{!imageLoaded || loading}}" class="image-placeholder">
+    <image
+      wx:if="{{placeholder}}"
+      class="placeholder-image"
+      src="{{placeholder}}"
+      mode="aspectFill"
+    />
+    <view wx:elif="{{showLoading && loading}}" class="loading-indicator">
+      <view class="loading-spinner"></view>
+    </view>
+  </view>
+
+  <!-- 实际图片 -->
+  <image
+    wx:if="{{src && !imageError}}"
+    class="image-content {{imageLoaded ? 'image-loaded' : 'image-hidden'}}"
+    src="{{src}}"
+    mode="{{mode}}"
+    lazy-load="{{lazyLoad}}"
+    bindload="onImageLoad"
+    binderror="onImageError"
+    bindtap="onImageTap"
+  />
+
+  <!-- 错误占位图 -->
+  <view wx:if="{{imageError}}" class="image-error">
+    <image
+      class="error-image"
+      src="{{placeholder}}"
+      mode="aspectFill"
+    />
+    <view class="error-text">图片加载失败</view>
+  </view>
+</view>

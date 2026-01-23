@@ -8,8 +8,13 @@
     </view>
   </view>
 
-  <!-- 轮播图 -->
-  <view class="banner-section" wx:if="{{banners.length > 0}}">
+  <!-- 骨架屏：数据加载时显示 -->
+  <skeleton wx:if="{{loading && !isPageLoaded}}" type="home" loading="{{true}}" animated="{{true}}" />
+
+  <!-- 实际内容：数据加载完成后显示 -->
+  <view wx:if="{{!loading || isPageLoaded}}">
+    <!-- 轮播图 -->
+    <view class="banner-section" wx:if="{{banners.length > 0}}">
     <banner
       banners="{{banners}}"
       autoplay="{{true}}"
@@ -140,14 +145,10 @@
     
   </view>
 
-  <!-- 空状态 -->
-  <view class="empty-state" wx:if="{{!loading && banners.length === 0 && icons.length === 0 && recommendAttractions.length === 0 && recommendHotels.length === 0 && recommendProducts.length === 0}}">
-    <text class="empty-icon">📭</text>
-    <text class="empty-text">暂无推荐内容</text>
-  </view>
-
-  <!-- 加载状态 -->
-  <view class="loading-state" wx:if="{{loading}}">
-    <text>加载中...</text>
+    <!-- 空状态 -->
+    <view class="empty-state" wx:if="{{!loading && banners.length === 0 && icons.length === 0 && recommendAttractions.length === 0 && recommendHotels.length === 0 && recommendProducts.length === 0}}">
+      <text class="empty-icon">📭</text>
+      <text class="empty-text">暂无推荐内容</text>
+    </view>
   </view>
 </view>

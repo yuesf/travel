@@ -286,15 +286,17 @@ Component({
           selectedSpec,
         });
       } catch (error) {
-        console.error('添加到购物车失败:', error);
-        // 如果是401错误，request.js已经处理了跳转登录，这里只显示错误提示
-        if (error.message && !error.message.includes('未授权') && !error.message.includes('请先登录')) {
-          wx.showToast({
-            title: error.message || '添加失败，请重试',
-            icon: 'none',
-            duration: 2000,
-          });
+        // 如果是未登录错误，不显示错误提示（已经跳转到登录页了）
+        if (error.isAuthError) {
+          return;
         }
+        
+        console.error('添加到购物车失败:', error);
+        wx.showToast({
+          title: error.message || '添加失败，请重试',
+          icon: 'none',
+          duration: 2000,
+        });
       }
     },
 

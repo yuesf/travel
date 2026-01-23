@@ -169,12 +169,15 @@ App({
   async initLogoConfig() {
     try {
       const configApi = require('./api/config');
+      const { normalizeUrl } = require('./utils/url');
       
       // 先从本地存储获取缓存的 Logo URL
       const cachedLogoUrl = storage.getStorage('MINIPROGRAM_LOGO_URL', null, true);
       if (cachedLogoUrl) {
-        this.globalData.logoUrl = cachedLogoUrl;
-        console.log('使用缓存的 Logo:', cachedLogoUrl);
+        // 规范化缓存的 URL
+        const normalizedUrl = normalizeUrl(cachedLogoUrl);
+        this.globalData.logoUrl = normalizedUrl;
+        console.log('使用缓存的 Logo:', normalizedUrl);
       }
       
       // 从接口获取最新配置
@@ -183,11 +186,14 @@ App({
         console.log('获取 Logo 配置响应:', response);
         const logoUrl = response && response.logoUrl ? response.logoUrl : null;
         
-        // 更新全局数据和缓存
-        this.globalData.logoUrl = logoUrl;
+        // 规范化 Logo URL（处理 localhost 等问题）
+        const normalizedLogoUrl = logoUrl ? normalizeUrl(logoUrl) : null;
+        
+        // 更新全局数据和缓存（保存原始 URL，使用时再规范化）
+        this.globalData.logoUrl = normalizedLogoUrl;
         if (logoUrl && logoUrl !== '') {
           storage.setStorage('MINIPROGRAM_LOGO_URL', logoUrl, true);
-          console.log('Logo 配置已更新并缓存:', logoUrl);
+          console.log('Logo 配置已更新并缓存:', logoUrl, '规范化后:', normalizedLogoUrl);
         } else {
           // 如果配置为 null，清除缓存，使用默认值
           storage.removeStorage('MINIPROGRAM_LOGO_URL', true);

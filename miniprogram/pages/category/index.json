@@ -2,6 +2,7 @@
   "navigationBarTitleText": "商品分类",
   "enablePullDownRefresh": true,
   "usingComponents": {
-    "product-card": "/components/product-card/index"
+    "product-card": "/components/product-card/index",
+    "skeleton": "/components/skeleton/index"
   }
 }

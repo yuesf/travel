@@ -3,6 +3,7 @@
   "enablePullDownRefresh": true,
   "usingComponents": {
     "banner": "/components/banner/index",
-    "product-card": "/components/product-card/index"
+    "product-card": "/components/product-card/index",
+    "skeleton": "/components/skeleton/index"
   }
 }

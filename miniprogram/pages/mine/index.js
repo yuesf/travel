@@ -13,6 +13,7 @@ Page({
   data: {
     userInfo: null, // 用户信息
     isLoggedIn: false, // 是否已登录
+    loading: false, // 加载状态
     orderCounts: {
       pendingPay: 0, // 待支付
       pendingUse: 0, // 待使用
@@ -40,6 +41,9 @@ Page({
     console.log('我的页面加载');
     // 首次加载时重置验证时间，确保立即验证
     this._lastCheckTime = 0;
+    this.setData({
+      loading: true,
+    });
     this.checkLoginStatus();
   },
 
@@ -102,6 +106,7 @@ Page({
       this.setData({
         isLoggedIn: false,
         userInfo: null,
+        loading: false,
       });
       return;
     }
@@ -201,6 +206,7 @@ Page({
         this.setData({
           isLoggedIn: false,
           userInfo: null,
+          loading: false,
         });
       } else if (userInfo && userInfo.id) {
         // 网络错误等其他错误，如果本地有用户信息，保持登录状态
@@ -208,12 +214,14 @@ Page({
         this.setData({
           isLoggedIn: true,
           userInfo,
+          loading: false,
         });
       } else {
         // 没有本地用户信息，设置为未登录
         this.setData({
           isLoggedIn: false,
           userInfo: null,
+          loading: false,
         });
       }
     } finally {

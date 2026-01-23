@@ -645,6 +645,11 @@ Page({
         url: `/pages/order/confirm?cartIds=${cartItem.id}`,
       });
     } catch (error) {
+      // 如果是未登录错误，不显示错误提示（已经跳转到登录页了）
+      if (error.isAuthError) {
+        return;
+      }
+      
       console.error('立即购买失败', error);
       wx.showToast({
         title: error.message || '购买失败',

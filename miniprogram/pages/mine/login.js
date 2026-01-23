@@ -6,6 +6,7 @@
 const authApi = require('../../api/auth');
 const auth = require('../../utils/auth');
 const storage = require('../../utils/storage');
+const { normalizeUrl } = require('../../utils/url');
 
 Page({
   /**
@@ -32,9 +33,11 @@ Page({
     
     // 优先使用全局数据（需要明确检查不是 null 和 undefined）
     if (app.globalData.logoUrl !== null && app.globalData.logoUrl !== undefined && app.globalData.logoUrl !== '') {
-      console.log('使用全局数据的 Logo:', app.globalData.logoUrl);
+      // 规范化 URL（处理 localhost 等问题）
+      const normalizedUrl = normalizeUrl(app.globalData.logoUrl);
+      console.log('使用全局数据的 Logo:', normalizedUrl);
       this.setData({
-        logoUrl: app.globalData.logoUrl,
+        logoUrl: normalizedUrl,
       });
       return;
     }
@@ -42,11 +45,14 @@ Page({
     // 其次使用缓存
     const cachedLogoUrl = storage.getStorage('MINIPROGRAM_LOGO_URL', null, true);
     if (cachedLogoUrl && cachedLogoUrl !== '') {
-      console.log('使用缓存的 Logo:', cachedLogoUrl);
+      // 规范化 URL（处理 localhost 等问题）
+      const normalizedUrl = normalizeUrl(cachedLogoUrl);
+      console.log('使用缓存的 Logo:', normalizedUrl);
       this.setData({
-        logoUrl: cachedLogoUrl,
+        logoUrl: normalizedUrl,
       });
-      app.globalData.logoUrl = cachedLogoUrl;
+      // 更新全局数据（保存规范化后的 URL）
+      app.globalData.logoUrl = normalizedUrl;
       return;
     }
     
@@ -61,9 +67,24 @@ Page({
    * Logo 加载失败时使用默认 Logo
    */
   onLogoError(e) {
-    console.error('Logo 加载失败:', e);
+    const currentLogoUrl = this.data.logoUrl;
+    
     // 如果当前不是默认 Logo，则使用默认 Logo
-    if (this.data.logoUrl !== '/assets/icons/logo.png') {
+    if (currentLogoUrl !== '/assets/icons/logo.png') {
+      console.log('Logo 加载失败，切换到默认 Logo');
+      
+      // 清除无效的缓存（如果当前使用的是缓存的 URL）
+      const app = getApp();
+      const cachedLogoUrl = storage.getStorage('MINIPROGRAM_LOGO_URL', null, true);
+      if (cachedLogoUrl && currentLogoUrl.includes(cachedLogoUrl)) {
+        console.log('清除无效的 Logo 缓存');
+        storage.removeStorage('MINIPROGRAM_LOGO_URL', true);
+        if (app && app.globalData) {
+          app.globalData.logoUrl = null;
+        }
+      }
+      
+      // 切换到默认 Logo
       this.setData({
         logoUrl: '/assets/icons/logo.png',
       });
@@ -189,10 +210,27 @@ Page({
       }, 1500);
     } catch (error) {
       console.error('微信登录失败:', error);
+      
+      // 检查是否是配置错误
+      let errorMessage = error.message || '登录失败，请重试';
+      const errorMessageLower = errorMessage.toLowerCase();
+      
+      // 如果是 AppID 配置错误，给出更友好的提示
+      if (errorMessageLower.includes('invalid appid') || 
+          errorMessageLower.includes('appid') && errorMessageLower.includes('invalid')) {
+        errorMessage = '服务器配置错误：微信小程序 AppID 配置不正确，请联系管理员';
+      } else if (errorMessageLower.includes('invalid secret') || 
+                 errorMessageLower.includes('secret') && errorMessageLower.includes('invalid')) {
+        errorMessage = '服务器配置错误：微信小程序 AppSecret 配置不正确，请联系管理员';
+      } else if (errorMessageLower.includes('微信登录失败')) {
+        // 其他微信登录错误，显示原始错误信息但更友好
+        errorMessage = errorMessage.replace('微信登录失败: ', '');
+      }
+      
       wx.showToast({
-        title: error.message || '登录失败，请重试',
+        title: errorMessage,
         icon: 'none',
-        duration: 2000,
+        duration: 3000,
       });
     } finally {
       this.setData({ loading: false });

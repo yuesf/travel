@@ -1,0 +1,72 @@
+<!--骨架屏组件-->
+<view wx:if="{{loading}}" class="skeleton-container {{animated ? 'skeleton-animated' : ''}}">
+  <!-- 首页骨架屏 -->
+  <view wx:if="{{type === 'home'}}" class="skeleton-home">
+    <!-- 轮播图骨架 -->
+    <view class="skeleton-banner"></view>
+    
+    <!-- 图标导航骨架 -->
+    <view class="skeleton-icons">
+      <view class="skeleton-icon-item" wx:for="{{8}}" wx:key="index">
+        <view class="skeleton-icon-circle"></view>
+        <view class="skeleton-icon-text"></view>
+      </view>
+    </view>
+    
+    <!-- 推荐商品骨架 -->
+    <view class="skeleton-section">
+      <view class="skeleton-title"></view>
+      <scroll-view class="skeleton-product-list" scroll-x>
+        <view class="skeleton-product-item" wx:for="{{4}}" wx:key="index">
+          <view class="skeleton-product-image"></view>
+          <view class="skeleton-product-name"></view>
+          <view class="skeleton-product-price"></view>
+        </view>
+      </scroll-view>
+    </view>
+  </view>
+
+  <!-- 列表骨架屏 -->
+  <view wx:elif="{{type === 'list'}}" class="skeleton-list">
+    <view class="skeleton-list-item" wx:for="{{rows}}" wx:key="index">
+      <view class="skeleton-avatar"></view>
+      <view class="skeleton-content">
+        <view class="skeleton-line skeleton-line-title"></view>
+        <view class="skeleton-line skeleton-line-text"></view>
+        <view class="skeleton-line skeleton-line-text-short"></view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 卡片骨架屏 -->
+  <view wx:elif="{{type === 'card'}}" class="skeleton-card">
+    <view class="skeleton-card-item" wx:for="{{rows}}" wx:key="index">
+      <view class="skeleton-card-image"></view>
+      <view class="skeleton-card-content">
+        <view class="skeleton-line skeleton-line-title"></view>
+        <view class="skeleton-line skeleton-line-text"></view>
+        <view class="skeleton-line skeleton-line-text-short"></view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 商品列表骨架屏 -->
+  <view wx:elif="{{type === 'product-list'}}" class="skeleton-product-list-page">
+    <view class="skeleton-product-card" wx:for="{{rows}}" wx:key="index">
+      <view class="skeleton-product-image-large"></view>
+      <view class="skeleton-product-info">
+        <view class="skeleton-line skeleton-line-title"></view>
+        <view class="skeleton-line skeleton-line-text"></view>
+        <view class="skeleton-product-price-row">
+          <view class="skeleton-line skeleton-line-price"></view>
+          <view class="skeleton-line skeleton-line-sales"></view>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 自定义骨架屏 -->
+  <view wx:else class="skeleton-custom">
+    <slot></slot>
+  </view>
+</view>

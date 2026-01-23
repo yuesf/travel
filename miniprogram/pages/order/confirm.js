@@ -65,76 +65,107 @@ Page({
       cartIds,
     });
 
-    // 加载购物车商品、优惠券和收货地址
-    this.loadCartItems();
-    this.loadCouponList();
-    this.loadAddress();
+    // 并行加载购物车商品、优惠券和收货地址，提升页面加载速度
+    this.loadInitialData();
   },
 
   /**
-   * 加载购物车商品
+   * 并行加载初始数据
+   * 优化：将无依赖关系的接口并行执行，减少页面加载时间
    */
-  async loadCartItems() {
+  async loadInitialData() {
+    this.setData({
+      loading: true,
+    });
+
     try {
-      const cartList = await cartApi.getCartList();
-      console.log('订单确认页 - 购物车列表:', cartList);
-      console.log('订单确认页 - 需要加载的cartIds:', this.data.cartIds);
-      
-      // 将 itemDetail 映射为 productDetail，保持与购物车页面一致
-      const cartItems = cartList
-        .filter(item => this.data.cartIds.includes(String(item.id)))
-        .map(item => ({
-          ...item,
-          productDetail: item.itemDetail, // 将 itemDetail 映射为 productDetail
-        }));
-      
-      console.log('订单确认页 - 过滤后的购物车商品:', cartItems);
-      
-      if (cartItems.length === 0) {
-        wx.showToast({
-          title: '购物车商品不存在',
-          icon: 'none',
-        });
-        setTimeout(() => {
-          wx.navigateBack();
-        }, 1500);
-        return;
+      // 并行执行购物车商品和收货地址的加载（这两个接口无依赖关系）
+      const [cartResult, addressResult] = await Promise.allSettled([
+        this.loadCartItems(),
+        this.loadAddress(),
+      ]);
+
+      // 处理购物车加载结果
+      if (cartResult.status === 'rejected') {
+        console.error('加载购物车商品失败:', cartResult.reason);
       }
 
-      // 计算订单总金额
-      // 优先使用 itemPrice，如果没有则从 productDetail 中获取
-      const totalAmount = cartItems.reduce((sum, item) => {
-        let price = 0;
-        if (item.itemPrice) {
-          // 使用后端返回的 itemPrice
-          price = Number(item.itemPrice);
-        } else if (item.productDetail) {
-          // 从商品详情中获取价格
-          price = Number(item.productDetail.price || item.productDetail.minPrice || item.productDetail.ticketPrice || 0);
-        }
-        return sum + price * item.quantity;
-      }, 0);
+      // 处理地址加载结果
+      if (addressResult.status === 'rejected') {
+        console.error('加载收货地址失败:', addressResult.reason);
+      }
 
-      console.log('订单确认页 - 订单总金额:', totalAmount);
-
-      this.setData({
-        cartItems,
-        totalAmount,
-      });
-
-      // 重新计算金额
-      this.calculateAmount();
+      // 购物车加载完成后，再加载优惠券（因为优惠券需要根据订单金额过滤）
+      // 注意：这里仍然可以并行，因为 loadCouponList 内部会使用 this.data.totalAmount
+      // 但为了确保 totalAmount 已设置，我们在购物车加载完成后再调用
+      await this.loadCouponList();
     } catch (error) {
-      console.error('加载购物车商品失败:', error);
-      wx.showToast({
-        title: '加载失败',
-        icon: 'none',
+      console.error('加载初始数据失败:', error);
+    } finally {
+      this.setData({
+        loading: false,
       });
     }
   },
 
   /**
+   * 加载购物车商品
+   * 优化：不在这里显示错误提示，由调用方统一处理
+   */
+  async loadCartItems() {
+    const cartList = await cartApi.getCartList();
+    console.log('订单确认页 - 购物车列表:', cartList);
+    console.log('订单确认页 - 需要加载的cartIds:', this.data.cartIds);
+    
+    // 将 itemDetail 映射为 productDetail，保持与购物车页面一致
+    const cartItems = cartList
+      .filter(item => this.data.cartIds.includes(String(item.id)))
+      .map(item => ({
+        ...item,
+        productDetail: item.itemDetail, // 将 itemDetail 映射为 productDetail
+      }));
+    
+    console.log('订单确认页 - 过滤后的购物车商品:', cartItems);
+    
+    if (cartItems.length === 0) {
+      wx.showToast({
+        title: '购物车商品不存在',
+        icon: 'none',
+      });
+      setTimeout(() => {
+        wx.navigateBack();
+      }, 1500);
+      throw new Error('购物车商品不存在');
+    }
+
+    // 计算订单总金额
+    // 优先使用 itemPrice，如果没有则从 productDetail 中获取
+    const totalAmount = cartItems.reduce((sum, item) => {
+      let price = 0;
+      if (item.itemPrice) {
+        // 使用后端返回的 itemPrice
+        price = Number(item.itemPrice);
+      } else if (item.productDetail) {
+        // 从商品详情中获取价格
+        price = Number(item.productDetail.price || item.productDetail.minPrice || item.productDetail.ticketPrice || 0);
+      }
+      return sum + price * item.quantity;
+    }, 0);
+
+    console.log('订单确认页 - 订单总金额:', totalAmount);
+
+    this.setData({
+      cartItems,
+      totalAmount,
+    });
+
+    // 重新计算金额
+    this.calculateAmount();
+  },
+
+  /**
    * 加载优惠券列表
+   * 注意：此方法依赖于 totalAmount，应在 loadCartItems 完成后调用
    */
   async loadCouponList() {
     try {
@@ -142,10 +173,12 @@ Page({
       const couponList = result.list || result.data || result;
       
       // 过滤可用优惠券（根据订单金额）
+      // 如果 totalAmount 还未设置，先获取所有优惠券，后续再过滤
+      const totalAmount = this.data.totalAmount || 0;
       const availableCoupons = couponList.filter(coupon => {
         if (!coupon.coupon) return false;
         const minAmount = coupon.coupon.minAmount || 0;
-        return this.data.totalAmount >= minAmount;
+        return totalAmount >= minAmount;
       });
 
       this.setData({
@@ -153,6 +186,7 @@ Page({
       });
     } catch (error) {
       console.error('加载优惠券列表失败:', error);
+      // 优惠券加载失败不影响页面使用，只记录错误
     }
   },
 
@@ -248,21 +282,18 @@ Page({
 
   /**
    * 加载收货地址
+   * 优化：不在这里显示错误提示，由调用方统一处理
    */
   async loadAddress() {
-    try {
-      const addressList = await addressApi.getAddressList();
-      // 查找默认地址，如果没有则使用第一个
-      const defaultAddress = addressList.find(addr => addr.isDefault === 1) || addressList[0];
-      if (defaultAddress) {
-        this.setData({
-          selectedAddress: defaultAddress,
-          contactName: defaultAddress.receiverName,
-          contactPhone: defaultAddress.receiverPhone,
-        });
-      }
-    } catch (error) {
-      console.error('加载收货地址失败:', error);
+    const addressList = await addressApi.getAddressList();
+    // 查找默认地址，如果没有则使用第一个
+    const defaultAddress = addressList.find(addr => addr.isDefault === 1) || addressList[0];
+    if (defaultAddress) {
+      this.setData({
+        selectedAddress: defaultAddress,
+        contactName: defaultAddress.receiverName,
+        contactPhone: defaultAddress.receiverPhone,
+      });
     }
   },
 
@@ -423,6 +454,13 @@ Page({
               icon: 'none',
             });
           }
+          
+          // 支付失败也跳转到订单详情页
+          setTimeout(() => {
+            wx.redirectTo({
+              url: `/pages/order/detail?id=${orderId}`,
+            });
+          }, 1500);
         },
       });
     } catch (error) {
@@ -434,6 +472,13 @@ Page({
         title: '支付失败',
         icon: 'none',
       });
+      
+      // 支付接口调用失败也跳转到订单详情页
+      setTimeout(() => {
+        wx.redirectTo({
+          url: `/pages/order/detail?id=${orderId}`,
+        });
+      }, 1500);
     }
   },
 });

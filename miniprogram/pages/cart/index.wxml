@@ -17,8 +17,11 @@
     refresher-triggered="{{loading}}"
     bindrefresherrefresh="onPullDownRefresh"
   >
+    <!-- 骨架屏：首次加载时显示 -->
+    <skeleton wx:if="{{loading && cartList.length === 0}}" type="list" loading="{{true}}" rows="{{3}}" animated="{{true}}" />
+
     <!-- 购物车商品列表 -->
-    <view wx:if="{{cartList.length > 0}}" class="cart-list">
+    <view wx:if="{{cartList.length > 0 && (!loading || cartList.length > 0)}}" class="cart-list">
       <view
         wx:for="{{cartList}}"
         wx:key="id"

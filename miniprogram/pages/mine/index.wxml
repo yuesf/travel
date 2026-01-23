@@ -1,7 +1,12 @@
 <!--我的页面-->
 <view class="page-container">
-  <!-- 用户信息卡片 -->
-  <view class="user-card">
+  <!-- 骨架屏：首次加载时显示 -->
+  <skeleton wx:if="{{loading && !isLoggedIn}}" type="list" loading="{{true}}" rows="{{5}}" animated="{{true}}" />
+
+  <!-- 实际内容 -->
+  <view wx:if="{{!loading || isLoggedIn}}">
+    <!-- 用户信息卡片 -->
+    <view class="user-card">
     <view wx:if="{{isLoggedIn}}" class="user-info">
       <image class="avatar" src="{{userInfo.avatar || '/assets/icons/default-avatar.png'}}" mode="aspectFill"></image>
       <view class="user-details">
@@ -83,8 +88,9 @@
     -->
   </view>
 
-  <!-- 退出登录按钮 -->
-  <view class="logout-section" wx:if="{{isLoggedIn}}">
-    <button class="logout-btn" bindtap="logout">退出登录</button>
+    <!-- 退出登录按钮 -->
+    <view class="logout-section" wx:if="{{isLoggedIn}}">
+      <button class="logout-btn" bindtap="logout">退出登录</button>
+    </view>
   </view>
 </view>

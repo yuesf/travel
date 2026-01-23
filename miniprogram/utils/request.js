@@ -134,6 +134,12 @@ function performRequest(options) {
                 auth.logout();
                 // 跳转到登录页
                 redirectToLogin();
+                
+                // 创建一个特殊的错误对象，标记为未登录错误，不显示错误提示
+                const error = new Error(errorMessage);
+                error.isAuthError = true;
+                reject(error);
+                return;
               }
 
               if (showErrorFlag) {
@@ -152,7 +158,12 @@ function performRequest(options) {
                 authCheck.clearAuthCache();
                 auth.logout();
                 redirectToLogin();
-                break;
+                
+                // 创建一个特殊的错误对象，标记为未登录错误，不显示错误提示
+                const error = new Error(errorMessage);
+                error.isAuthError = true;
+                reject(error);
+                return;
               case 403:
                 errorMessage = '无权限访问';
                 break;
@@ -239,16 +250,13 @@ function request(options = {}) {
         hideLoading();
       }
       
-      const errorMessage = '未授权，请先登录';
-      
-      if (showErrorFlag) {
-        showError(errorMessage);
-      }
-      
-      // 跳转到登录页
+      // 跳转到登录页（不显示错误提示，因为已经跳转到登录页了）
       redirectToLogin();
       
-      return Promise.reject(new Error(errorMessage));
+      // 创建一个特殊的错误对象，标记为未登录错误，不显示错误提示
+      const error = new Error('未授权，请先登录');
+      error.isAuthError = true;
+      return Promise.reject(error);
     }
     
     // 检查登录状态是否有效（带缓存）
@@ -260,16 +268,13 @@ function request(options = {}) {
             hideLoading();
           }
           
-          const errorMessage = '登录已过期，请重新登录';
-          
-          if (showErrorFlag) {
-            showError(errorMessage);
-          }
-          
-          // 跳转到登录页
+          // 跳转到登录页（不显示错误提示，因为已经跳转到登录页了）
           redirectToLogin();
           
-          return Promise.reject(new Error(errorMessage));
+          // 创建一个特殊的错误对象，标记为未登录错误，不显示错误提示
+          const error = new Error('登录已过期，请重新登录');
+          error.isAuthError = true;
+          return Promise.reject(error);
         }
         
         // 登录状态有效，继续发起请求
@@ -286,9 +291,8 @@ function request(options = {}) {
           error.message.includes('未授权') || 
           error.message.includes('登录已过期')
         )) {
-          if (showErrorFlag) {
-            showError(error.message);
-          }
+          // 标记为未登录错误，不显示错误提示（因为已经跳转到登录页了）
+          error.isAuthError = true;
           return Promise.reject(error);
         }
         
