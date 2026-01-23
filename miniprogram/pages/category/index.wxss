@@ -111,6 +111,26 @@
   -webkit-box-orient: vertical;
 }
 
+.product-description {
+  font-size: 24rpx;
+  color: #909399;
+  line-height: 1.6;
+  margin-bottom: 12rpx;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+}
+
+.description-content-rich {
+  font-size: 24rpx;
+  color: #909399;
+  line-height: 1.6;
+  word-wrap: break-word;
+  word-break: break-all;
+}
+
 .product-sales {
   font-size: 24rpx;
   color: #909399;

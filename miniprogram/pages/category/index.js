@@ -199,6 +199,40 @@ Page({
 
 
   /**
+   * 格式化富文本内容，为图片添加适配样式
+   * @param {string} html HTML字符串
+   * @returns {string} 格式化后的HTML
+   */
+  formatRichText(html) {
+    if (!html || typeof html !== 'string') {
+      return '';
+    }
+    // 为所有 img 标签添加样式，确保图片适配屏幕
+    let content = html.replace(/<img([^>]*)>/gi, (match, attrs) => {
+      // 检查是否已有 style 属性（支持单引号和双引号）
+      const hasStyle = /style\s*=\s*["']/i.test(attrs);
+      
+      if (hasStyle) {
+        // 如果已有 style，添加或更新 max-width
+        return match.replace(/style\s*=\s*["']([^"']*)["']/i, (styleMatch, styleValue) => {
+          // 检查是否已有 max-width
+          if (!/max-width\s*:/i.test(styleValue)) {
+            // 移除末尾的分号（如果有），然后添加样式
+            const cleanStyle = styleValue.trim().replace(/;?\s*$/, '');
+            const quote = styleMatch.includes("'") ? "'" : '"';
+            return `style=${quote}${cleanStyle}; max-width: 100%; height: auto; display: block;${quote}`;
+          }
+          return styleMatch;
+        });
+      } else {
+        // 如果没有 style，添加 style 属性
+        return `<img${attrs} style="max-width: 100%; height: auto; display: block;">`;
+      }
+    });
+    return content;
+  },
+
+  /**
    * 加载分类列表
    * @param {boolean} keepCurrentSelection 是否保持当前选中的分类
    */
@@ -299,26 +333,38 @@ Page({
       console.log('商品列表API响应:', response);
       
       // 处理数据
-      const items = (response.list || response.data || []).map(item => ({
-        id: item.id,
-        name: item.name || '',
-        image: item.image || item.coverImage || '',
-        coverImage: item.image || item.coverImage || '',
-        price: item.price || item.minPrice || 0,
-        minPrice: item.price || item.minPrice || 0,
-        originalPrice: item.originalPrice || 0,
-        rating: item.rating || 0,
-        reviewCount: item.reviewCount || 0,
-        sales: item.sales || 0,
-        location: item.location || item.address || item.city || '',
-        address: item.address || item.location || item.city || '',
-        city: item.city || '',
-        starLevel: item.starLevel || 0,
-        productType: 'PRODUCT',
-        categoryType: item.categoryType || null, // 保存分类类型
-        h5Link: item.h5Link || null, // 保存H5链接
-        description: item.description || '', // 保存商品描述
-      }));
+      const items = (response.list || response.data || []).map(item => {
+        // 判断是否为H5类型
+        const isH5Type = item.categoryType === 'H5';
+        // 获取商品描述
+        const rawDescription = item.description || '';
+        // 如果是H5类型，格式化富文本；否则保持原样（CONFIG类型可能需要保留HTML）
+        let description = rawDescription;
+        if (isH5Type && rawDescription) {
+          description = this.formatRichText(rawDescription);
+        }
+        
+        return {
+          id: item.id,
+          name: item.name || '',
+          image: item.image || item.coverImage || '',
+          coverImage: item.image || item.coverImage || '',
+          price: item.price || item.minPrice || 0,
+          minPrice: item.price || item.minPrice || 0,
+          originalPrice: item.originalPrice || 0,
+          rating: item.rating || 0,
+          reviewCount: item.reviewCount || 0,
+          sales: item.sales || 0,
+          location: item.location || item.address || item.city || '',
+          address: item.address || item.location || item.city || '',
+          city: item.city || '',
+          starLevel: item.starLevel || 0,
+          productType: 'PRODUCT',
+          categoryType: item.categoryType || null, // 保存分类类型
+          h5Link: item.h5Link || null, // 保存H5链接
+          description: description, // 保存商品描述（H5类型已格式化）
+        };
+      });
       
       // 判断当前分类类型（从第一个商品的categoryType判断，仅在刷新时更新）
       if (refresh && items.length > 0 && items[0].categoryType) {

@@ -1,5 +1,13 @@
 <template>
-  <div class="rich-text-editor-container" :id="props.id || undefined">
+  <!-- 查看模式：使用只读 div 显示内容，避免 Quill 样式问题 -->
+  <div v-if="disabled" class="rich-text-editor-container is-disabled" :id="props.id || undefined">
+    <div 
+      class="readonly-content" 
+      v-html="modelValue || `<span style='color: #c0c4cc; font-style: italic;'>${placeholder}</span>`"
+    ></div>
+  </div>
+  <!-- 编辑模式：使用 Quill 编辑器 -->
+  <div v-else class="rich-text-editor-container" :id="props.id || undefined">
     <div ref="editorRef" class="editor-wrapper"></div>
   </div>
 </template>
@@ -39,6 +47,8 @@ let quill = null
 
 // 初始化编辑器
 const initEditor = () => {
+  // 如果是禁用状态，不初始化 Quill
+  if (props.disabled) return
   if (!editorRef.value) return
 
   quill = new Quill(editorRef.value, {
@@ -156,10 +166,6 @@ const initEditor = () => {
     emit('change', content)
   })
 
-  // 设置禁用状态
-  if (props.disabled) {
-    quill.enable(false)
-  }
 }
 
 // 监听外部值变化
@@ -172,18 +178,37 @@ watch(
   }
 )
 
+
 // 监听禁用状态
 watch(
   () => props.disabled,
   (newVal) => {
-    if (quill) {
-      quill.enable(!newVal)
+    if (newVal) {
+      // 切换到禁用状态：销毁 Quill 实例
+      if (quill) {
+        quill = null
+      }
+      // 停止 MutationObserver
+      if (mutationObserver) {
+        mutationObserver.disconnect()
+        mutationObserver = null
+      }
+    } else {
+      // 切换到启用状态：初始化 Quill
+      if (!quill && editorRef.value) {
+        initEditor()
+      } else if (quill) {
+        quill.enable(true)
+      }
     }
   }
 )
 
 onMounted(() => {
-  initEditor()
+  // 只有在非禁用状态下才初始化 Quill
+  if (!props.disabled) {
+    initEditor()
+  }
 })
 
 onBeforeUnmount(() => {
@@ -226,5 +251,106 @@ defineExpose({
 :deep(.ql-editor img) {
   max-width: 100%;
   height: auto;
+}
+
+/* 禁用状态下的样式 - 完全移除阴影 */
+.rich-text-editor-container.is-disabled {
+  box-shadow: none !important;
+}
+
+.rich-text-editor-container.is-disabled :deep(.ql-container) {
+  box-shadow: none !important;
+  border-color: #dcdfe6;
+  background-color: #f5f7fa;
+}
+
+.rich-text-editor-container.is-disabled :deep(.ql-container.ql-snow) {
+  box-shadow: none !important;
+  border: 1px solid #dcdfe6 !important;
+}
+
+.rich-text-editor-container.is-disabled :deep(.ql-toolbar) {
+  display: none;
+}
+
+.rich-text-editor-container.is-disabled :deep(.ql-editor) {
+  background-color: #f5f7fa;
+  cursor: default;
+  box-shadow: none !important;
+  text-shadow: none !important;
+}
+
+/* 移除 placeholder 的阴影效果 */
+.rich-text-editor-container.is-disabled :deep(.ql-editor.ql-blank::before) {
+  color: #c0c4cc;
+  font-style: normal;
+  text-shadow: none !important;
+  box-shadow: none !important;
+}
+
+.rich-text-editor-container.is-disabled :deep(.ql-editor::before) {
+  color: #c0c4cc;
+  font-style: normal;
+  text-shadow: none !important;
+  box-shadow: none !important;
+}
+
+/* 移除所有可能的阴影效果 - 使用更具体的选择器 */
+.rich-text-editor-container.is-disabled :deep(.ql-container),
+.rich-text-editor-container.is-disabled :deep(.ql-editor),
+.rich-text-editor-container.is-disabled :deep(.ql-snow),
+.rich-text-editor-container.is-disabled :deep(.ql-container.ql-snow),
+.rich-text-editor-container.is-disabled :deep(.ql-editor.ql-blank) {
+  box-shadow: none !important;
+  text-shadow: none !important;
+  filter: none !important;
+}
+
+/* 查看模式下的只读内容样式 */
+.rich-text-editor-container.is-disabled .readonly-content {
+  min-height: 300px;
+  padding: 12px 15px;
+  background-color: #f5f7fa;
+  border: 1px solid #dcdfe6;
+  border-radius: 4px;
+  color: #606266;
+  line-height: 1.5;
+  box-shadow: none !important;
+  text-shadow: none !important;
+}
+
+.rich-text-editor-container.is-disabled .readonly-content :deep(*) {
+  box-shadow: none !important;
+  text-shadow: none !important;
+}
+</style>
+
+<!-- 全局样式，用于覆盖 Quill 的全局 CSS -->
+<style>
+/* 查看模式下移除 Quill 编辑器的所有阴影 */
+.rich-text-editor-container.is-disabled .ql-container.ql-snow {
+  box-shadow: none !important;
+}
+
+.rich-text-editor-container.is-disabled .ql-editor {
+  box-shadow: none !important;
+  text-shadow: none !important;
+}
+
+.rich-text-editor-container.is-disabled .ql-editor::before {
+  text-shadow: none !important;
+  box-shadow: none !important;
+}
+
+.rich-text-editor-container.is-disabled .ql-editor.ql-blank::before {
+  text-shadow: none !important;
+  box-shadow: none !important;
+}
+
+/* 移除所有可能的阴影和滤镜效果 */
+.rich-text-editor-container.is-disabled * {
+  box-shadow: none !important;
+  text-shadow: none !important;
+  filter: none !important;
 }
 </style>

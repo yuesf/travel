@@ -60,7 +60,8 @@
             <!-- H5类型：显示描述和预约按钮 -->
             <view wx:elif="{{currentCategoryType === 'H5'}}">
               <view wx:if="{{item.description}}" class="product-description">
-                {{item.description}}
+                <!-- H5类型：使用rich-text展示富文本 -->
+                <rich-text nodes="{{item.description}}" type="html" class="description-content-rich"></rich-text>
               </view>
               <view wx:if="{{item.h5Link}}" class="product-reserve-btn">
                 <button 

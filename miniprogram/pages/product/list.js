@@ -98,6 +98,40 @@ Page({
   },
 
   /**
+   * 格式化富文本内容，为图片添加适配样式
+   * @param {string} html HTML字符串
+   * @returns {string} 格式化后的HTML
+   */
+  formatRichText(html) {
+    if (!html || typeof html !== 'string') {
+      return '';
+    }
+    // 为所有 img 标签添加样式，确保图片适配屏幕
+    let content = html.replace(/<img([^>]*)>/gi, (match, attrs) => {
+      // 检查是否已有 style 属性（支持单引号和双引号）
+      const hasStyle = /style\s*=\s*["']/i.test(attrs);
+      
+      if (hasStyle) {
+        // 如果已有 style，添加或更新 max-width
+        return match.replace(/style\s*=\s*["']([^"']*)["']/i, (styleMatch, styleValue) => {
+          // 检查是否已有 max-width
+          if (!/max-width\s*:/i.test(styleValue)) {
+            // 移除末尾的分号（如果有），然后添加样式
+            const cleanStyle = styleValue.trim().replace(/;?\s*$/, '');
+            const quote = styleMatch.includes("'") ? "'" : '"';
+            return `style=${quote}${cleanStyle}; max-width: 100%; height: auto; display: block;${quote}`;
+          }
+          return styleMatch;
+        });
+      } else {
+        // 如果没有 style，添加 style 属性
+        return `<img${attrs} style="max-width: 100%; height: auto; display: block;">`;
+      }
+    });
+    return content;
+  },
+
+  /**
    * 加载商品列表
    * @param {boolean} refresh 是否刷新（重置页码）
    */
@@ -139,15 +173,25 @@ Page({
       
       // 格式化商品数据（只保留需要的字段）
       const formattedList = list.map(product => {
-        // 获取商品描述并去除HTML标签
+        // 获取商品描述
         const rawDescription = product.description || product.summary || product.introduction || '';
-        const cleanDescription = this.stripHtmlTags(rawDescription);
+        
+        // 判断是否为H5类型
+        const isH5Type = product.categoryType === 'H5' || this.data.isH5Type;
+        
+        // 如果是H5类型，保留HTML并格式化；否则去除HTML标签
+        let description;
+        if (isH5Type) {
+          description = this.formatRichText(rawDescription);
+        } else {
+          description = this.stripHtmlTags(rawDescription);
+        }
         
         return {
           id: product.id,
           name: product.name,
           image: product.image || product.coverImage || '/static/images/default-product.png',
-          description: cleanDescription,
+          description: description,
           h5Link: product.h5Link || null, // H5链接
         };
       });

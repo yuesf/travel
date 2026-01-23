@@ -1,0 +1,79 @@
+<!--地图列表页-->
+<view class="page-container">
+  <!-- 地图列表 -->
+  <scroll-view
+    class="map-scroll"
+    scroll-y
+    enable-back-to-top
+    refresher-enabled
+    refresher-triggered="{{loading}}"
+    bindrefresherrefresh="onPullDownRefresh"
+  >
+    <!-- 地图卡片列表 -->
+    <view wx:if="{{mapList.length > 0}}" class="map-list">
+      <view
+        wx:for="{{mapList}}"
+        wx:key="id"
+        id="map-{{item.id}}"
+        class="map-card {{targetMapId === item.id ? 'target-map' : ''}}"
+      >
+        <!-- 公告内容 -->
+        <view wx:if="{{item.announcement}}" class="announcement-section">
+          <view class="announcement-label">公告</view>
+          <view class="announcement-content">{{item.announcement}}</view>
+        </view>
+
+        <!-- 地图展示 -->
+        <view class="map-section">
+          <map
+            longitude="{{item.longitude}}"
+            latitude="{{item.latitude}}"
+            scale="15"
+            markers="{{item.markers}}"
+            show-location="{{true}}"
+            enable-zoom="{{true}}"
+            enable-scroll="{{true}}"
+            enable-rotate="{{false}}"
+          ></map>
+        </view>
+
+        <!-- 地图信息 -->
+        <view class="map-info-section">
+          <view class="map-name">{{item.name}}</view>
+          <view wx:if="{{item.address}}" class="map-address">{{item.address}}</view>
+          <view class="map-coordinates">
+            <text>经度: {{item.longitude}}</text>
+            <text style="margin-left: 20rpx;">纬度: {{item.latitude}}</text>
+          </view>
+        </view>
+
+        <!-- 导航按钮 -->
+        <view class="map-actions">
+          <button
+            class="navigate-btn"
+            type="primary"
+            size="mini"
+            bindtap="onNavigate"
+            data-longitude="{{item.longitude}}"
+            data-latitude="{{item.latitude}}"
+            data-name="{{item.name}}"
+            data-address="{{item.address}}"
+          >
+            导航到这里
+          </button>
+        </view>
+      </view>
+    </view>
+
+    <!-- 空状态 -->
+    <view wx:else class="empty-container">
+      <view class="empty-icon">🗺️</view>
+      <view class="empty-text">暂无地图信息</view>
+    </view>
+
+    <!-- 加载提示 -->
+    <view wx:if="{{loading && mapList.length === 0}}" class="loading-container">
+      <text>加载中...</text>
+    </view>
+  </scroll-view>
+</view>

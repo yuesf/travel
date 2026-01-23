@@ -34,7 +34,10 @@
           
           <!-- 商品简介 -->
           <view wx:if="{{item.description}}" class="product-description">
-            {{item.description}}
+            <!-- H5类型：使用rich-text展示富文本 -->
+            <rich-text wx:if="{{isH5Type}}" nodes="{{item.description}}" type="html" class="description-content-rich"></rich-text>
+            <!-- 非H5类型：使用普通文本 -->
+            <text wx:else class="description-content">{{item.description}}</text>
           </view>
           
           <!-- 预约按钮（H5类型时显示） -->

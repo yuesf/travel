@@ -3,12 +3,15 @@
     <el-card shadow="never">
       <template #header>
         <div class="card-header">
-          <span>{{ isEdit ? '编辑商品' : '创建商品' }}</span>
-          <div>
+          <span>{{ isViewMode ? '查看商品' : (isEdit ? '编辑商品' : '创建商品') }}</span>
+          <div v-if="!isViewMode">
             <el-button @click="handleCancel">取消</el-button>
             <el-button type="primary" @click="handleSubmit" :loading="submitting">
               保存
             </el-button>
+          </div>
+          <div v-else>
+            <el-button @click="handleCancel">返回</el-button>
           </div>
         </div>
       </template>
@@ -16,7 +19,7 @@
       <el-form
         ref="formRef"
         :model="formData"
-        :rules="formRules"
+        :rules="isViewMode ? {} : formRules"
         label-width="120px"
         class="product-form"
       >
@@ -29,7 +32,8 @@
                   <el-input 
                     id="product-name"
                     v-model="formData.name" 
-                    placeholder="请输入商品名称" 
+                    placeholder="请输入商品名称"
+                    :disabled="isViewMode"
                   />
                 </el-form-item>
               </el-col>
@@ -50,6 +54,7 @@
                     clearable
                     style="width: 100%"
                     :filterable="false"
+                    :disabled="isViewMode"
                   />
                 </el-form-item>
               </el-col>
@@ -62,7 +67,8 @@
                   <el-input 
                     id="product-h5-link"
                     v-model="formData.h5Link" 
-                    placeholder="请输入完整的H5页面链接（必须以http://或https://开头）" 
+                    placeholder="请输入完整的H5页面链接（必须以http://或https://开头）"
+                    :disabled="isViewMode"
                   />
                   <div class="form-tip">H5类型商品必须填写H5链接，用于小程序端跳转</div>
                 </el-form-item>
@@ -81,6 +87,7 @@
                     :min="0"
                     placeholder="请输入价格"
                     style="width: 100%"
+                    :disabled="isViewMode"
                   />
                   <span class="form-unit">元</span>
                 </el-form-item>
@@ -95,6 +102,7 @@
                     :min="0"
                     placeholder="请输入原价（可选）"
                     style="width: 100%"
+                    :disabled="isViewMode"
                   />
                   <span class="form-unit">元</span>
                 </el-form-item>
@@ -111,13 +119,14 @@
                     :precision="0"
                     placeholder="请输入库存"
                     style="width: 100%"
+                    :disabled="isViewMode"
                   />
                   <span class="form-unit">件</span>
                 </el-form-item>
               </el-col>
               <el-col :span="isH5Type ? 24 : 12">
                 <el-form-item label="状态" prop="status">
-                  <el-radio-group id="product-status" v-model="formData.status">
+                  <el-radio-group id="product-status" v-model="formData.status" :disabled="isViewMode">
                     <el-radio :value="1">上架</el-radio>
                     <el-radio :value="0">下架</el-radio>
                   </el-radio-group>
@@ -130,6 +139,7 @@
                 id="product-description"
                 v-model="formData.description"
                 placeholder="请输入商品描述"
+                :disabled="isViewMode"
               />
             </el-form-item>
           </el-tab-pane>
@@ -143,6 +153,7 @@
                   v-model="formData.images"
                   :limit="9"
                   :max-size="5"
+                  :disabled="isViewMode"
                   @change="handleImagesChange"
                 />
               </div>
@@ -153,7 +164,7 @@
           <!-- Tab 3: 商品规格 -->
           <el-tab-pane label="商品规格" name="specifications">
             <el-form-item label="规格设置">
-              <el-radio-group id="product-spec-mode" v-model="specMode" style="margin-bottom: 16px">
+              <el-radio-group id="product-spec-mode" v-model="specMode" style="margin-bottom: 16px" :disabled="isViewMode">
                 <el-radio value="form">表单模式</el-radio>
                 <el-radio value="json">JSON模式</el-radio>
               </el-radio-group>
@@ -165,13 +176,16 @@
                     v-model="item.key"
                     placeholder="规格名称"
                     style="width: 200px; margin-right: 8px"
+                    :disabled="isViewMode"
                   />
                   <el-input
                     v-model="item.value"
                     placeholder="规格值"
                     style="width: 200px; margin-right: 8px"
+                    :disabled="isViewMode"
                   />
                   <el-button
+                    v-if="!isViewMode"
                     type="danger"
                     :icon="Delete"
                     circle
@@ -179,6 +193,7 @@
                   />
                 </div>
                 <el-button
+                  v-if="!isViewMode"
                   type="primary"
                   :icon="Plus"
                   @click="addSpecFormItem"
@@ -196,6 +211,7 @@
                   :rows="10"
                   placeholder='请输入JSON格式的规格，例如：{"颜色": "红色", "尺寸": "L", "材质": "纯棉"}'
                   @blur="handleSpecJsonChange"
+                  :disabled="isViewMode"
                 />
                 <div class="form-tip">
                   JSON格式示例：{"颜色": "红色", "尺寸": "L", "材质": "纯棉"}
@@ -228,6 +244,7 @@ const activeTab = ref('basic')
 const submitting = ref(false)
 
 const isEdit = computed(() => !!route.params.id)
+const isViewMode = computed(() => route.query.view === 'true')
 
 // 分类选项
 const categoryOptions = ref([])
@@ -394,6 +411,12 @@ const loadDetail = async () => {
         }))
         specJsonText.value = JSON.stringify(formData.specifications, null, 2)
       }
+      
+      // 清除表单验证状态，避免默认显示错误提示
+      await nextTick()
+      if (formRef.value) {
+        formRef.value.clearValidate()
+      }
     }
   } catch (error) {
     console.error('加载商品详情失败:', error)
@@ -531,17 +554,23 @@ const handleSubmit = async () => {
 
 // 取消
 const handleCancel = () => {
-  ElMessageBox.confirm('确定要取消吗？未保存的数据将丢失。', '提示', {
-    confirmButtonText: '确定',
-    cancelButtonText: '取消',
-    type: 'warning',
-  })
-    .then(() => {
-      router.push('/products')
+  if (isViewMode.value) {
+    // 查看模式下直接返回
+    router.push('/products')
+  } else {
+    // 编辑模式下确认取消
+    ElMessageBox.confirm('确定要取消吗？未保存的数据将丢失。', '提示', {
+      confirmButtonText: '确定',
+      cancelButtonText: '取消',
+      type: 'warning',
     })
-    .catch(() => {
-      // 用户取消
-    })
+      .then(() => {
+        router.push('/products')
+      })
+      .catch(() => {
+        // 用户取消
+      })
+  }
 }
 
 onMounted(() => {

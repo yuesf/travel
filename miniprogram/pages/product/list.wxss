@@ -74,6 +74,22 @@
   -webkit-box-orient: vertical;
 }
 
+/* 商品简介 - 普通文本内容 */
+.description-content {
+  font-size: 26rpx;
+  color: #909399;
+  line-height: 1.6;
+}
+
+/* 商品简介 - 富文本内容 */
+.description-content-rich {
+  font-size: 26rpx;
+  color: #909399;
+  line-height: 1.6;
+  word-wrap: break-word;
+  word-break: break-all;
+}
+
 /* 空状态 */
 .empty-container {
   display: flex;

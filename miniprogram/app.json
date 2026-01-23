@@ -33,6 +33,12 @@
         "list",
         "detail"
       ]
+    },
+    {
+      "root": "pages/map",
+      "pages": [
+        "list"
+      ]
     }
   ],
   "preloadRule": {
@@ -88,6 +94,11 @@
   "networkTimeout": {
     "request": 10000,
     "downloadFile": 10000
+  },
+  "permission": {
+    "scope.userLocation": {
+      "desc": "你的位置信息将用于地图展示和导航功能"
+    }
   },
   "debug": false,
   "style": "v2",

@@ -311,9 +311,9 @@ const handleCreate = () => {
   router.push('/products/create')
 }
 
-// 查看（跳转到编辑页面查看详情）
+// 查看（跳转到编辑页面查看详情，只读模式）
 const handleView = (row) => {
-  router.push(`/products/edit/${row.id}`)
+  router.push(`/products/edit/${row.id}?view=true`)
 }
 
 // 编辑

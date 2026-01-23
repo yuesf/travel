@@ -62,7 +62,8 @@ public class MiniprogramSessionAuthenticationFilter extends OncePerRequestFilter
             requestPath.startsWith("/api/v1/miniprogram/attractions") ||
             requestPath.startsWith("/api/v1/miniprogram/hotels") ||
             requestPath.startsWith("/api/v1/miniprogram/products") ||
-            requestPath.startsWith("/api/v1/miniprogram/articles")) {
+            requestPath.startsWith("/api/v1/miniprogram/articles") ||
+            requestPath.startsWith("/api/v1/miniprogram/maps")) {
             filterChain.doFilter(request, response);
             return;
         }

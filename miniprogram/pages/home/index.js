@@ -500,6 +500,23 @@ Page({
           });
         },
       });
+    } else if (type === 'map') {
+      // 跳转到地图列表页面
+      let url = '/pages/map/list';
+      // 如果指定了具体地图ID，传递参数用于自动定位
+      if (relatedId) {
+        url += `?mapId=${relatedId}`;
+      }
+      wx.navigateTo({
+        url: url,
+        fail: (err) => {
+          console.error('跳转地图列表失败:', err);
+          wx.showToast({
+            title: '跳转失败，请重试',
+            icon: 'none',
+          });
+        },
+      });
     } else {
       // 默认跳转到分类页面
       wx.switchTab({

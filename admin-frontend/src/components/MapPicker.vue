@@ -209,6 +209,8 @@ const initMap = async () => {
       formData.value.longitude = parseFloat(lng.toFixed(7))
       formData.value.latitude = parseFloat(lat.toFixed(7))
       addMarker([lng, lat])
+      // 立即更新值，触发 change 事件
+      updateValue()
       // 延迟调用，确保geocoder已加载
       setTimeout(() => {
         reverseGeocode(lng, lat)
@@ -246,6 +248,9 @@ const addMarker = (position) => {
     const { lng, lat } = e.lnglat
     formData.value.longitude = parseFloat(lng.toFixed(7))
     formData.value.latitude = parseFloat(lat.toFixed(7))
+    // 立即更新值，触发 change 事件
+    updateValue()
+    // 获取地址
     reverseGeocode(lng, lat)
   })
 }
@@ -254,6 +259,8 @@ const addMarker = (position) => {
 const reverseGeocode = (lng, lat) => {
   if (!geocoder || !window.AMap) {
     console.warn('Geocoder插件未加载，无法获取地址')
+    // 即使 geocoder 未加载，也要更新值（地址为空）
+    updateValue()
     return
   }
 
@@ -265,6 +272,11 @@ const reverseGeocode = (lng, lat) => {
                        `${result.regeocode.addressComponent.province || ''}${result.regeocode.addressComponent.city || ''}${result.regeocode.addressComponent.district || ''}${result.regeocode.addressComponent.street || ''}${result.regeocode.addressComponent.streetNumber || ''}` : '') ||
                      result.regeocode.addressComponent?.district || ''
       formData.value.address = address.trim()
+      // 地址获取成功后，再次更新值，触发 change 事件
+      updateValue()
+    } else {
+      // 地址获取失败，也要更新值（地址为空）
+      console.warn('地址获取失败:', status, result)
       updateValue()
     }
   })
@@ -308,9 +320,14 @@ const handleSearch = () => {
 const handleCoordinateChange = () => {
   if (formData.value.longitude && formData.value.latitude) {
     addMarker([formData.value.longitude, formData.value.latitude])
+    // 立即更新值，触发 change 事件
+    updateValue()
+    // 获取地址
     reverseGeocode(formData.value.longitude, formData.value.latitude)
+  } else {
+    // 即使坐标为空，也要更新值
+    updateValue()
   }
-  updateValue()
 }
 
 // 重置

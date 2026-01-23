@@ -119,6 +119,7 @@
             <el-option label="酒店" value="hotel" />
             <el-option label="H5链接" value="h5_link" />
             <el-option label="分类导航" value="category_navigation" />
+            <el-option label="地图" value="map" />
           </el-select>
         </el-form-item>
         <!-- 文章分类两级选择 -->
@@ -170,9 +171,35 @@
             </div>
           </el-form-item>
         </template>
+        <!-- 地图类型选择 -->
+        <el-form-item 
+          v-if="formData.type === 'map'"
+          label="地图"
+          prop="relatedId"
+        >
+          <el-select
+            v-model="formData.relatedId"
+            placeholder="请选择地图（可选，不选择则跳转到地图列表）"
+            filterable
+            clearable
+            style="width: 100%"
+            :loading="optionsLoading"
+            @change="handleRelatedIdChange"
+          >
+            <el-option
+              v-for="item in typeOptions"
+              :key="item.id"
+              :label="item.name"
+              :value="item.id"
+            />
+          </el-select>
+          <div style="color: #909399; font-size: 12px; margin-top: 4px;">
+            不选择具体地图时，点击Icon将跳转到地图列表页面
+          </div>
+        </el-form-item>
         <!-- 其他类型的单级选择 -->
         <el-form-item 
-          v-else-if="formData.type && formData.type !== 'h5_link' && formData.type !== 'category_navigation'"
+          v-else-if="formData.type && formData.type !== 'h5_link' && formData.type !== 'category_navigation' && formData.type !== 'map'"
           :label="getTypeLabel(formData.type)"
           prop="relatedId"
         >
@@ -254,6 +281,7 @@ import { getCategoryList } from '@/api/categories'
 import { getArticleCategoryList, getArticleList } from '@/api/articles'
 import { getAttractionList } from '@/api/attractions'
 import { getProductList } from '@/api/products'
+import { getMapList } from '@/api/maps'
 
 const props = defineProps({
   modelValue: {
@@ -316,6 +344,11 @@ const formRules = {
         }
         // 分类导航类型时，relatedId 可以为空（直接跳转到分类页面）
         if (formData.type === 'category_navigation') {
+          callback()
+          return
+        }
+        // 地图类型时，relatedId 可以为空（跳转到地图列表）
+        if (formData.type === 'map') {
           callback()
           return
         }
@@ -414,6 +447,8 @@ const getIconTypeLabel = (row) => {
     attraction: '景点',
     hotel: '酒店',
     h5_link: 'H5链接',
+    category_navigation: '分类导航',
+    map: '地图',
   }
   return typeMap[type] || '未知'
 }
@@ -430,6 +465,7 @@ const getIconTypeTag = (row) => {
     hotel: 'danger',
     h5_link: 'warning',
     category_navigation: 'info',
+    map: 'success',
   }
   return typeMap[type] || ''
 }
@@ -457,6 +493,7 @@ const getTypeLabel = (type) => {
     hotel: '酒店',
     h5_link: 'H5链接',
     category_navigation: '分类导航',
+    map: '地图',
   }
   return typeMap[type] || ''
 }
@@ -507,6 +544,15 @@ const loadTypeOptions = async (type) => {
       // 酒店功能待实现
       typeOptions.value = []
       ElMessage.warning('酒店功能待实现')
+    } else if (type === 'map') {
+      // 地图类型，加载地图列表
+      const res = await getMapList({ status: 1 })
+      if (res.data) {
+        typeOptions.value = res.data.map(item => ({
+          id: item.id,
+          name: item.name,
+        }))
+      }
     }
   } catch (error) {
     console.error('加载选项失败:', error)
@@ -669,7 +715,10 @@ const handleRelatedIdChange = (newId) => {
     }
   } else {
     // 清空选择时，清空名称和图标
-    formData.name = ''
+    // 地图类型允许不选择具体地图，所以不清空名称
+    if (formData.type !== 'map') {
+      formData.name = ''
+    }
     if (formData.type === 'product_category') {
       formData.icon = ''
     }
@@ -879,6 +928,16 @@ const handleSubmit = async () => {
     } else if (formData.type === 'category_navigation') {
       // 分类导航类型，relatedName 可以为空
       relatedName = formData.name
+    } else if (formData.type === 'map') {
+      // 地图类型
+      if (formData.relatedId) {
+        // 如果选择了具体地图，使用地图名称
+        const mapOption = typeOptions.value.find(item => item.id === formData.relatedId)
+        relatedName = mapOption ? mapOption.name : formData.name
+      } else {
+        // 未选择具体地图，使用图标名称
+        relatedName = formData.name
+      }
     } else {
       // 其他类型
       const relatedOption = typeOptions.value.find(item => item.id === formData.relatedId)

@@ -289,6 +289,16 @@ const routes = [
           requiresAuth: true,
         },
       },
+      // 地图管理
+      {
+        path: 'maps',
+        name: 'Maps',
+        component: () => import('@/views/maps/MapList.vue'),
+        meta: {
+          title: '地图管理',
+          requiresAuth: true,
+        },
+      },
       // 系统管理
       {
         path: 'system/payment-config',

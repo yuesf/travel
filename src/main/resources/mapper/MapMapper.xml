@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.travel.mapper.MapMapper">
+
+    <resultMap id="BaseResultMap" type="com.travel.entity.MapLocation">
+        <id column="id" property="id"/>
+        <result column="name" property="name"/>
+        <result column="longitude" property="longitude"/>
+        <result column="latitude" property="latitude"/>
+        <result column="address" property="address"/>
+        <result column="announcement" property="announcement"/>
+        <result column="status" property="status"/>
+        <result column="create_time" property="createTime"/>
+        <result column="update_time" property="updateTime"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id, name, longitude, latitude, address, announcement, status, create_time, update_time
+    </sql>
+
+    <!-- 根据ID查询 -->
+    <select id="selectById" resultMap="BaseResultMap">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM map
+        WHERE id = #{id}
+    </select>
+
+    <!-- 查询地图列表（按状态筛选） -->
+    <select id="selectList" resultMap="BaseResultMap">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM map
+        <where>
+            <if test="status != null">
+                AND status = #{status}
+            </if>
+        </where>
+        ORDER BY create_time DESC
+    </select>
+
+    <!-- 插入地图 -->
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO map (
+            name, longitude, latitude, address, announcement, status
+        ) VALUES (
+            #{name}, #{longitude}, #{latitude}, #{address}, #{announcement}, #{status}
+        )
+    </insert>
+
+    <!-- 更新地图信息 -->
+    <update id="updateById">
+        UPDATE map
+        <set>
+            <if test="name != null">name = #{name},</if>
+            <if test="longitude != null">longitude = #{longitude},</if>
+            <if test="latitude != null">latitude = #{latitude},</if>
+            <if test="address != null">address = #{address},</if>
+            <if test="announcement != null">announcement = #{announcement},</if>
+            <if test="status != null">status = #{status},</if>
+        </set>
+        WHERE id = #{id}
+    </update>
+
+    <!-- 删除地图（物理删除） -->
+    <delete id="deleteById">
+        DELETE FROM map
+        WHERE id = #{id}
+    </delete>
+
+</mapper>

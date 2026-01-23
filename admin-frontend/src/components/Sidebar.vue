@@ -59,6 +59,14 @@
         <el-menu-item index="/hotels/create">创建酒店</el-menu-item>
       </el-sub-menu>
 
+      <el-sub-menu index="maps">
+        <template #title>
+          <el-icon><MapLocation /></el-icon>
+          <span>地图管理</span>
+        </template>
+        <el-menu-item index="/maps">地图列表</el-menu-item>
+      </el-sub-menu>
+
       <!-- 优惠券管理 - 待实现 -->
       <!-- <el-menu-item index="/coupons">
         <el-icon><Ticket /></el-icon>
@@ -107,6 +115,7 @@ import {
   User,
   Grid,
   Setting,
+  MapLocation,
 } from '@element-plus/icons-vue'
 
 const route = useRoute()
@@ -171,6 +180,9 @@ const activeMenu = computed(() => {
       return '/articles'
     }
     return '/articles'
+  }
+  if (path.startsWith('/maps')) {
+    return '/maps'
   }
   if (path.startsWith('/system')) {
     return path
