@@ -670,6 +670,24 @@ Page({
   },
 
   /**
+   * 跳转到首页
+   */
+  onGoHome() {
+    wx.switchTab({
+      url: '/pages/home/index',
+    });
+  },
+
+  /**
+   * 跳转到购物车
+   */
+  onGoCart() {
+    wx.switchTab({
+      url: '/pages/cart/index',
+    });
+  },
+
+  /**
    * 分享功能
    */
   onShareAppMessage() {

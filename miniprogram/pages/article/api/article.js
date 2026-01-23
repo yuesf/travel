@@ -3,7 +3,7 @@
  * 文章的查询、点赞、收藏等操作
  */
 
-const request = require('../utils/request');
+const request = require('../../../utils/request');
 
 /**
  * 获取文章列表（支持分类、标签筛选，排序，分页）

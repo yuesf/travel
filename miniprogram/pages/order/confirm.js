@@ -4,7 +4,7 @@
 
 const orderApi = require('../../api/order');
 const cartApi = require('../../api/cart');
-const couponApi = require('../../api/coupon');
+const couponApi = require('../api/coupon');
 const addressApi = require('../../api/address');
 const auth = require('../../utils/auth');
 

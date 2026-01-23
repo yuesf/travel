@@ -2,7 +2,7 @@
  * 文章详情页
  */
 
-const articleApi = require('../../api/article');
+const articleApi = require('../api/article');
 const auth = require('../../utils/auth');
 
 Page({

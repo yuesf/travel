@@ -3,7 +3,7 @@
  * 优惠券的查询、使用等操作
  */
 
-const request = require('../utils/request');
+const request = require('../../../utils/request');
 
 /**
  * 获取用户优惠券列表
