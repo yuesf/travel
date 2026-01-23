@@ -8,34 +8,35 @@
         <div class="map-info">
           <el-form :model="formData" label-width="80px">
             <el-form-item label="经度">
-              <el-input-number
-                v-model="formData.longitude"
-                :precision="7"
-                :step="0.0000001"
-                :min="-180"
-                :max="180"
-                placeholder="经度"
-                style="width: 100%"
-                @change="handleCoordinateChange"
+              <el-input
+                v-model="longitudeInput"
+                placeholder="请输入经度（-180 到 180）"
+                clearable
+                @blur="handleLongitudeBlur"
+                @keyup.enter="handleLongitudeBlur"
               />
+              <div style="font-size: 12px; color: #909399; margin-top: 4px;">
+                示例：116.397428
+              </div>
             </el-form-item>
             <el-form-item label="纬度">
-              <el-input-number
-                v-model="formData.latitude"
-                :precision="7"
-                :step="0.0000001"
-                :min="-90"
-                :max="90"
-                placeholder="纬度"
-                style="width: 100%"
-                @change="handleCoordinateChange"
+              <el-input
+                v-model="latitudeInput"
+                placeholder="请输入纬度（-90 到 90）"
+                clearable
+                @blur="handleLatitudeBlur"
+                @keyup.enter="handleLatitudeBlur"
               />
+              <div style="font-size: 12px; color: #909399; margin-top: 4px;">
+                示例：39.90923
+              </div>
             </el-form-item>
             <el-form-item label="搜索地址">
               <el-input
                 v-model="searchAddress"
-                placeholder="请输入地址进行搜索"
+                placeholder="请输入地址进行搜索（支持回车搜索）"
                 clearable
+                @keyup.enter="handleSearch"
               />
             </el-form-item>
             <el-form-item label="详细地址">
@@ -43,8 +44,8 @@
                 v-model="formData.address"
                 type="textarea"
                 :rows="3"
-                placeholder="详细地址"
-                readonly
+                placeholder="详细地址（可手动编辑）"
+                @blur="handleAddressChange"
               />
             </el-form-item>
             <el-form-item>
@@ -86,6 +87,8 @@ const emit = defineEmits(['update:modelValue', 'change'])
 
 const mapContainer = ref(null)
 const searchAddress = ref('')
+const longitudeInput = ref('')
+const latitudeInput = ref('')
 const formData = ref({
   longitude: null,
   latitude: null,
@@ -196,9 +199,17 @@ const initMap = async () => {
           city: '全国',
         })
         
+        console.log('Geocoder插件加载完成')
+        
         // 创建标记
         if (props.modelValue?.longitude && props.modelValue?.latitude) {
           addMarker([props.modelValue.longitude, props.modelValue.latitude])
+          // 如果有坐标但没有地址，尝试获取地址
+          if (!props.modelValue?.address) {
+            setTimeout(() => {
+              reverseGeocode(props.modelValue.longitude, props.modelValue.latitude)
+            }, 200)
+          }
         }
       })
     })
@@ -206,12 +217,24 @@ const initMap = async () => {
     // 地图点击事件
     map.on('click', (e) => {
       const { lng, lat } = e.lnglat
-      formData.value.longitude = parseFloat(lng.toFixed(7))
-      formData.value.latitude = parseFloat(lat.toFixed(7))
+      const longitude = parseFloat(lng.toFixed(7))
+      const latitude = parseFloat(lat.toFixed(7))
+      
+      // 更新数据
+      formData.value.longitude = longitude
+      formData.value.latitude = latitude
+      
+      // 同步更新输入框
+      longitudeInput.value = longitude.toString()
+      latitudeInput.value = latitude.toString()
+      
+      // 添加标记
       addMarker([lng, lat])
+      
       // 立即更新值，触发 change 事件
       updateValue()
-      // 延迟调用，确保geocoder已加载
+      
+      // 延迟调用，确保geocoder已加载，获取详细地址
       setTimeout(() => {
         reverseGeocode(lng, lat)
       }, 100)
@@ -246,10 +269,20 @@ const addMarker = (position) => {
   // 标记拖拽事件
   marker.on('dragend', (e) => {
     const { lng, lat } = e.lnglat
-    formData.value.longitude = parseFloat(lng.toFixed(7))
-    formData.value.latitude = parseFloat(lat.toFixed(7))
+    const longitude = parseFloat(lng.toFixed(7))
+    const latitude = parseFloat(lat.toFixed(7))
+    
+    // 更新数据
+    formData.value.longitude = longitude
+    formData.value.latitude = latitude
+    
+    // 同步更新输入框
+    longitudeInput.value = longitude.toString()
+    latitudeInput.value = latitude.toString()
+    
     // 立即更新值，触发 change 事件
     updateValue()
+    
     // 获取地址
     reverseGeocode(lng, lat)
   })
@@ -274,9 +307,11 @@ const reverseGeocode = (lng, lat) => {
       formData.value.address = address.trim()
       // 地址获取成功后，再次更新值，触发 change 事件
       updateValue()
+      console.log('地址获取成功:', address)
     } else {
       // 地址获取失败，也要更新值（地址为空）
       console.warn('地址获取失败:', status, result)
+      formData.value.address = ''
       updateValue()
     }
   })
@@ -292,14 +327,32 @@ const geocode = (address) => {
   }
 
   geocoder.getLocation(address, (status, result) => {
-    if (status === 'complete' && result.geocodes.length > 0) {
+    if (status === 'complete' && result.geocodes && result.geocodes.length > 0) {
       const location = result.geocodes[0].location
-      formData.value.longitude = parseFloat(location.lng.toFixed(7))
-      formData.value.latitude = parseFloat(location.lat.toFixed(7))
-      addMarker([location.lng, location.lat])
+      const longitude = parseFloat(location.lng.toFixed(7))
+      const latitude = parseFloat(location.lat.toFixed(7))
+      
+      // 更新数据
+      formData.value.longitude = longitude
+      formData.value.latitude = latitude
+      
+      // 同步更新输入框
+      longitudeInput.value = longitude.toString()
+      latitudeInput.value = latitude.toString()
+      
+      // 优先使用格式化地址，如果没有则使用搜索的地址
       formData.value.address = result.geocodes[0].formattedAddress || address
+      
+      // 添加标记并定位地图
+      addMarker([location.lng, location.lat])
+      
+      // 清空搜索框
+      searchAddress.value = ''
+      
+      // 更新值，触发 change 事件
       updateValue()
-      ElMessage.success('搜索成功')
+      
+      ElMessage.success('搜索成功，已定位到该地址')
     } else {
       ElMessage.error('未找到该地址，请尝试更详细的地址信息')
     }
@@ -308,31 +361,130 @@ const geocode = (address) => {
 
 // 搜索地址
 const handleSearch = () => {
-  const address = searchAddress.value || formData.value.address
+  const address = searchAddress.value?.trim()
   if (!address) {
     ElMessage.warning('请输入地址')
     return
   }
+  
+  // 检查 geocoder 是否已加载
+  if (!geocoder || !window.AMap) {
+    ElMessage.warning('地图服务正在加载中，请稍候再试')
+    // 如果地图还在加载，等待一下再重试
+    if (map) {
+      setTimeout(() => {
+        handleSearch()
+      }, 500)
+    }
+    return
+  }
+  
   geocode(address)
 }
 
-// 坐标变化
-const handleCoordinateChange = () => {
-  if (formData.value.longitude && formData.value.latitude) {
+// 验证并解析经纬度
+const parseCoordinate = (value, type) => {
+  if (!value || value.trim() === '') {
+    return null
+  }
+  
+  const num = parseFloat(value.trim())
+  if (isNaN(num)) {
+    return null
+  }
+  
+  if (type === 'longitude') {
+    if (num < -180 || num > 180) {
+      ElMessage.warning('经度范围应在 -180 到 180 之间')
+      return null
+    }
+  } else if (type === 'latitude') {
+    if (num < -90 || num > 90) {
+      ElMessage.warning('纬度范围应在 -90 到 90 之间')
+      return null
+    }
+  }
+  
+  return parseFloat(num.toFixed(7))
+}
+
+// 经度输入失焦或回车
+const handleLongitudeBlur = () => {
+  const longitude = parseCoordinate(longitudeInput.value, 'longitude')
+  if (longitude !== null) {
+    formData.value.longitude = longitude
+    longitudeInput.value = longitude.toString()
+    // 如果纬度也有值，立即定位
+    if (formData.value.latitude !== null) {
+      locateByCoordinates()
+    } else {
+      updateValue()
+    }
+  } else if (longitudeInput.value.trim() !== '') {
+    ElMessage.warning('请输入有效的经度数值')
+    // 恢复原来的值
+    longitudeInput.value = formData.value.longitude !== null ? formData.value.longitude.toString() : ''
+  } else {
+    formData.value.longitude = null
+    updateValue()
+  }
+}
+
+// 纬度输入失焦或回车
+const handleLatitudeBlur = () => {
+  const latitude = parseCoordinate(latitudeInput.value, 'latitude')
+  if (latitude !== null) {
+    formData.value.latitude = latitude
+    latitudeInput.value = latitude.toString()
+    // 如果经度也有值，立即定位
+    if (formData.value.longitude !== null) {
+      locateByCoordinates()
+    } else {
+      updateValue()
+    }
+  } else if (latitudeInput.value.trim() !== '') {
+    ElMessage.warning('请输入有效的纬度数值')
+    // 恢复原来的值
+    latitudeInput.value = formData.value.latitude !== null ? formData.value.latitude.toString() : ''
+  } else {
+    formData.value.latitude = null
+    updateValue()
+  }
+}
+
+// 根据经纬度定位地图
+const locateByCoordinates = () => {
+  if (formData.value.longitude === null || formData.value.latitude === null) {
+    return
+  }
+  
+  // 如果地图已加载，添加标记并获取地址
+  if (map) {
     addMarker([formData.value.longitude, formData.value.latitude])
     // 立即更新值，触发 change 事件
     updateValue()
-    // 获取地址
-    reverseGeocode(formData.value.longitude, formData.value.latitude)
+    // 延迟获取地址，确保 geocoder 已加载
+    setTimeout(() => {
+      reverseGeocode(formData.value.longitude, formData.value.latitude)
+    }, 100)
+    ElMessage.success('已定位到指定坐标')
   } else {
-    // 即使坐标为空，也要更新值
+    // 地图未加载，先更新值，等待地图加载完成后再定位
     updateValue()
   }
+}
+
+// 地址手动编辑
+const handleAddressChange = () => {
+  // 用户手动编辑地址后，更新值
+  updateValue()
 }
 
 // 重置
 const handleReset = () => {
   searchAddress.value = ''
+  longitudeInput.value = ''
+  latitudeInput.value = ''
   formData.value = {
     longitude: null,
     latitude: null,
@@ -341,6 +493,11 @@ const handleReset = () => {
   if (marker) {
     map?.remove(marker)
     marker = null
+  }
+  if (map) {
+    // 重置地图中心到默认位置
+    map.setCenter([116.397428, 39.90923])
+    map.setZoom(13)
   }
   updateValue()
 }
@@ -364,14 +521,39 @@ watch(
   () => props.modelValue,
   (newVal) => {
     if (newVal) {
-      formData.value = {
-        longitude: newVal.longitude || null,
-        latitude: newVal.latitude || null,
-        address: newVal.address || '',
+      const newLongitude = newVal.longitude || null
+      const newLatitude = newVal.latitude || null
+      const newAddress = newVal.address || ''
+      
+      // 只有当值真正改变时才更新
+      if (formData.value.longitude !== newLongitude || 
+          formData.value.latitude !== newLatitude || 
+          formData.value.address !== newAddress) {
+        formData.value = {
+          longitude: newLongitude,
+          latitude: newLatitude,
+          address: newAddress,
+        }
+        
+        // 同步输入框的值
+        longitudeInput.value = newLongitude !== null ? newLongitude.toString() : ''
+        latitudeInput.value = newLatitude !== null ? newLatitude.toString() : ''
+        
+        // 如果地图已加载且有坐标，更新地图位置
+        if (newLongitude && newLatitude && map) {
+          addMarker([newLongitude, newLatitude])
+          // 如果有坐标但没有地址，尝试获取地址
+          if (!newAddress && geocoder) {
+            setTimeout(() => {
+              reverseGeocode(newLongitude, newLatitude)
+            }, 200)
+          }
+        }
       }
-      if (newVal.longitude && newVal.latitude && map) {
-        addMarker([newVal.longitude, newVal.latitude])
-      }
+    } else {
+      // 如果外部值为空，清空输入框
+      longitudeInput.value = ''
+      latitudeInput.value = ''
     }
   },
   { immediate: true, deep: true }
