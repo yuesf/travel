@@ -33,14 +33,29 @@
       <el-form-item>
         <el-button type="primary" @click="handleSearch">搜索</el-button>
         <el-button @click="handleReset">重置</el-button>
+        <el-button type="success" :icon="Upload" @click="handleUploadClick" :loading="uploading">
+          上传
+        </el-button>
       </el-form-item>
     </el-form>
+
+    <!-- 隐藏的上传组件 -->
+    <el-upload
+      ref="uploadRef"
+      :auto-upload="false"
+      :show-file-list="false"
+      :on-change="handleFileChange"
+      :before-upload="beforeUpload"
+      style="display: none;"
+    >
+    </el-upload>
 
     <!-- 文件网格 -->
     <div v-loading="loading" class="file-grid-container">
       <div
         v-for="file in fileList"
         :key="file.id"
+        :data-file-id="file.id"
         class="file-item"
         :class="{ 'selected': isSelected(file) }"
         @click="handleSelectFile(file)"
@@ -117,10 +132,10 @@
 </template>
 
 <script setup>
-import { ref, reactive, watch } from 'vue'
+import { ref, reactive, watch, nextTick } from 'vue'
 import { ElMessage } from 'element-plus'
-import { VideoPlay, Document, Check, Picture } from '@element-plus/icons-vue'
-import { getFileList, getSignedUrl } from '@/api/file'
+import { VideoPlay, Document, Check, Picture, Upload } from '@element-plus/icons-vue'
+import { getFileList, getSignedUrl, uploadImage, uploadVideo } from '@/api/file'
 
 const props = defineProps({
   modelValue: {
@@ -145,8 +160,10 @@ const emit = defineEmits(['update:modelValue', 'select'])
 
 const visible = ref(false)
 const loading = ref(false)
+const uploading = ref(false)
 const fileList = ref([])
 const selectedFiles = ref([])
+const uploadRef = ref(null)
 
 const searchForm = reactive({
   fileType: 'all',
@@ -317,6 +334,160 @@ const handleImageError = async (file, event) => {
     }
   }
 }
+
+// 触发上传按钮点击
+const handleUploadClick = () => {
+  uploadRef.value?.$el?.querySelector('input[type="file"]')?.click()
+}
+
+// 文件选择变化（el-upload 的 on-change 事件）
+const handleFileChange = (file) => {
+  // 验证通过后开始上传
+  if (beforeUpload(file.raw || file)) {
+    handleUpload(file.raw || file)
+  }
+}
+
+// 上传前验证
+const beforeUpload = (file) => {
+  if (!file) {
+    return false
+  }
+
+  const isImage = file.type.startsWith('image/')
+  const isVideo = file.type.startsWith('video/')
+  const currentFilterType = searchForm.fileType
+
+  // 验证文件类型
+  if (!isImage && !isVideo) {
+    ElMessage.error('只能上传图片或视频文件')
+    return false
+  }
+
+  // 根据当前筛选类型验证
+  if (currentFilterType === 'image' && !isImage) {
+    ElMessage.warning('当前筛选类型为图片，您上传的是视频，是否继续？')
+    // 允许继续，但给出提示
+  } else if (currentFilterType === 'video' && !isVideo) {
+    ElMessage.warning('当前筛选类型为视频，您上传的是图片，是否继续？')
+    // 允许继续，但给出提示
+  }
+
+  // 验证文件大小
+  const maxSize = isImage ? 5 : 50 // 图片 5MB，视频 50MB
+  const fileSizeMB = file.size / 1024 / 1024
+  if (fileSizeMB > maxSize) {
+    ElMessage.error(`${isImage ? '图片' : '视频'}大小不能超过 ${maxSize}MB`)
+    return false
+  }
+
+  return true
+}
+
+// 执行上传
+const handleUpload = async (file) => {
+  if (!file) {
+    return
+  }
+
+  uploading.value = true
+  try {
+    const isImage = file.type.startsWith('image/')
+    let response
+
+    if (isImage) {
+      response = await uploadImage(file, 'common')
+    } else {
+      response = await uploadVideo(file, 'common')
+    }
+
+    if (response && response.code === 200) {
+      ElMessage.success('上传成功')
+      // 上传成功后刷新列表
+      await loadData()
+      // 查找并选中新上传的文件
+      await selectUploadedFile(response.data)
+    } else {
+      ElMessage.error(response?.message || '上传失败')
+    }
+  } catch (error) {
+    console.error('上传失败:', error)
+    ElMessage.error(error?.message || '上传失败，请重试')
+  } finally {
+    uploading.value = false
+    // 清空上传组件的文件列表
+    if (uploadRef.value) {
+      uploadRef.value.clearFiles()
+    }
+  }
+}
+
+// 查找并选中新上传的文件
+const selectUploadedFile = async (fileUrl) => {
+  // 从 URL 中提取路径（去掉签名参数和域名）
+  const urlPath = fileUrl.split('?')[0] // 去掉签名参数
+  const urlParts = urlPath.split('/')
+  const fileName = urlParts[urlParts.length - 1] // 文件名
+  
+  // 等待一小段时间确保后端已保存文件记录
+  await new Promise(resolve => setTimeout(resolve, 800))
+  
+  // 先刷新当前页
+  await loadData()
+  
+  // 在当前列表中查找
+  let uploadedFile = fileList.value.find(f => {
+    const fileUrlPath = f.fileUrl?.split('?')[0] || ''
+    return fileUrlPath.includes(fileName) || 
+           fileUrlPath === urlPath ||
+           f.originalName === fileName
+  })
+  
+  // 如果当前页没找到，尝试搜索第一页（新上传的文件通常在最新）
+  if (!uploadedFile) {
+    const firstPageParams = {
+      ...searchForm,
+      page: 1,
+      pageSize: pagination.pageSize,
+    }
+    try {
+      const res = await getFileList(firstPageParams)
+      const firstPageFiles = res.data.records || []
+      uploadedFile = firstPageFiles.find(f => {
+        const fileUrlPath = f.fileUrl?.split('?')[0] || ''
+        return fileUrlPath.includes(fileName) || 
+               fileUrlPath === urlPath ||
+               f.originalName === fileName
+      })
+      
+      // 如果找到了，跳转到第一页
+      if (uploadedFile) {
+        pagination.page = 1
+        await loadData()
+        uploadedFile = fileList.value.find(f => f.id === uploadedFile.id)
+      }
+    } catch (error) {
+      console.error('查找文件失败:', error)
+    }
+  }
+  
+  // 选中文件
+  if (uploadedFile) {
+    if (props.multiple) {
+      if (selectedFiles.value.length < props.maxSelect) {
+        selectedFiles.value.push(uploadedFile)
+      }
+    } else {
+      selectedFiles.value = [uploadedFile]
+    }
+    // 滚动到选中的文件
+    await nextTick()
+    const fileElement = document.querySelector(`[data-file-id="${uploadedFile.id}"]`)
+    if (fileElement) {
+      fileElement.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    }
+  }
+}
 </script>
 
 <style scoped>
@@ -455,5 +626,10 @@ const handleImageError = async (file, event) => {
   display: flex;
   align-items: center;
   width: 100%;
+}
+
+/* 上传按钮样式 */
+:deep(.el-form-item:last-child .el-button--success) {
+  margin-left: 8px;
 }
 </style>

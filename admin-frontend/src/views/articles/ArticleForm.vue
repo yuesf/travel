@@ -234,6 +234,7 @@ import {
   getArticleImages,
   saveArticleImages,
 } from '@/api/articles'
+import { getSignedUrlByUrl } from '@/api/file'
 
 const router = useRouter()
 const route = useRoute()
@@ -324,7 +325,8 @@ const loadDetail = async () => {
       formData.author = data.author || ''
       formData.status = data.status !== undefined ? data.status : 0
       formData.publishTime = data.publishTime || null
-      formData.content = data.content || ''
+      // 处理文章内容中的图片URL
+      formData.content = await processContentImages(data.content || '')
       // 加载文章的标签
       if (data.tagIds && Array.isArray(data.tagIds)) {
         formData.tagIds = data.tagIds
@@ -411,6 +413,70 @@ const handleFileSelect = (files) => {
   }
   fileSelectorVisible.value = false
   fileSelectorMode.value = 'cover' // 重置模式
+}
+
+// 处理文章内容中的图片URL，为OSS URL获取签名URL
+// 注意：无论URL是否已签名，都尝试获取新的签名URL，确保图片能正常显示
+const processContentImages = async (html) => {
+  if (!html || typeof html !== 'string') {
+    return html
+  }
+  
+  // 匹配所有img标签的src属性
+  const imgRegex = /<img([^>]+)src\s*=\s*["']([^"']+)["']([^>]*)>/gi
+  const matches = [...html.matchAll(imgRegex)]
+  
+  if (matches.length === 0) {
+    return html
+  }
+  
+  // 处理每个图片URL
+  let processedHtml = html
+  for (const match of matches) {
+    const fullMatch = match[0]
+    const beforeSrc = match[1]
+    const imageUrl = match[2]
+    const afterSrc = match[3]
+    
+    // 如果是OSS URL，无论是否已签名，都尝试获取新的签名URL
+    // 这样可以确保即使签名URL过期，也能获取新的签名URL
+    if (isOssUrl(imageUrl)) {
+      try {
+        // 如果是签名URL，先提取原始URL（去掉查询参数）
+        const baseUrl = imageUrl.includes('?') 
+          ? imageUrl.substring(0, imageUrl.indexOf('?'))
+          : imageUrl
+        
+        const response = await getSignedUrlByUrl(baseUrl)
+        if (response && response.code === 200 && response.data) {
+          // 替换为新的签名URL
+          const signedUrl = response.data
+          const newImgTag = `<img${beforeSrc}src="${signedUrl}"${afterSrc}>`
+          processedHtml = processedHtml.replace(fullMatch, newImgTag)
+        }
+      } catch (error) {
+        console.error('获取图片签名URL失败:', error)
+        // 如果获取失败，保持原URL不变
+      }
+    }
+  }
+  
+  return processedHtml
+}
+
+// 判断是否为OSS URL
+const isOssUrl = (url) => {
+  if (!url || typeof url !== 'string') {
+    return false
+  }
+  const ossPatterns = [
+    /oss-.*\.aliyuncs\.com/i,
+    /\.oss\./i,
+    /\.qcloud\.com/i,
+    /\.amazonaws\.com/i,
+    /\.cos\./i
+  ]
+  return ossPatterns.some(pattern => pattern.test(url))
 }
 
 // 内容变化

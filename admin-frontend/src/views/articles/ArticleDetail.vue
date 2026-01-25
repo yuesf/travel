@@ -199,6 +199,23 @@ const loadDetail = async () => {
       const data = res.data
       console.log('文章详情数据:', data)
       console.log('封面图URL:', data.coverImage)
+      console.log('文章内容（前200字符）:', data.content ? data.content.substring(0, 200) : '')
+      
+      // 检查后端返回的内容中是否包含未签名的OSS URL
+      if (data.content) {
+        const ossUrlPattern = /https:\/\/[^"'\s]+\.(oss|aliyuncs|qcloud|amazonaws|cos)[^"'\s]*/gi
+        const matches = data.content.match(ossUrlPattern)
+        if (matches) {
+          matches.forEach(url => {
+            // 检查是否有查询参数（签名URL会有查询参数）
+            if (!url.includes('?')) {
+              console.warn('⚠️ 后端返回了未签名的OSS URL:', url)
+            } else {
+              console.log('✓ 后端返回了已签名的OSS URL:', url.substring(0, 100) + '...')
+            }
+          })
+        }
+      }
       
       articleData.id = data.id
       articleData.title = data.title || ''
@@ -228,6 +245,8 @@ const loadDetail = async () => {
       }
       
       // 等待DOM更新后，为文章内容中的图片添加预览功能
+      // 注意：后端应该已经处理了OSS URL签名，前端不需要再次处理
+      // 只在图片加载失败时才尝试获取签名URL
       nextTick(() => {
         setupImagePreview()
       })
@@ -250,27 +269,34 @@ const handleCoverImageError = async (e) => {
     return
   }
   
-  // 如果当前URL是签名URL，尝试使用原始URL获取新的签名URL
+  // 标记已重试，避免重复请求
+  coverImageRetried.value = true
+  
+  // 如果是OSS URL，尝试获取新的签名URL
+  // 无论当前URL是否已签名，只要加载失败就尝试重新获取
   const originalUrl = coverImageOriginalUrl.value || currentUrl
-  if (originalUrl && isOssUrl(originalUrl) && !currentUrl.includes('?')) {
-    // 当前URL可能是未签名的OSS URL，尝试获取签名URL
-    coverImageRetried.value = true
+  if (originalUrl && isOssUrl(originalUrl)) {
     try {
-      console.log('尝试获取签名URL:', originalUrl)
-      const response = await getSignedUrlByUrl(originalUrl)
+      // 如果是签名URL，先提取原始URL（去掉查询参数）
+      const baseUrl = originalUrl.includes('?') 
+        ? originalUrl.substring(0, originalUrl.indexOf('?'))
+        : originalUrl
+      
+      console.log('封面图加载失败，尝试获取新的签名URL:', baseUrl)
+      const response = await getSignedUrlByUrl(baseUrl)
       if (response && response.code === 200 && response.data) {
-        console.log('获取到签名URL:', response.data)
+        console.log('获取到新的签名URL:', response.data)
         articleData.coverImage = response.data
-        // 不显示提示，让图片自然加载
+        // 更新原始URL为新的签名URL，以便下次重试时使用
+        coverImageOriginalUrl.value = response.data
+        // 重置重试标志，允许再次重试（如果新URL也失败）
+        coverImageRetried.value = false
         return
       }
     } catch (error) {
       console.error('获取签名URL失败:', error)
     }
   }
-  
-  // 标记已重试，避免再次触发
-  coverImageRetried.value = true
 }
 
 // 判断是否为OSS URL
@@ -344,6 +370,7 @@ const getImageIndexInAll = (type, index) => {
 }
 
 // 为文章内容中的图片添加预览功能和错误处理
+// 注意：后端应该已经处理了OSS URL签名，前端只在图片加载失败时才尝试获取签名URL
 const setupImagePreview = () => {
   if (!contentRef.value) {
     return
@@ -389,38 +416,49 @@ const setupImagePreview = () => {
       showImagePreview(allImages, globalIndex >= 0 ? globalIndex : getImageIndexInAll('content', index))
     })
     
-    // 添加错误处理
+    // 添加错误处理（只在图片加载失败时才尝试获取签名URL）
     img.addEventListener('error', async (e) => {
       const currentSrc = img.src
-      const originalUrl = img.getAttribute('data-original-src') || currentSrc
+      // 从HTML中获取原始src（后端返回的URL），或使用保存的原始URL
+      const originalSrc = img.getAttribute('data-original-src') || img.getAttribute('src') || currentSrc
       
       console.error('文章内容图片加载失败:', currentSrc)
+      console.log('原始URL（后端返回）:', originalSrc)
       
-      // 如果已经重试过，不再重试
-      if (img.getAttribute('data-retried') === 'true') {
+      // 检查重试次数，最多重试2次
+      const retryCount = parseInt(img.getAttribute('data-retry-count') || '0')
+      if (retryCount >= 2) {
+        console.warn('图片重试次数已达上限，停止重试')
         return
       }
       
-      // 如果是OSS URL且未签名，尝试获取签名URL
-      if (originalUrl && isOssUrl(originalUrl) && !currentSrc.includes('?')) {
-        img.setAttribute('data-retried', 'true')
+      // 增加重试次数
+      img.setAttribute('data-retry-count', (retryCount + 1).toString())
+      
+      // 如果是OSS URL，尝试获取新的签名URL
+      // 无论当前URL是否已签名，只要加载失败就尝试重新获取
+      if (originalSrc && isOssUrl(originalSrc)) {
         try {
-          console.log('尝试为文章内容图片获取签名URL:', originalUrl)
-          const response = await getSignedUrlByUrl(originalUrl)
+          // 如果是签名URL，先提取原始URL（去掉查询参数）
+          const baseUrl = originalSrc.includes('?') 
+            ? originalSrc.substring(0, originalSrc.indexOf('?'))
+            : originalSrc
+          
+          console.log(`尝试为文章内容图片获取签名URL (重试 ${retryCount + 1}/2):`, baseUrl)
+          const response = await getSignedUrlByUrl(baseUrl)
           if (response && response.code === 200 && response.data) {
-            console.log('获取到签名URL:', response.data)
+            console.log('获取到新的签名URL:', response.data)
             img.src = response.data
-            // 更新data-original-src为新的签名URL
+            // 保存新的签名URL作为原始URL，以便下次重试时使用
             img.setAttribute('data-original-src', response.data)
+            // 重置重试计数，允许再次重试（如果新URL也失败）
+            img.setAttribute('data-retry-count', '0')
             return
           }
         } catch (error) {
           console.error('获取签名URL失败:', error)
         }
       }
-      
-      // 标记已重试
-      img.setAttribute('data-retried', 'true')
     })
   })
 }

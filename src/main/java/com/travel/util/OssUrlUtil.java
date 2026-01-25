@@ -31,11 +31,15 @@ public class OssUrlUtil {
      * OSS URL识别正则表达式模式
      */
     private static final Pattern[] OSS_URL_PATTERNS = {
+        // 阿里云OSS：oss-xxx.aliyuncs.com 或 bucket.oss-region.aliyuncs.com
         Pattern.compile("oss-.*\\.aliyuncs\\.com", Pattern.CASE_INSENSITIVE),
+        Pattern.compile("\\.oss-[^.]+\\.aliyuncs\\.com", Pattern.CASE_INSENSITIVE), // bucket.oss-cn-beijing.aliyuncs.com
         Pattern.compile("\\.oss\\.", Pattern.CASE_INSENSITIVE),
+        // 腾讯云COS
         Pattern.compile("\\.qcloud\\.com", Pattern.CASE_INSENSITIVE),
-        Pattern.compile("\\.amazonaws\\.com", Pattern.CASE_INSENSITIVE),
-        Pattern.compile("\\.cos\\.", Pattern.CASE_INSENSITIVE)
+        Pattern.compile("\\.cos\\.", Pattern.CASE_INSENSITIVE),
+        // AWS S3
+        Pattern.compile("\\.amazonaws\\.com", Pattern.CASE_INSENSITIVE)
     };
     
     /**
