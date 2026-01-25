@@ -115,6 +115,48 @@ public class FileRecordServiceImpl implements FileRecordService {
     }
     
     @Override
+    @Transactional(rollbackFor = Exception.class)
+    public int deleteFileRecordsBatch(List<Long> ids) {
+        if (ids == null || ids.isEmpty()) {
+            throw new IllegalArgumentException("文件ID列表不能为空");
+        }
+        
+        // 过滤掉null值
+        List<Long> validIds = ids.stream()
+            .filter(id -> id != null)
+            .distinct()
+            .collect(java.util.stream.Collectors.toList());
+        
+        if (validIds.isEmpty()) {
+            log.warn("没有有效的文件ID");
+            return 0;
+        }
+        
+        int rows = fileRecordMapper.deleteBatch(validIds);
+        log.info("批量删除文件记录成功，删除数量：{}/{}", rows, validIds.size());
+        return rows;
+    }
+    
+    @Override
+    public List<FileRecord> getFileRecordsByIds(List<Long> ids) {
+        if (ids == null || ids.isEmpty()) {
+            return new java.util.ArrayList<>();
+        }
+        
+        // 过滤掉null值
+        List<Long> validIds = ids.stream()
+            .filter(id -> id != null)
+            .distinct()
+            .collect(java.util.stream.Collectors.toList());
+        
+        if (validIds.isEmpty()) {
+            return new java.util.ArrayList<>();
+        }
+        
+        return fileRecordMapper.selectByIds(validIds);
+    }
+    
+    @Override
     public Map<String, Object> getFileStatistics() {
         Map<String, Object> stats = new HashMap<>();
         

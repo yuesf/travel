@@ -81,11 +81,18 @@
           <template #default="{ row }">
             <el-image
               v-if="row.images && row.images.length > 0"
-              :src="row.images[0]"
-              :preview-src-list="row.images"
+              :src="getProductImageUrl(row.images[0])"
+              :preview-src-list="getProductImageList(row.images)"
               fit="cover"
               style="width: 60px; height: 60px; border-radius: 4px"
-            />
+              @error="() => handleProductImageError(row, $event)"
+            >
+              <template #error>
+                <div class="image-slot">
+                  <el-icon><Picture /></el-icon>
+                </div>
+              </template>
+            </el-image>
             <span v-else>-</span>
           </template>
         </el-table-column>
@@ -192,7 +199,7 @@
 import { ref, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Search, Refresh, Plus } from '@element-plus/icons-vue'
+import { Search, Refresh, Plus, Picture } from '@element-plus/icons-vue'
 import {
   getProductList,
   deleteProduct,
@@ -200,6 +207,7 @@ import {
   updateProductStock,
 } from '@/api/products'
 import { getCategoryTree } from '@/api/categories'
+import { getSignedUrlByUrl } from '@/api/file'
 
 const router = useRouter()
 
@@ -266,6 +274,30 @@ const loadData = async () => {
     if (res.data) {
       tableData.value = res.data.list || []
       pagination.total = res.data.total || 0
+      
+      // 批量预加载所有未签名OSS图片的签名URL
+      const imageUrls = []
+      tableData.value.forEach(product => {
+        if (product.images && Array.isArray(product.images)) {
+          product.images.forEach(url => {
+            if (url && isUnsignedOssUrl(url)) {
+              imageUrls.push(url)
+            }
+          })
+        }
+      })
+      
+      // 异步获取所有未签名URL的签名URL
+      if (imageUrls.length > 0) {
+        Promise.all(imageUrls.map(url => getSignedUrlForPreview(url)))
+          .then(() => {
+            // 获取完成后，强制更新列表以触发重新渲染
+            tableData.value = [...tableData.value]
+          })
+          .catch(error => {
+            console.warn('批量获取签名URL失败:', error)
+          })
+      }
     }
   } catch (error) {
     console.error('加载商品列表失败:', error)
@@ -409,6 +441,130 @@ const handleDelete = async (row) => {
   }
 }
 
+/**
+ * 判断是否为OSS URL（未签名的）
+ */
+const isUnsignedOssUrl = (url) => {
+  if (!url || typeof url !== 'string') {
+    return false
+  }
+  // 检查是否是OSS URL（包含oss-*.aliyuncs.com等）
+  const ossPatterns = [
+    /oss-.*\.aliyuncs\.com/i,
+    /\.oss\./i,
+    /\.qcloud\.com/i,
+    /\.amazonaws\.com/i,
+    /\.cos\./i
+  ]
+  
+  // 如果是签名URL（包含查询参数），则不是未签名的
+  if (url.includes('?') && (url.includes('Expires=') || url.includes('Signature='))) {
+    return false
+  }
+  
+  // 检查是否匹配OSS URL模式
+  return ossPatterns.some(pattern => pattern.test(url))
+}
+
+// 签名URL缓存（避免重复请求）
+const signedUrlCache = new Map()
+
+/**
+ * 为OSS URL获取签名URL（用于预览）
+ */
+const getSignedUrlForPreview = async (url) => {
+  if (!isUnsignedOssUrl(url)) {
+    return url // 不是未签名的OSS URL，直接返回
+  }
+  
+  // 检查缓存
+  if (signedUrlCache.has(url)) {
+    return signedUrlCache.get(url)
+  }
+  
+  try {
+    const response = await getSignedUrlByUrl(url)
+    if (response && response.code === 200 && response.data) {
+      // 缓存签名URL（1小时后过期）
+      signedUrlCache.set(url, response.data)
+      setTimeout(() => {
+        signedUrlCache.delete(url)
+      }, 3600000) // 1小时
+      return response.data
+    }
+  } catch (error) {
+    console.warn('获取签名URL失败:', error)
+  }
+  
+  // 如果获取失败，返回原URL（可能会403，但至少不会报错）
+  return url
+}
+
+/**
+ * 获取商品图片URL（自动处理OSS URL签名）
+ */
+const getProductImageUrl = (url) => {
+  if (!url) {
+    return ''
+  }
+  
+  // 如果是未签名的OSS URL，返回缓存中的签名URL或原URL
+  if (isUnsignedOssUrl(url)) {
+    return signedUrlCache.get(url) || url
+  }
+  
+  return url
+}
+
+/**
+ * 获取商品图片列表（自动处理OSS URL签名）
+ */
+const getProductImageList = (images) => {
+  if (!images || !Array.isArray(images) || images.length === 0) {
+    return []
+  }
+  
+  return images.map(url => getProductImageUrl(url))
+}
+
+/**
+ * 处理商品图片加载错误
+ */
+const handleProductImageError = async (row, event) => {
+  console.error('商品图片加载失败:', row)
+  
+  if (!row.images || row.images.length === 0) {
+    return
+  }
+  
+  try {
+    const imageUrl = row.images[0]
+    
+    // 如果是未签名的OSS URL，尝试获取签名URL
+    if (imageUrl && isUnsignedOssUrl(imageUrl)) {
+      const signedUrl = await getSignedUrlForPreview(imageUrl)
+      if (signedUrl !== imageUrl) {
+        // 更新缓存，触发重新渲染
+        signedUrlCache.set(imageUrl, signedUrl)
+        // 更新商品数据中的图片URL
+        const index = tableData.value.findIndex(item => item.id === row.id)
+        if (index > -1) {
+          // 更新图片数组中的第一个URL
+          const updatedImages = [...row.images]
+          updatedImages[0] = signedUrl
+          tableData.value[index] = {
+            ...tableData.value[index],
+            images: updatedImages,
+          }
+          tableData.value = [...tableData.value]
+        }
+      }
+    }
+  } catch (error) {
+    console.error('处理商品图片加载错误失败:', error)
+  }
+}
+
 // 格式化日期
 const formatDate = (dateStr) => {
   if (!dateStr) return '-'
@@ -459,5 +615,16 @@ onMounted(() => {
   margin-top: 16px;
   display: flex;
   justify-content: flex-end;
+}
+
+.image-slot {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  height: 100%;
+  background: #f5f7fa;
+  color: #909399;
+  font-size: 20px;
 }
 </style>

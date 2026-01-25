@@ -32,6 +32,17 @@ export function deleteFile(id) {
 }
 
 /**
+ * 批量删除文件
+ */
+export function deleteFilesBatch(ids) {
+  return request({
+    url: '/admin/file-manage/batch',
+    method: 'delete',
+    data: ids,
+  })
+}
+
+/**
  * 获取文件统计信息
  */
 export function getFileStatistics() {

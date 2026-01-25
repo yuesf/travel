@@ -51,6 +51,20 @@ public interface FileRecordMapper {
     int delete(@Param("id") Long id);
     
     /**
+     * 批量删除文件记录
+     * @param ids 文件ID列表
+     * @return 影响行数
+     */
+    int deleteBatch(@Param("ids") List<Long> ids);
+    
+    /**
+     * 根据ID列表查询文件记录
+     * @param ids 文件ID列表
+     * @return 文件记录列表
+     */
+    List<FileRecord> selectByIds(@Param("ids") List<Long> ids);
+    
+    /**
      * 查询所有文件的总大小
      * @return 总大小（字节）
      */

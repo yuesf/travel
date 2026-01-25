@@ -8,6 +8,10 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 /**
@@ -262,5 +266,120 @@ public class FileService {
      */
     private boolean isValidVideoExtension(String extension) {
         return "mp4".equals(extension);
+    }
+    
+    /**
+     * 批量删除文件（同时删除OSS上的文件和数据库记录）
+     * 
+     * @param ids 文件ID列表
+     * @return 删除结果（成功数量、失败数量、失败详情）
+     */
+    public Map<String, Object> deleteFilesBatch(List<Long> ids) {
+        Map<String, Object> result = new HashMap<>();
+        int successCount = 0;
+        int failCount = 0;
+        List<Map<String, Object>> failDetails = new ArrayList<>();
+        
+        if (ids == null || ids.isEmpty()) {
+            result.put("successCount", 0);
+            result.put("failCount", 0);
+            result.put("failDetails", failDetails);
+            result.put("message", "文件ID列表为空");
+            return result;
+        }
+        
+        // 查询所有文件记录
+        List<FileRecord> records = fileRecordService.getFileRecordsByIds(ids);
+        if (records.isEmpty()) {
+            result.put("successCount", 0);
+            result.put("failCount", 0);
+            result.put("failDetails", failDetails);
+            result.put("message", "未找到任何文件记录");
+            return result;
+        }
+        
+        // 逐个删除文件
+        for (FileRecord record : records) {
+            try {
+                boolean deleteSuccess = false;
+                
+                // 根据存储类型删除文件
+                if ("OSS".equals(record.getStorageType())) {
+                    // 删除OSS文件
+                    try {
+                        deleteSuccess = ossService.deleteFile(record.getFilePath());
+                    } catch (Exception e) {
+                        log.error("删除OSS文件失败：{}", record.getFilePath(), e);
+                        Map<String, Object> failDetail = new HashMap<>();
+                        failDetail.put("id", record.getId());
+                        failDetail.put("fileName", record.getOriginalName());
+                        failDetail.put("reason", "删除OSS文件失败：" + e.getMessage());
+                        failDetails.add(failDetail);
+                        failCount++;
+                        continue;
+                    }
+                } else if ("LOCAL".equals(record.getStorageType())) {
+                    // 删除本地文件
+                    try {
+                        String projectRoot = System.getProperty("user.dir");
+                        java.io.File file = new java.io.File(projectRoot, "uploads/" + record.getFilePath());
+                        if (file.exists()) {
+                            deleteSuccess = file.delete();
+                        } else {
+                            log.warn("本地文件不存在：{}", file.getAbsolutePath());
+                            deleteSuccess = true; // 文件不存在也算删除成功
+                        }
+                    } catch (Exception e) {
+                        log.error("删除本地文件失败：{}", record.getFilePath(), e);
+                        Map<String, Object> failDetail = new HashMap<>();
+                        failDetail.put("id", record.getId());
+                        failDetail.put("fileName", record.getOriginalName());
+                        failDetail.put("reason", "删除本地文件失败：" + e.getMessage());
+                        failDetails.add(failDetail);
+                        failCount++;
+                        continue;
+                    }
+                }
+                
+                // 删除数据库记录
+                if (deleteSuccess) {
+                    boolean dbDeleteSuccess = fileRecordService.deleteFileRecord(record.getId());
+                    if (dbDeleteSuccess) {
+                        successCount++;
+                        log.info("删除文件成功，ID：{}，文件名：{}", record.getId(), record.getOriginalName());
+                    } else {
+                        Map<String, Object> failDetail = new HashMap<>();
+                        failDetail.put("id", record.getId());
+                        failDetail.put("fileName", record.getOriginalName());
+                        failDetail.put("reason", "删除数据库记录失败");
+                        failDetails.add(failDetail);
+                        failCount++;
+                    }
+                } else {
+                    Map<String, Object> failDetail = new java.util.HashMap<>();
+                    failDetail.put("id", record.getId());
+                    failDetail.put("fileName", record.getOriginalName());
+                    failDetail.put("reason", "删除文件失败");
+                    failDetails.add(failDetail);
+                    failCount++;
+                }
+            } catch (Exception e) {
+                log.error("删除文件异常，ID：{}", record.getId(), e);
+                Map<String, Object> failDetail = new java.util.HashMap<>();
+                failDetail.put("id", record.getId());
+                failDetail.put("fileName", record.getOriginalName());
+                failDetail.put("reason", "删除异常：" + e.getMessage());
+                failDetails.add(failDetail);
+                failCount++;
+            }
+        }
+        
+        result.put("successCount", successCount);
+        result.put("failCount", failCount);
+        result.put("failDetails", failDetails);
+        result.put("total", ids.size());
+        result.put("message", String.format("删除完成：成功 %d 个，失败 %d 个", successCount, failCount));
+        
+        return result;
     }
 }

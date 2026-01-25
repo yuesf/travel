@@ -38,7 +38,7 @@ import { Plus } from '@element-plus/icons-vue'
 import Sortable from 'sortablejs'
 import { getToken } from '@/utils/auth'
 import { API_BASE_URL } from '@/config/api'
-// 不再需要getSignedUrlByUrl，后端统一返回签名URL
+import { getSignedUrlByUrl } from '@/api/file'
 
 const props = defineProps({
   modelValue: {
@@ -97,6 +97,90 @@ let sortableInstance = null
 const isRemoving = ref(false) // 标记是否正在删除，防止 watch 重新同步
 // 注意：后端统一返回签名URL，前端不再需要OSS URL判断和处理逻辑
 
+/**
+ * 判断是否为OSS URL（未签名的）
+ */
+const isUnsignedOssUrl = (url) => {
+  if (!url || typeof url !== 'string') {
+    return false
+  }
+  // 检查是否是OSS URL（包含oss-*.aliyuncs.com等）
+  const ossPatterns = [
+    /oss-.*\.aliyuncs\.com/i,
+    /\.oss\./i,
+    /\.qcloud\.com/i,
+    /\.amazonaws\.com/i,
+    /\.cos\./i
+  ]
+  
+  // 如果是签名URL（包含查询参数），则不是未签名的
+  if (url.includes('?') && (url.includes('Expires=') || url.includes('Signature='))) {
+    return false
+  }
+  
+  // 检查是否匹配OSS URL模式
+  return ossPatterns.some(pattern => pattern.test(url))
+}
+
+/**
+ * 为OSS URL获取签名URL（用于预览）
+ */
+const updateOssImageUrl = async (url, uid) => {
+  if (!isUnsignedOssUrl(url)) {
+    return // 不是未签名的OSS URL，不需要处理
+  }
+  
+  // 先更新文件项，标记为加载中
+  const index = fileList.value.findIndex(item => item.uid === uid)
+  if (index > -1) {
+    fileList.value[index] = {
+      ...fileList.value[index],
+      url: url, // 暂时使用原始URL
+      originalUrl: url, // 保存原始URL
+      loading: true, // 标记为加载中
+    }
+    fileList.value = [...fileList.value]
+  }
+  
+  try {
+    const response = await getSignedUrlByUrl(url)
+    if (response && response.code === 200 && response.data) {
+      // 更新文件项的URL为签名URL
+      const updateIndex = fileList.value.findIndex(item => item.uid === uid)
+      if (updateIndex > -1) {
+        fileList.value[updateIndex] = {
+          ...fileList.value[updateIndex],
+          url: response.data, // 使用签名URL用于预览
+          originalUrl: url, // 保存原始URL
+          loading: false, // 标记为加载完成
+        }
+        fileList.value = [...fileList.value]
+      }
+    } else {
+      // 如果获取失败，移除加载标记
+      const failIndex = fileList.value.findIndex(item => item.uid === uid)
+      if (failIndex > -1) {
+        fileList.value[failIndex] = {
+          ...fileList.value[failIndex],
+          loading: false,
+        }
+        fileList.value = [...fileList.value]
+      }
+    }
+  } catch (error) {
+    console.warn('获取签名URL失败:', error)
+    // 如果获取失败，移除加载标记，保持原URL（可能会403，但至少不会报错）
+    const errorIndex = fileList.value.findIndex(item => item.uid === uid)
+    if (errorIndex > -1) {
+      fileList.value[errorIndex] = {
+        ...fileList.value[errorIndex],
+        loading: false,
+      }
+      fileList.value = [...fileList.value]
+    }
+  }
+}
+
 // 同步外部值到内部列表
 watch(
   () => props.modelValue,
@@ -116,7 +200,10 @@ watch(
           status: 'success',
         }
         fileList.value = [fileItem]
-        // 后端统一返回签名URL，直接使用即可
+        // 如果是未签名的OSS URL，异步获取签名URL用于预览
+        if (isUnsignedOssUrl(newVal)) {
+          updateOssImageUrl(newVal, fileItem.uid)
+        }
       } else if (Array.isArray(newVal) && newVal.length > 0) {
         // 兼容数组格式
         const fileItem = {
@@ -126,8 +213,10 @@ watch(
           status: 'success',
         }
         fileList.value = [fileItem]
-        // 如果是OSS URL，异步获取签名URL
-        updateOssImageUrl(newVal[0], fileItem.uid)
+        // 如果是未签名的OSS URL，异步获取签名URL用于预览
+        if (isUnsignedOssUrl(newVal[0])) {
+          updateOssImageUrl(newVal[0], fileItem.uid)
+        }
       } else {
         fileList.value = []
       }
@@ -142,7 +231,10 @@ watch(
             url: url,
             status: 'success',
           }
-          // 后端统一返回签名URL，直接使用即可
+          // 如果是未签名的OSS URL，异步获取签名URL用于预览
+          if (isUnsignedOssUrl(url)) {
+            updateOssImageUrl(url, fileItem.uid)
+          }
           return fileItem
         })
       } else if (typeof newVal === 'string' && newVal.trim() !== '') {
@@ -154,7 +246,10 @@ watch(
           status: 'success',
         }
         fileList.value = [fileItem]
-        // 后端统一返回签名URL，直接使用即可
+        // 如果是未签名的OSS URL，异步获取签名URL用于预览
+        if (isUnsignedOssUrl(newVal)) {
+          updateOssImageUrl(newVal, fileItem.uid)
+        }
       } else {
         fileList.value = []
       }

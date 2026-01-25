@@ -43,7 +43,15 @@
               style="max-width: 300px; max-height: 200px"
               fit="contain"
               :preview-src-list="[articleData.coverImage]"
-            />
+              @error="handleCoverImageError"
+            >
+              <template #error>
+                <div class="image-error">
+                  <el-icon :size="40"><Picture /></el-icon>
+                  <div class="error-text">加载失败</div>
+                </div>
+              </template>
+            </el-image>
             <span v-else>-</span>
           </el-descriptions-item>
           <el-descriptions-item label="文章摘要" :span="2">
@@ -70,22 +78,63 @@
 
         <el-divider content-position="left">文章内容</el-divider>
 
-        <div class="article-content" v-html="articleData.content"></div>
+        <div class="article-content" ref="contentRef" v-html="articleData.content"></div>
       </div>
     </el-card>
+
+    <!-- 图片预览对话框 -->
+    <el-dialog
+      v-model="imagePreviewVisible"
+      title="图片预览"
+      width="90%"
+      :close-on-click-modal="true"
+      class="image-preview-dialog"
+    >
+      <div class="image-preview-container">
+        <img
+          :src="previewImageUrl"
+          alt="预览"
+          class="preview-image"
+          @error="handlePreviewImageError"
+        />
+        <div v-if="imagePreviewList.length > 1" class="image-preview-nav">
+          <el-button
+            :icon="ArrowLeft"
+            circle
+            @click="prevImage"
+            :disabled="currentImageIndex === 0"
+          />
+          <span class="image-index">{{ currentImageIndex + 1 }} / {{ imagePreviewList.length }}</span>
+          <el-button
+            :icon="ArrowRight"
+            circle
+            @click="nextImage"
+            :disabled="currentImageIndex === imagePreviewList.length - 1"
+          />
+        </div>
+      </div>
+    </el-dialog>
   </div>
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, nextTick } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
+import { ArrowLeft, ArrowRight, Picture } from '@element-plus/icons-vue'
 import { getArticleById, getArticleTagList } from '@/api/articles'
 
 const router = useRouter()
 const route = useRoute()
 
 const loading = ref(false)
+const contentRef = ref(null)
+
+// 图片预览相关
+const imagePreviewVisible = ref(false)
+const previewImageUrl = ref('')
+const imagePreviewList = ref([])
+const currentImageIndex = ref(0)
 
 // 文章数据
 const articleData = reactive({
@@ -140,6 +189,11 @@ const loadDetail = async () => {
       } else {
         articleTags.value = []
       }
+      
+      // 等待DOM更新后，为文章内容中的图片添加预览功能
+      nextTick(() => {
+        setupImagePreview()
+      })
     }
   } catch (error) {
     console.error('加载文章详情失败:', error)
@@ -147,6 +201,64 @@ const loadDetail = async () => {
   } finally {
     loading.value = false
   }
+}
+
+// 为文章内容中的图片添加预览功能
+const setupImagePreview = () => {
+  if (!contentRef.value) {
+    return
+  }
+  
+  const images = contentRef.value.querySelectorAll('img')
+  if (images.length === 0) {
+    return
+  }
+  
+  // 收集所有图片URL
+  const imageUrls = Array.from(images).map(img => img.src).filter(Boolean)
+  
+  // 为每个图片添加点击事件
+  images.forEach((img, index) => {
+    // 添加鼠标样式
+    img.style.cursor = 'pointer'
+    
+    // 添加点击事件
+    img.addEventListener('click', () => {
+      showImagePreview(imageUrls, index)
+    })
+  })
+}
+
+// 显示图片预览
+const showImagePreview = (urlList, initialIndex = 0) => {
+  if (!urlList || urlList.length === 0) {
+    return
+  }
+  imagePreviewList.value = urlList
+  currentImageIndex.value = initialIndex
+  previewImageUrl.value = urlList[initialIndex]
+  imagePreviewVisible.value = true
+}
+
+// 上一张图片
+const prevImage = () => {
+  if (currentImageIndex.value > 0) {
+    currentImageIndex.value--
+    previewImageUrl.value = imagePreviewList.value[currentImageIndex.value]
+  }
+}
+
+// 下一张图片
+const nextImage = () => {
+  if (currentImageIndex.value < imagePreviewList.value.length - 1) {
+    currentImageIndex.value++
+    previewImageUrl.value = imagePreviewList.value[currentImageIndex.value]
+  }
+}
+
+// 预览图片加载错误
+const handlePreviewImageError = () => {
+  ElMessage.error('图片加载失败')
 }
 
 // 加载标签列表并匹配文章标签
@@ -221,6 +333,12 @@ onMounted(() => {
 :deep(.article-content img) {
   max-width: 100%;
   height: auto;
+  cursor: pointer;
+  transition: opacity 0.3s;
+}
+
+:deep(.article-content img:hover) {
+  opacity: 0.8;
 }
 
 :deep(.article-content p) {
@@ -237,5 +355,46 @@ onMounted(() => {
   margin-top: 20px;
   margin-bottom: 10px;
   font-weight: bold;
+}
+
+/* 图片预览对话框样式 */
+.image-preview-dialog :deep(.el-dialog__body) {
+  padding: 20px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 400px;
+}
+
+.image-preview-container {
+  position: relative;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+}
+
+.preview-image {
+  max-width: 100%;
+  max-height: 70vh;
+  object-fit: contain;
+  border-radius: 4px;
+}
+
+.image-preview-nav {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 10px 20px;
+  background-color: rgba(0, 0, 0, 0.5);
+  border-radius: 20px;
+  color: white;
+}
+
+.image-index {
+  font-size: 14px;
+  min-width: 60px;
+  text-align: center;
 }
 </style>

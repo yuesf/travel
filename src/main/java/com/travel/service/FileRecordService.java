@@ -58,6 +58,20 @@ public interface FileRecordService {
     boolean deleteFileRecord(Long id);
     
     /**
+     * 批量删除文件记录
+     * @param ids 文件ID列表
+     * @return 成功删除的数量
+     */
+    int deleteFileRecordsBatch(List<Long> ids);
+    
+    /**
+     * 根据ID列表查询文件记录
+     * @param ids 文件ID列表
+     * @return 文件记录列表
+     */
+    List<FileRecord> getFileRecordsByIds(List<Long> ids);
+    
+    /**
      * 获取文件统计信息
      * @return 统计信息（总文件数、总大小、OSS文件数、OSS大小、本地文件数、本地大小）
      */

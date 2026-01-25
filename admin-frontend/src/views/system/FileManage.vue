@@ -106,8 +106,20 @@
       <div class="toolbar">
         <div class="toolbar-left">
           <span class="toolbar-title">文件列表</span>
+          <span v-if="selectedFiles.length > 0" class="selected-count">
+            已选择 {{ selectedFiles.length }} 个文件
+          </span>
         </div>
         <div class="toolbar-right">
+          <el-button
+            v-if="selectedFiles.length > 0"
+            type="danger"
+            :icon="Delete"
+            @click="handleBatchDelete"
+            :disabled="batchDeleting"
+          >
+            批量删除 ({{ selectedFiles.length }})
+          </el-button>
           <el-button type="primary" :icon="Upload" @click="handleOpenUploadDialog">上传文件</el-button>
           <el-button :icon="Refresh" @click="loadData">刷新</el-button>
         </div>
@@ -119,7 +131,10 @@
         stripe
         border
         style="width: 100%"
+        row-key="id"
+        @selection-change="handleSelectionChange"
       >
+        <el-table-column type="selection" width="55" :selectable="() => true" />
         <el-table-column prop="id" label="ID" width="80" />
         <el-table-column label="预览" width="120">
           <template #default="{ row }">
@@ -342,13 +357,15 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { 
   Search, Refresh, Files, Upload, Folder, Picture, VideoPlay, 
   Document, CollectionTag, FolderOpened, DataLine, Box, 
-  DocumentCopy, Edit, Location, Link, View, Clock, Calendar 
+  DocumentCopy, Edit, Location, Link, View, Clock, Calendar, Delete
 } from '@element-plus/icons-vue'
-import { getFileList, deleteFile, getFileStatistics, getSignedUrl, uploadImage, uploadVideo } from '@/api/file'
+import { getFileList, deleteFile, deleteFilesBatch, getFileStatistics, getSignedUrl, uploadImage, uploadVideo } from '@/api/file'
 import { useClipboard } from '@vueuse/core'
 
 const loading = ref(false)
 const tableData = ref([])
+const selectedFiles = ref([])
+const batchDeleting = ref(false)
 const viewDialogVisible = ref(false)
 const currentFile = ref(null)
 const uploadDialogVisible = ref(false)
@@ -434,6 +451,9 @@ const loadData = async () => {
     const res = await getFileList(params)
     tableData.value = res.data.records || []
     pagination.total = res.data.total || 0
+    
+    // 清空选择状态（因为数据已刷新）
+    selectedFiles.value = []
     
     // 同时刷新统计信息
     await loadStatistics()
@@ -543,6 +563,101 @@ const handleCopyUrl = async (row) => {
   }
 }
 
+// 处理表格选择变化
+const handleSelectionChange = (selection) => {
+  selectedFiles.value = selection
+}
+
+// 批量删除文件
+const handleBatchDelete = async () => {
+  if (selectedFiles.value.length === 0) {
+    ElMessage.warning('请先选择要删除的文件')
+    return
+  }
+
+  try {
+    const ossCount = selectedFiles.value.filter(f => f.storageType === 'OSS').length
+    const localCount = selectedFiles.value.filter(f => f.storageType === 'LOCAL').length
+    
+    let storageTypeText = ''
+    if (ossCount > 0 && localCount > 0) {
+      storageTypeText = `OSS和本地存储中的文件`
+    } else if (ossCount > 0) {
+      storageTypeText = `OSS存储中的文件`
+    } else {
+      storageTypeText = `本地存储中的文件`
+    }
+
+    // 构建确认消息
+    let confirmMessage = `确定要删除选中的 ${selectedFiles.value.length} 个文件吗？\n\n此操作将同时删除${storageTypeText}，且无法恢复。`
+    
+    // 如果文件数量较少（<=5个），显示文件名列表
+    if (selectedFiles.value.length <= 5) {
+      const fileNames = selectedFiles.value.map(f => f.originalName).join('\n')
+      confirmMessage += `\n\n文件列表：\n${fileNames}`
+    } else {
+      // 如果文件数量较多，只显示前3个文件名
+      const firstThreeNames = selectedFiles.value.slice(0, 3).map(f => f.originalName).join('\n')
+      confirmMessage += `\n\n部分文件列表：\n${firstThreeNames}\n... 等共 ${selectedFiles.value.length} 个文件`
+    }
+
+    await ElMessageBox.confirm(
+      confirmMessage,
+      '确认批量删除',
+      {
+        confirmButtonText: '确定删除',
+        cancelButtonText: '取消',
+        type: 'warning',
+        dangerouslyUseHTMLString: false,
+      }
+    )
+
+    batchDeleting.value = true
+    const ids = selectedFiles.value.map(f => f.id)
+    const res = await deleteFilesBatch(ids)
+    
+    if (res.code === 200) {
+      const result = res.data || {}
+      const successCount = result.successCount || 0
+      const failCount = result.failCount || 0
+      
+      if (failCount === 0) {
+        ElMessage.success(`批量删除成功，共删除 ${successCount} 个文件`)
+      } else if (successCount > 0) {
+        ElMessage.warning(`部分删除成功：成功 ${successCount} 个，失败 ${failCount} 个`)
+        // 显示失败详情
+        if (result.failDetails && result.failDetails.length > 0) {
+          const failMessages = result.failDetails.map(d => `${d.fileName}: ${d.reason}`).join('\n')
+          console.warn('删除失败的文件：', result.failDetails)
+          ElMessageBox.alert(
+            `以下文件删除失败：\n\n${failMessages}`,
+            '删除失败详情',
+            {
+              type: 'warning',
+            }
+          )
+        }
+      } else {
+        ElMessage.error('批量删除失败：' + (result.message || '未知错误'))
+      }
+      
+      // 清空选择
+      selectedFiles.value = []
+      // 刷新数据
+      loadData()
+    } else {
+      ElMessage.error(res.message || '批量删除失败')
+    }
+  } catch (error) {
+    if (error !== 'cancel') {
+      console.error('批量删除文件失败:', error)
+      ElMessage.error(error.message || '批量删除失败')
+    }
+  } finally {
+    batchDeleting.value = false
+  }
+}
+
 // 删除文件
 const handleDelete = async (row) => {
   try {
@@ -558,6 +673,11 @@ const handleDelete = async (row) => {
 
     await deleteFile(row.id)
     ElMessage.success('删除成功')
+    // 如果删除的文件在选中列表中，从选中列表中移除
+    const index = selectedFiles.value.findIndex(f => f.id === row.id)
+    if (index > -1) {
+      selectedFiles.value.splice(index, 1)
+    }
     loadData()
   } catch (error) {
     if (error !== 'cancel') {
@@ -999,6 +1119,13 @@ onMounted(() => {
   font-size: 16px;
   font-weight: 500;
   color: #303133;
+}
+
+.selected-count {
+  margin-left: 12px;
+  font-size: 14px;
+  color: #409eff;
+  font-weight: 500;
 }
 
 .pagination-wrapper {

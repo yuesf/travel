@@ -303,7 +303,7 @@ import { getArticleCategoryList, getArticleList } from '@/api/articles'
 import { getAttractionList } from '@/api/attractions'
 import { getProductList } from '@/api/products'
 import { getMapList } from '@/api/maps'
-// 不再需要getSignedUrlByUrl，后端统一返回签名URL
+import { getSignedUrlByUrl } from '@/api/file'
 
 const props = defineProps({
   modelValue: {
@@ -425,13 +425,79 @@ const formRules = {
   ],
 }
 
-// 获取图标图片（后端统一返回签名URL，直接使用即可）
+/**
+ * 判断是否为OSS URL（未签名的）
+ */
+const isUnsignedOssUrl = (url) => {
+  if (!url || typeof url !== 'string') {
+    return false
+  }
+  // 检查是否是OSS URL（包含oss-*.aliyuncs.com等）
+  const ossPatterns = [
+    /oss-.*\.aliyuncs\.com/i,
+    /\.oss\./i,
+    /\.qcloud\.com/i,
+    /\.amazonaws\.com/i,
+    /\.cos\./i
+  ]
+  
+  // 如果是签名URL（包含查询参数），则不是未签名的
+  if (url.includes('?') && (url.includes('Expires=') || url.includes('Signature='))) {
+    return false
+  }
+  
+  // 检查是否匹配OSS URL模式
+  return ossPatterns.some(pattern => pattern.test(url))
+}
+
+// 签名URL缓存（避免重复请求）
+const signedUrlCache = new Map()
+
+/**
+ * 为OSS URL获取签名URL（用于预览）
+ */
+const getSignedUrlForPreview = async (url) => {
+  if (!isUnsignedOssUrl(url)) {
+    return url // 不是未签名的OSS URL，直接返回
+  }
+  
+  // 检查缓存
+  if (signedUrlCache.has(url)) {
+    return signedUrlCache.get(url)
+  }
+  
+  try {
+    const response = await getSignedUrlByUrl(url)
+    if (response && response.code === 200 && response.data) {
+      // 缓存签名URL（1小时后过期）
+      signedUrlCache.set(url, response.data)
+      setTimeout(() => {
+        signedUrlCache.delete(url)
+      }, 3600000) // 1小时
+      return response.data
+    }
+  } catch (error) {
+    console.warn('获取签名URL失败:', error)
+  }
+  
+  // 如果获取失败，返回原URL（可能会403，但至少不会报错）
+  return url
+}
+
+// 获取图标图片（自动处理OSS URL签名）
 const getIconImage = (row) => {
   try {
     const configValue = typeof row.configValue === 'string' 
       ? JSON.parse(row.configValue) 
       : row.configValue
-    return configValue?.icon || ''
+    const imageUrl = configValue?.icon || ''
+    
+    // 如果是未签名的OSS URL，返回缓存中的签名URL或原URL
+    if (imageUrl && isUnsignedOssUrl(imageUrl)) {
+      return signedUrlCache.get(imageUrl) || imageUrl
+    }
+    
+    return imageUrl
   } catch (e) {
     return ''
   }
@@ -446,8 +512,27 @@ const getPreviewImageList = (row) => {
 // 处理图片加载错误
 const handleIconImageError = async (row, event) => {
   console.error('图片加载失败:', row)
-  // 后端统一返回签名URL，如果加载失败可能是URL过期或其他原因
-  ElMessage.warning('图片加载失败，请刷新页面重试')
+  
+  try {
+    const configValue = typeof row.configValue === 'string' 
+      ? JSON.parse(row.configValue) 
+      : row.configValue
+    const imageUrl = configValue?.icon || ''
+    
+    // 如果是未签名的OSS URL，尝试获取签名URL
+    if (imageUrl && isUnsignedOssUrl(imageUrl)) {
+      const signedUrl = await getSignedUrlForPreview(imageUrl)
+      if (signedUrl !== imageUrl) {
+        // 更新缓存，触发重新渲染
+        signedUrlCache.set(imageUrl, signedUrl)
+        // 强制更新列表以触发重新渲染
+        iconList.value = [...iconList.value]
+      }
+    }
+  } catch (error) {
+    console.error('处理图片加载错误失败:', error)
+    ElMessage.warning('图片加载失败，请刷新页面重试')
+  }
 }
 
 // 获取图标名称
@@ -777,8 +862,6 @@ watch(() => formData.relatedId, (newId) => {
   }
 })
 
-// 注意：后端统一返回签名URL，不再需要批量预加载签名URL
-
 // 加载图标列表
 const loadIcons = async () => {
   loading.value = true
@@ -789,7 +872,31 @@ const loadIcons = async () => {
       emit('update:modelValue', iconList.value)
       emit('change', iconList.value)
       
-      // 后端统一返回签名URL，不再需要预加载
+      // 批量预加载所有未签名OSS图标的签名URL
+      const imageUrls = iconList.value
+        .map(item => {
+          try {
+            const configValue = typeof item.configValue === 'string' 
+              ? JSON.parse(item.configValue) 
+              : item.configValue
+            return configValue?.icon || ''
+          } catch (e) {
+            return ''
+          }
+        })
+        .filter(url => url && isUnsignedOssUrl(url))
+      
+      // 异步获取所有未签名URL的签名URL
+      if (imageUrls.length > 0) {
+        Promise.all(imageUrls.map(url => getSignedUrlForPreview(url)))
+          .then(() => {
+            // 获取完成后，强制更新列表以触发重新渲染
+            iconList.value = [...iconList.value]
+          })
+          .catch(error => {
+            console.warn('批量获取签名URL失败:', error)
+          })
+      }
     }
   } catch (error) {
     console.error('加载图标列表失败:', error)
@@ -1075,18 +1182,29 @@ const handleSelectIconFromFileList = () => {
 }
 
 // 处理文件选择
-const handleFileSelect = (files) => {
+const handleFileSelect = async (files) => {
   if (files && files.length > 0) {
     const selectedFile = files[0]
-    const fileUrl = selectedFile.fileUrl || selectedFile.url || ''
-    if (fileUrl) {
-      formData.icon = fileUrl
-      // 触发表单验证
-      if (formRef.value) {
-        formRef.value.validateField('icon')
-      }
-      ElMessage.success('已选择图标')
+    // 优先使用原始URL（fileUrl），用于保存到数据库
+    // 如果fileUrl不存在，使用url（兼容旧数据）
+    const originalUrl = selectedFile.fileUrl || selectedFile.url || ''
+    
+    if (!originalUrl) {
+      ElMessage.error('选择的文件没有URL')
+      fileSelectorVisible.value = false
+      return
     }
+    
+    // 保存原始URL到formData（用于保存到数据库）
+    // ImageUpload组件会自动检测OSS URL并获取签名URL用于预览
+    formData.icon = originalUrl
+    
+    // 触发表单验证
+    if (formRef.value) {
+      formRef.value.validateField('icon')
+    }
+    
+    ElMessage.success('已选择图标')
   }
   fileSelectorVisible.value = false
 }

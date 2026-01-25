@@ -138,6 +138,9 @@ public class ArticleService {
             article.setImages(imageUrls);
         }
         
+        // 处理OSS URL签名（用于管理后台预览）
+        processOssUrlsInArticle(article);
+        
         return article;
     }
     
@@ -845,6 +848,48 @@ public class ArticleService {
             }
             article.setImages(signedImages);
         }
+        // 处理文章内容中的图片URL（HTML格式）
+        if (article.getContent() != null && !article.getContent().isEmpty()) {
+            String content = processOssUrlsInHtml(article.getContent());
+            article.setContent(content);
+        }
+    }
+    
+    /**
+     * 处理HTML内容中的OSS图片URL，生成签名URL
+     * 
+     * @param html HTML内容
+     * @return 处理后的HTML内容
+     */
+    private String processOssUrlsInHtml(String html) {
+        if (html == null || html.isEmpty()) {
+            return html;
+        }
+        
+        // 使用正则表达式匹配img标签中的src属性
+        // 匹配格式：<img ... src="url" ...> 或 <img ... src='url' ...>
+        java.util.regex.Pattern pattern = java.util.regex.Pattern.compile(
+            "(<img[^>]+src\\s*=\\s*[\"'])([^\"']+)([\"'][^>]*>)",
+            java.util.regex.Pattern.CASE_INSENSITIVE
+        );
+        
+        java.util.regex.Matcher matcher = pattern.matcher(html);
+        StringBuffer result = new StringBuffer();
+        
+        while (matcher.find()) {
+            String prefix = matcher.group(1); // <img ... src="
+            String imageUrl = matcher.group(2); // 图片URL
+            String suffix = matcher.group(3); // " ...>
+            
+            // 处理图片URL，如果是OSS URL则生成签名URL
+            String signedUrl = ossUrlUtil.processUrl(imageUrl);
+            
+            // 替换为签名URL
+            matcher.appendReplacement(result, prefix + signedUrl + suffix);
+        }
+        matcher.appendTail(result);
+        
+        return result.toString();
     }
     
     /**

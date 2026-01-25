@@ -6,6 +6,7 @@ import com.travel.dto.FileRecordResponse;
 import com.travel.dto.FileStatisticsResponse;
 import com.travel.entity.FileRecord;
 import com.travel.service.FileRecordService;
+import com.travel.service.FileService;
 import com.travel.service.OssService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
@@ -34,6 +35,9 @@ public class FileManageController {
     
     @Autowired
     private OssService ossService;
+    
+    @Autowired
+    private FileService fileService;
     
     /**
      * 查询文件列表（分页）
@@ -129,6 +133,38 @@ public class FileManageController {
         } catch (Exception e) {
             log.error("查询文件详情失败", e);
             return Result.error("查询文件详情失败：" + e.getMessage());
+        }
+    }
+    
+    /**
+     * 批量删除文件
+     * 
+     * @param ids 文件ID列表
+     * @return 删除结果
+     */
+    @DeleteMapping("/batch")
+    public Result<Map<String, Object>> deleteFilesBatch(@RequestBody List<Long> ids) {
+        try {
+            if (ids == null || ids.isEmpty()) {
+                return Result.error("文件ID列表不能为空");
+            }
+            
+            // 使用FileService的批量删除方法
+            Map<String, Object> result = fileService.deleteFilesBatch(ids);
+            
+            int successCount = (Integer) result.get("successCount");
+            int failCount = (Integer) result.get("failCount");
+            
+            if (failCount == 0) {
+                return Result.success("批量删除成功，共删除 " + successCount + " 个文件", result);
+            } else if (successCount == 0) {
+                return Result.error("批量删除失败：" + result.get("message"));
+            } else {
+                return Result.success("部分删除成功：成功 " + successCount + " 个，失败 " + failCount + " 个", result);
+            }
+        } catch (Exception e) {
+            log.error("批量删除文件异常", e);
+            return Result.error("批量删除文件失败：" + e.getMessage());
         }
     }
     
