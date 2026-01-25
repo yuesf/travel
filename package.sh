@@ -1,3 +1,4 @@
+git pull
 echo "前端服务"
 cd admin-frontend
 rm -rf dist node_modules/.vite
