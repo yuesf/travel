@@ -158,13 +158,13 @@ public class FileService {
             throw new IOException(errorMsg, e);
         }
         
-        // 保存文件记录到数据库
+        // 保存文件记录到数据库（保存原始URL，不保存签名URL，因为签名URL会过期）
         try {
             FileRecord record = new FileRecord();
             record.setFileName(fileName);
             record.setOriginalName(originalFilename);
             record.setFilePath(filePath);
-            record.setFileUrl(fileUrl);
+            record.setFileUrl(fileUrl); // 保存原始URL
             record.setFileSize(fileToUpload.getSize());
             record.setFileType(type);
             record.setFileExtension(extension);
@@ -179,7 +179,17 @@ public class FileService {
             // 不影响文件上传结果
         }
         
-        return fileUrl;
+        // 生成签名URL并返回（用于立即预览，避免403错误）
+        // 注意：数据库保存的是原始URL，返回给前端的是签名URL
+        try {
+            String signedUrl = ossService.generateSignedUrlFromUrl(fileUrl);
+            log.debug("生成签名URL成功，用于返回给前端");
+            return signedUrl;
+        } catch (Exception e) {
+            log.warn("生成签名URL失败，返回原始URL: {}", e.getMessage());
+            // 如果生成签名URL失败，返回原始URL（降级方案）
+            return fileUrl;
+        }
     }
     
     /**

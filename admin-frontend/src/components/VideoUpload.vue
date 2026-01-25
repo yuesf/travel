@@ -165,16 +165,45 @@ const handleProgress = (event, file) => {
   uploadProgress.value = Math.round((event.loaded / event.total) * 100)
 }
 
+/**
+ * 从签名URL中提取原始URL（去掉查询参数）
+ * 签名URL格式：https://{bucket}.{endpoint}/{path}?Expires=xxx&OSSAccessKeyId=xxx&Signature=xxx
+ * 原始URL格式：https://{bucket}.{endpoint}/{path}
+ */
+const extractOriginalUrl = (signedUrl) => {
+  if (!signedUrl || typeof signedUrl !== 'string') {
+    return signedUrl
+  }
+  
+  // 检查是否是OSS签名URL（包含查询参数）
+  const questionMarkIndex = signedUrl.indexOf('?')
+  if (questionMarkIndex > 0) {
+    // 提取查询参数前的部分作为原始URL
+    return signedUrl.substring(0, questionMarkIndex)
+  }
+  
+  // 如果不是签名URL，直接返回
+  return signedUrl
+}
+
 // 上传成功
 const handleSuccess = (response, file) => {
   uploadProgress.value = 100
   if (response && response.code === 200) {
     const url = response.data?.url || response.data
-    videoUrl.value = url
-    file.url = url
+    const signedUrl = typeof url === 'string' ? url : ''
+    
+    // 从签名URL中提取原始URL（用于保存到数据库，避免签名URL过期）
+    const originalUrl = extractOriginalUrl(signedUrl)
+    
+    // 预览使用签名URL，保存到数据库时使用原始URL
+    videoUrl.value = signedUrl // 预览使用签名URL
+    file.url = signedUrl
     file.status = 'success'
-    emit('update:modelValue', url)
-    emit('change', url)
+    
+    // 保存到数据库时使用原始URL
+    emit('update:modelValue', originalUrl)
+    emit('change', originalUrl)
     ElMessage.success('上传成功')
     // 延迟重置进度条
     setTimeout(() => {

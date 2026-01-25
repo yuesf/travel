@@ -167,7 +167,11 @@ watch(
 const updateValue = () => {
   const urls = fileList.value
     .filter((file) => file.status === 'success')
-    .map((file) => file.url || file.response?.data?.url || file.response?.data)
+    .map((file) => {
+      // 优先使用原始URL（如果存在），用于保存到数据库
+      // 如果没有原始URL，则使用url（兼容旧数据）
+      return file.originalUrl || file.url || file.response?.data?.url || file.response?.data
+    })
     .filter(Boolean)
 
   if (props.limit === 1) {
@@ -292,19 +296,46 @@ const beforeUpload = async (file) => {
   return true
 }
 
+/**
+ * 从签名URL中提取原始URL（去掉查询参数）
+ * 签名URL格式：https://{bucket}.{endpoint}/{path}?Expires=xxx&OSSAccessKeyId=xxx&Signature=xxx
+ * 原始URL格式：https://{bucket}.{endpoint}/{path}
+ */
+const extractOriginalUrl = (signedUrl) => {
+  if (!signedUrl || typeof signedUrl !== 'string') {
+    return signedUrl
+  }
+  
+  // 检查是否是OSS签名URL（包含查询参数）
+  const questionMarkIndex = signedUrl.indexOf('?')
+  if (questionMarkIndex > 0) {
+    // 提取查询参数前的部分作为原始URL
+    return signedUrl.substring(0, questionMarkIndex)
+  }
+  
+  // 如果不是签名URL，直接返回
+  return signedUrl
+}
+
 // 上传成功
 const handleSuccess = (response, file) => {
   console.log('上传成功响应:', response)
   if (response && response.code === 200) {
     const url = response.data?.url || response.data
     // 确保URL是字符串
-    const imageUrl = typeof url === 'string' ? url : ''
+    const signedUrl = typeof url === 'string' ? url : ''
+    
+    // 从签名URL中提取原始URL（用于保存到数据库，避免签名URL过期）
+    // 预览时使用签名URL，保存到数据库时使用原始URL
+    const originalUrl = extractOriginalUrl(signedUrl)
     
     // 创建新的文件对象，避免修改只读属性
+    // fileItem.url 用于预览，使用签名URL
     const fileItem = {
       uid: file.uid,
       name: file.name,
-      url: imageUrl,
+      url: signedUrl, // 预览使用签名URL
+      originalUrl: originalUrl, // 保存原始URL，用于保存到数据库
       status: 'success',
       response: response,
     }
@@ -324,12 +355,14 @@ const handleSuccess = (response, file) => {
     }
     
     // 更新值并触发验证
+    // 注意：保存到数据库时使用原始URL，避免签名URL过期
     updateValue()
     
     // 延迟触发验证，确保值已更新
     nextTick(() => {
       // 触发 change 事件以触发表单验证
-      emit('change', props.limit === 1 ? imageUrl : [imageUrl])
+      // 使用原始URL保存到数据库
+      emit('change', props.limit === 1 ? originalUrl : [originalUrl])
     })
     
     ElMessage.success('上传成功')
