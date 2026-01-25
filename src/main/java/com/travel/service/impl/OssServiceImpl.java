@@ -3,6 +3,7 @@ package com.travel.service.impl;
 import com.aliyun.oss.OSS;
 import com.aliyun.oss.OSSClientBuilder;
 import com.aliyun.oss.model.PutObjectRequest;
+import com.travel.config.OssProperties;
 import com.travel.entity.OssConfig;
 import com.travel.mapper.OssConfigMapper;
 import com.travel.service.OssService;
@@ -21,6 +22,7 @@ import java.util.UUID;
 
 /**
  * OSS文件服务实现类
+ * 优先从启动参数（application.yml或环境变量）读取配置，如果未配置则从数据库读取（向后兼容）
  * 
  * @author travel-platform
  */
@@ -28,21 +30,76 @@ import java.util.UUID;
 @Service
 public class OssServiceImpl implements OssService {
     
-    @Autowired
+    @Autowired(required = false)
     private OssConfigMapper ossConfigMapper;
     
-    // AES加密密钥（16字节），生产环境应该从配置中心或环境变量获取
+    @Autowired
+    private OssProperties ossProperties;
+    
+    // AES加密密钥（16字节），用于解密数据库中的加密密钥（向后兼容）
     private static final String AES_KEY = "TravelPlatform16"; // 16字节密钥
     
     /**
-     * 获取OSS配置
+     * OSS配置信息（内部类）
      */
-    private OssConfig getOssConfig() {
-        return ossConfigMapper.selectOne();
+    private static class OssConfigInfo {
+        String endpoint;
+        String accessKeyId;
+        String accessKeySecret;
+        String bucketName;
+        boolean enabled;
+        
+        OssConfigInfo(String endpoint, String accessKeyId, String accessKeySecret, 
+                     String bucketName, boolean enabled) {
+            this.endpoint = endpoint;
+            this.accessKeyId = accessKeyId;
+            this.accessKeySecret = accessKeySecret;
+            this.bucketName = bucketName;
+            this.enabled = enabled;
+        }
     }
     
     /**
-     * 解密AccessKeySecret
+     * 获取OSS配置（优先从启动参数读取，如果未配置则从数据库读取）
+     */
+    private OssConfigInfo getOssConfigInfo() {
+        // 优先从启动参数读取
+        if (ossProperties != null && ossProperties.isConfigComplete()) {
+            log.debug("从启动参数读取OSS配置");
+            return new OssConfigInfo(
+                ossProperties.getEndpoint(),
+                ossProperties.getAccessKeyId(),
+                ossProperties.getAccessKeySecret(),
+                ossProperties.getBucketName(),
+                ossProperties.getEnabled()
+            );
+        }
+        
+        // 如果启动参数未配置，尝试从数据库读取（向后兼容）
+        if (ossConfigMapper != null) {
+            OssConfig dbConfig = ossConfigMapper.selectOne();
+            if (dbConfig != null && dbConfig.getEnabled()) {
+                log.debug("从数据库读取OSS配置（向后兼容）");
+                try {
+                    String accessKeySecret = decryptAccessKeySecret(dbConfig.getAccessKeySecret());
+                    return new OssConfigInfo(
+                        dbConfig.getEndpoint(),
+                        dbConfig.getAccessKeyId(),
+                        accessKeySecret,
+                        dbConfig.getBucketName(),
+                        dbConfig.getEnabled()
+                    );
+                } catch (Exception e) {
+                    log.warn("从数据库读取OSS配置失败，尝试解密密钥时出错", e);
+                }
+            }
+        }
+        
+        return null;
+    }
+    
+    /**
+     * 解密AccessKeySecret（仅用于数据库配置，向后兼容）
      */
     private String decryptAccessKeySecret(String encryptedSecret) {
         try {
@@ -61,23 +118,22 @@ public class OssServiceImpl implements OssService {
      * 创建OSS客户端
      */
     private OSS createOssClient() {
-        OssConfig config = getOssConfig();
-        if (config == null || !config.getEnabled()) {
+        OssConfigInfo config = getOssConfigInfo();
+        if (config == null || !config.enabled) {
             throw new RuntimeException("OSS未配置或未启用");
         }
         
-        String accessKeySecret = decryptAccessKeySecret(config.getAccessKeySecret());
         return new OSSClientBuilder().build(
-            "https://" + config.getEndpoint(),
-            config.getAccessKeyId(),
-            accessKeySecret
+            "https://" + config.endpoint,
+            config.accessKeyId,
+            config.accessKeySecret
         );
     }
     
     @Override
     public boolean isOssEnabled() {
-        OssConfig config = getOssConfig();
-        return config != null && config.getEnabled();
+        OssConfigInfo config = getOssConfigInfo();
+        return config != null && config.enabled;
     }
     
     @Override
@@ -103,8 +159,8 @@ public class OssServiceImpl implements OssService {
         
         while (retryCount < maxRetries) {
             try {
-                OssConfig config = getOssConfig();
-                if (config == null || !config.getEnabled()) {
+                OssConfigInfo config = getOssConfigInfo();
+                if (config == null || !config.enabled) {
                     throw new RuntimeException("OSS未配置或未启用");
                 }
                 
@@ -119,7 +175,7 @@ public class OssServiceImpl implements OssService {
                 
                 // 上传文件到OSS
                 PutObjectRequest putObjectRequest = new PutObjectRequest(
-                    config.getBucketName(),
+                    config.bucketName,
                     filePath,
                     inputStream
                 );
@@ -127,8 +183,8 @@ public class OssServiceImpl implements OssService {
                 
                 // 生成文件访问URL
                 String fileUrl = String.format("https://%s.%s/%s",
-                    config.getBucketName(),
-                    config.getEndpoint(),
+                    config.bucketName,
+                    config.endpoint,
                     filePath
                 );
                 
@@ -166,15 +222,15 @@ public class OssServiceImpl implements OssService {
         
         while (retryCount < maxRetries) {
             try {
-                OssConfig config = getOssConfig();
-                if (config == null || !config.getEnabled()) {
+                OssConfigInfo config = getOssConfigInfo();
+                if (config == null || !config.enabled) {
                     throw new RuntimeException("OSS未配置或未启用");
                 }
                 
                 ossClient = createOssClient();
                 
                 // 删除文件
-                ossClient.deleteObject(config.getBucketName(), filePath);
+                ossClient.deleteObject(config.bucketName, filePath);
                 
                 log.info("文件删除成功：{}", filePath);
                 return true;
@@ -205,13 +261,13 @@ public class OssServiceImpl implements OssService {
     public boolean fileExists(String filePath) {
         OSS ossClient = null;
         try {
-            OssConfig config = getOssConfig();
-            if (config == null || !config.getEnabled()) {
+            OssConfigInfo config = getOssConfigInfo();
+            if (config == null || !config.enabled) {
                 return false;
             }
             
             ossClient = createOssClient();
-            return ossClient.doesObjectExist(config.getBucketName(), filePath);
+            return ossClient.doesObjectExist(config.bucketName, filePath);
             
         } catch (Exception e) {
             log.error("检查文件是否存在失败：{}", filePath, e);
@@ -225,14 +281,14 @@ public class OssServiceImpl implements OssService {
     
     @Override
     public String getFileUrl(String filePath) {
-        OssConfig config = getOssConfig();
-        if (config == null || !config.getEnabled()) {
+        OssConfigInfo config = getOssConfigInfo();
+        if (config == null || !config.enabled) {
             throw new RuntimeException("OSS未配置或未启用");
         }
         
         return String.format("https://%s.%s/%s",
-            config.getBucketName(),
-            config.getEndpoint(),
+            config.bucketName,
+            config.endpoint,
             filePath
         );
     }
@@ -241,8 +297,8 @@ public class OssServiceImpl implements OssService {
     public String generateSignedUrl(String filePath, int expireSeconds) {
         OSS ossClient = null;
         try {
-            OssConfig config = getOssConfig();
-            if (config == null || !config.getEnabled()) {
+            OssConfigInfo config = getOssConfigInfo();
+            if (config == null || !config.enabled) {
                 throw new RuntimeException("OSS未配置或未启用");
             }
             
@@ -252,7 +308,7 @@ public class OssServiceImpl implements OssService {
             java.util.Date expiration = new java.util.Date(System.currentTimeMillis() + expireSeconds * 1000L);
             
             // 生成签名URL
-            java.net.URL url = ossClient.generatePresignedUrl(config.getBucketName(), filePath, expiration);
+            java.net.URL url = ossClient.generatePresignedUrl(config.bucketName, filePath, expiration);
             
             String signedUrl = url.toString();
             log.debug("生成签名URL成功：{}", signedUrl);
@@ -315,26 +371,26 @@ public class OssServiceImpl implements OssService {
             return url;
         }
         
-        OssConfig config = getOssConfig();
+        OssConfigInfo config = getOssConfigInfo();
         if (config == null) {
             log.warn("OSS配置不存在，返回原URL: {}", url);
             return url;
         }
         
         log.info("尝试为URL生成签名URL: {}", url);
-        log.info("OSS配置 - Bucket: {}, Endpoint: {}", config.getBucketName(), config.getEndpoint());
+        log.info("OSS配置 - Bucket: {}, Endpoint: {}", config.bucketName, config.endpoint);
         
         // 检查URL是否是OSS URL（格式：https://{bucket}.{endpoint}/{path}）
-        String expectedPrefix = String.format("https://%s.%s/", config.getBucketName(), config.getEndpoint());
+        String expectedPrefix = String.format("https://%s.%s/", config.bucketName, config.endpoint);
         log.info("期望的URL前缀: {}", expectedPrefix);
         
         if (!url.startsWith(expectedPrefix)) {
             // 尝试更灵活的匹配：检查是否包含bucket和endpoint（顺序可能不同）
             // 例如：https://bucket.endpoint/path 或 https://endpoint/bucket/path
-            boolean isOssUrl = url.contains(config.getBucketName()) && url.contains(config.getEndpoint());
+            boolean isOssUrl = url.contains(config.bucketName) && url.contains(config.endpoint);
             if (!isOssUrl) {
                 log.warn("URL不匹配OSS配置，返回原URL。URL: {}, Bucket: {}, Endpoint: {}", 
-                    url, config.getBucketName(), config.getEndpoint());
+                    url, config.bucketName, config.endpoint);
                 return url;
             }
             // 如果包含bucket和endpoint，尝试从URL中提取路径
@@ -343,8 +399,8 @@ public class OssServiceImpl implements OssService {
             if (pathStartIndex > 0) {
                 String possiblePath = url.substring(pathStartIndex + 1);
                 // 检查路径是否以bucket开头（某些OSS配置可能这样）
-                if (possiblePath.startsWith(config.getBucketName() + "/")) {
-                    String filePath = possiblePath.substring(config.getBucketName().length() + 1);
+                if (possiblePath.startsWith(config.bucketName + "/")) {
+                    String filePath = possiblePath.substring(config.bucketName.length() + 1);
                     log.info("从URL提取的文件路径: {}", filePath);
                     try {
                         return generateSignedUrl(filePath, expireSeconds);

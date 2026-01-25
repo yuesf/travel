@@ -69,6 +69,21 @@ travel:
     header: Authorization
     token-prefix: Bearer 
   
+  # OSS配置（阿里云对象存储）
+  # 优先从环境变量读取，如果未设置则使用默认值
+  # 环境变量示例：
+  #   export OSS_ENABLED=true
+  #   export OSS_ENDPOINT=oss-cn-hangzhou.aliyuncs.com
+  #   export OSS_ACCESS_KEY_ID=your_access_key_id
+  #   export OSS_ACCESS_KEY_SECRET=your_access_key_secret
+  #   export OSS_BUCKET_NAME=your_bucket_name
+  oss:
+    enabled: ${OSS_ENABLED:false} # 是否启用OSS（从环境变量读取，默认：false）
+    endpoint: ${OSS_ENDPOINT:} # OSS Endpoint（如：oss-cn-hangzhou.aliyuncs.com，从环境变量读取）
+    access-key-id: ${OSS_ACCESS_KEY_ID:} # Access Key ID（从环境变量读取）
+    access-key-secret: ${OSS_ACCESS_KEY_SECRET:} # Access Key Secret（从环境变量读取）
+    bucket-name: ${OSS_BUCKET_NAME:} # Bucket名称（从环境变量读取）
+  
   # 文件上传配置
   file:
     # 注意：已移除本地存储上传功能，所有文件上传到OSS
