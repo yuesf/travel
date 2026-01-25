@@ -42,17 +42,19 @@
               :src="articleData.coverImage"
               style="max-width: 300px; max-height: 200px"
               fit="contain"
-              :preview-src-list="[articleData.coverImage]"
+              :preview-src-list="getAllArticleImages()"
+              :initial-index="0"
               @error="handleCoverImageError"
+              :hide-on-click-modal="false"
             >
               <template #error>
                 <div class="image-error">
                   <el-icon :size="40"><Picture /></el-icon>
-                  <div class="error-text">加载失败</div>
+                  <div class="error-text">图片加载失败</div>
                 </div>
               </template>
             </el-image>
-            <span v-else>-</span>
+            <span v-else class="no-image">-</span>
           </el-descriptions-item>
           <el-descriptions-item label="文章摘要" :span="2">
             {{ articleData.summary || '-' }}
@@ -75,6 +77,29 @@
             {{ formatDate(articleData.updateTime) || '-' }}
           </el-descriptions-item>
         </el-descriptions>
+
+        <!-- 文章图片轮播 -->
+        <div v-if="articleData.images && articleData.images.length > 0" class="article-images-section">
+          <el-divider content-position="left">文章图片</el-divider>
+          <div class="article-images-container">
+            <el-image
+              v-for="(imageUrl, index) in articleData.images"
+              :key="index"
+              :src="imageUrl"
+              fit="cover"
+              class="article-image-item"
+              :preview-src-list="getAllArticleImages()"
+              :initial-index="getImageIndexInAll('images', index)"
+              @error="handleImageError"
+            >
+              <template #error>
+                <div class="image-error-small">
+                  <el-icon :size="20"><Picture /></el-icon>
+                </div>
+              </template>
+            </el-image>
+          </div>
+        </div>
 
         <el-divider content-position="left">文章内容</el-divider>
 
@@ -123,6 +148,7 @@ import { useRouter, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { ArrowLeft, ArrowRight, Picture } from '@element-plus/icons-vue'
 import { getArticleById, getArticleTagList } from '@/api/articles'
+import { getSignedUrlByUrl } from '@/api/file'
 
 const router = useRouter()
 const route = useRoute()
@@ -136,6 +162,10 @@ const previewImageUrl = ref('')
 const imagePreviewList = ref([])
 const currentImageIndex = ref(0)
 
+// 封面图重试标志，避免重复重试
+const coverImageRetried = ref(false)
+const coverImageOriginalUrl = ref('')
+
 // 文章数据
 const articleData = reactive({
   id: null,
@@ -144,6 +174,7 @@ const articleData = reactive({
   categoryName: '',
   summary: '',
   coverImage: '',
+  images: [], // 轮播图列表
   author: '',
   status: 0,
   publishTime: null,
@@ -166,12 +197,18 @@ const loadDetail = async () => {
     const res = await getArticleById(route.params.id)
     if (res.data) {
       const data = res.data
+      console.log('文章详情数据:', data)
+      console.log('封面图URL:', data.coverImage)
+      
       articleData.id = data.id
       articleData.title = data.title || ''
       articleData.categoryId = data.categoryId || null
       articleData.categoryName = data.categoryName || ''
       articleData.summary = data.summary || ''
       articleData.coverImage = data.coverImage || ''
+      articleData.images = Array.isArray(data.images) ? data.images : []
+      coverImageOriginalUrl.value = data.coverImage || ''
+      coverImageRetried.value = false
       articleData.author = data.author || ''
       articleData.status = data.status !== undefined ? data.status : 0
       articleData.publishTime = data.publishTime || null
@@ -203,7 +240,110 @@ const loadDetail = async () => {
   }
 }
 
-// 为文章内容中的图片添加预览功能
+// 封面图加载错误处理
+const handleCoverImageError = async (e) => {
+  const currentUrl = articleData.coverImage
+  console.error('封面图加载失败:', currentUrl)
+  
+  // 如果已经重试过，不再重试，避免循环
+  if (coverImageRetried.value) {
+    return
+  }
+  
+  // 如果当前URL是签名URL，尝试使用原始URL获取新的签名URL
+  const originalUrl = coverImageOriginalUrl.value || currentUrl
+  if (originalUrl && isOssUrl(originalUrl) && !currentUrl.includes('?')) {
+    // 当前URL可能是未签名的OSS URL，尝试获取签名URL
+    coverImageRetried.value = true
+    try {
+      console.log('尝试获取签名URL:', originalUrl)
+      const response = await getSignedUrlByUrl(originalUrl)
+      if (response && response.code === 200 && response.data) {
+        console.log('获取到签名URL:', response.data)
+        articleData.coverImage = response.data
+        // 不显示提示，让图片自然加载
+        return
+      }
+    } catch (error) {
+      console.error('获取签名URL失败:', error)
+    }
+  }
+  
+  // 标记已重试，避免再次触发
+  coverImageRetried.value = true
+}
+
+// 判断是否为OSS URL
+const isOssUrl = (url) => {
+  if (!url || typeof url !== 'string') {
+    return false
+  }
+  const ossPatterns = [
+    /oss-.*\.aliyuncs\.com/i,
+    /\.oss\./i,
+    /\.qcloud\.com/i,
+    /\.amazonaws\.com/i,
+    /\.cos\./i
+  ]
+  return ossPatterns.some(pattern => pattern.test(url))
+}
+
+// 收集所有文章图片（封面+轮播+内容），按编辑顺序
+// 注意：允许重复图片，保持编辑时的顺序
+const getAllArticleImages = () => {
+  const allImages = []
+  
+  // 1. 封面图
+  if (articleData.coverImage) {
+    allImages.push(articleData.coverImage)
+  }
+  
+  // 2. 轮播图（按编辑顺序）
+  if (articleData.images && Array.isArray(articleData.images)) {
+    articleData.images.forEach(url => {
+      if (url) {
+        allImages.push(url)
+      }
+    })
+  }
+  
+  // 3. 文章内容中的图片（按在HTML中的顺序）
+  if (contentRef.value) {
+    const contentImages = contentRef.value.querySelectorAll('img')
+    contentImages.forEach(img => {
+      // 优先使用当前src（可能是签名URL），如果没有则使用原始URL
+      const src = img.src || img.getAttribute('data-original-src')
+      if (src) {
+        allImages.push(src)
+      }
+    })
+  }
+  
+  return allImages
+}
+
+// 获取图片在所有图片列表中的索引
+const getImageIndexInAll = (type, index) => {
+  let offset = 0
+  
+  // 封面图索引为0
+  if (articleData.coverImage) {
+    offset = 1
+  }
+  
+  if (type === 'images') {
+    // 轮播图：封面图之后
+    return offset + index
+  } else if (type === 'content') {
+    // 内容图片：封面图 + 轮播图之后
+    const imagesCount = articleData.images ? articleData.images.length : 0
+    return offset + imagesCount + index
+  }
+  
+  return 0
+}
+
+// 为文章内容中的图片添加预览功能和错误处理
 const setupImagePreview = () => {
   if (!contentRef.value) {
     return
@@ -214,29 +354,103 @@ const setupImagePreview = () => {
     return
   }
   
-  // 收集所有图片URL
-  const imageUrls = Array.from(images).map(img => img.src).filter(Boolean)
+  // 收集所有图片URL（使用原始src，避免签名URL变化）
+  const imageUrls = Array.from(images).map(img => {
+    // 保存原始URL
+    const originalSrc = img.getAttribute('data-original-src') || img.src
+    if (!img.getAttribute('data-original-src')) {
+      img.setAttribute('data-original-src', img.src)
+    }
+    return originalSrc
+  }).filter(Boolean)
   
-  // 为每个图片添加点击事件
+  // 为每个图片添加点击事件和错误处理
   images.forEach((img, index) => {
     // 添加鼠标样式
     img.style.cursor = 'pointer'
     
+    // 保存原始URL
+    const originalSrc = img.getAttribute('data-original-src') || img.src
+    if (!img.getAttribute('data-original-src')) {
+      img.setAttribute('data-original-src', originalSrc)
+    }
+    
     // 添加点击事件
     img.addEventListener('click', () => {
-      showImagePreview(imageUrls, index)
+      // 使用所有文章图片列表，找到当前图片的索引
+      const allImages = getAllArticleImages()
+      // 找到当前图片在所有图片中的索引
+      const currentSrc = img.src || img.getAttribute('data-original-src')
+      const globalIndex = allImages.findIndex(url => {
+        // 比较URL（可能签名URL不同，但原始URL相同）
+        const originalUrl = img.getAttribute('data-original-src') || currentSrc
+        return url === currentSrc || url === originalUrl
+      })
+      showImagePreview(allImages, globalIndex >= 0 ? globalIndex : getImageIndexInAll('content', index))
+    })
+    
+    // 添加错误处理
+    img.addEventListener('error', async (e) => {
+      const currentSrc = img.src
+      const originalUrl = img.getAttribute('data-original-src') || currentSrc
+      
+      console.error('文章内容图片加载失败:', currentSrc)
+      
+      // 如果已经重试过，不再重试
+      if (img.getAttribute('data-retried') === 'true') {
+        return
+      }
+      
+      // 如果是OSS URL且未签名，尝试获取签名URL
+      if (originalUrl && isOssUrl(originalUrl) && !currentSrc.includes('?')) {
+        img.setAttribute('data-retried', 'true')
+        try {
+          console.log('尝试为文章内容图片获取签名URL:', originalUrl)
+          const response = await getSignedUrlByUrl(originalUrl)
+          if (response && response.code === 200 && response.data) {
+            console.log('获取到签名URL:', response.data)
+            img.src = response.data
+            // 更新data-original-src为新的签名URL
+            img.setAttribute('data-original-src', response.data)
+            return
+          }
+        } catch (error) {
+          console.error('获取签名URL失败:', error)
+        }
+      }
+      
+      // 标记已重试
+      img.setAttribute('data-retried', 'true')
     })
   })
 }
 
 // 显示图片预览
-const showImagePreview = (urlList, initialIndex = 0) => {
+const showImagePreview = async (urlList, initialIndex = 0) => {
   if (!urlList || urlList.length === 0) {
     return
   }
-  imagePreviewList.value = urlList
-  currentImageIndex.value = initialIndex
-  previewImageUrl.value = urlList[initialIndex]
+  
+  // 处理URL列表，如果是OSS URL且未签名，尝试获取签名URL
+  const processedUrls = await Promise.all(
+    urlList.map(async (url) => {
+      if (url && isOssUrl(url) && !url.includes('?')) {
+        try {
+          const response = await getSignedUrlByUrl(url)
+          if (response && response.code === 200 && response.data) {
+            return response.data
+          }
+        } catch (error) {
+          console.error('获取预览图片签名URL失败:', error)
+        }
+      }
+      return url
+    })
+  )
+  
+  imagePreviewList.value = processedUrls.filter(Boolean)
+  currentImageIndex.value = Math.min(initialIndex, imagePreviewList.value.length - 1)
+  previewImageUrl.value = imagePreviewList.value[currentImageIndex.value]
   imagePreviewVisible.value = true
 }
 
@@ -259,6 +473,11 @@ const nextImage = () => {
 // 预览图片加载错误
 const handlePreviewImageError = () => {
   ElMessage.error('图片加载失败')
+}
+
+// 轮播图加载错误处理
+const handleImageError = (e) => {
+  console.error('轮播图加载失败:', e)
 }
 
 // 加载标签列表并匹配文章标签
@@ -335,10 +554,30 @@ onMounted(() => {
   height: auto;
   cursor: pointer;
   transition: opacity 0.3s;
+  display: block;
 }
 
 :deep(.article-content img:hover) {
   opacity: 0.8;
+}
+
+/* 图片加载失败时的占位符样式 */
+:deep(.article-content img[data-retried="true"]) {
+  min-height: 100px;
+  background-color: #f5f7fa;
+  border: 1px dashed #dcdfe6;
+  position: relative;
+}
+
+:deep(.article-content img[data-retried="true"]::after) {
+  content: '图片加载失败，点击查看';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: #909399;
+  font-size: 12px;
+  white-space: nowrap;
 }
 
 :deep(.article-content p) {
@@ -355,6 +594,63 @@ onMounted(() => {
   margin-top: 20px;
   margin-bottom: 10px;
   font-weight: bold;
+}
+
+/* 图片错误样式 */
+.image-error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 150px;
+  background-color: #f5f7fa;
+  color: #909399;
+  border-radius: 4px;
+}
+
+.error-text {
+  margin-top: 10px;
+  font-size: 14px;
+  color: #909399;
+}
+
+.no-image {
+  color: #909399;
+}
+
+/* 文章图片轮播区域 */
+.article-images-section {
+  margin: 20px 0;
+}
+
+.article-images-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 0 20px;
+}
+
+.article-image-item {
+  width: 150px;
+  height: 150px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: transform 0.3s;
+}
+
+.article-image-item:hover {
+  transform: scale(1.05);
+}
+
+.image-error-small {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  background-color: #f5f7fa;
+  color: #909399;
 }
 
 /* 图片预览对话框样式 */
