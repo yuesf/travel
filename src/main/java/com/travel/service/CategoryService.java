@@ -7,6 +7,7 @@ import com.travel.entity.Product;
 import com.travel.entity.ProductCategory;
 import com.travel.mapper.AttractionMapper;
 import com.travel.mapper.ProductMapper;
+import com.travel.util.OssUrlUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -37,6 +38,9 @@ public class CategoryService {
     @Autowired
     private ProductMapper productMapper;
     
+    @Autowired
+    private OssUrlUtil ossUrlUtil;
+    
     /**
      * 获取分类列表（商品分类）
      * 直接查询 product_category 表中 type='DISPLAY' 的分类
@@ -51,7 +55,13 @@ public class CategoryService {
             Map<String, Object> categoryMap = new HashMap<>();
             categoryMap.put("id", category.getId());
             categoryMap.put("name", category.getName());
-            categoryMap.put("icon", category.getIcon());
+            // 处理OSS URL签名（返回的URL都是签名URL）
+            String iconUrl = category.getIcon();
+            if (iconUrl != null && !iconUrl.isEmpty()) {
+                categoryMap.put("icon", ossUrlUtil.processUrl(iconUrl));
+            } else {
+                categoryMap.put("icon", iconUrl);
+            }
             categoryMap.put("parentId", category.getParentId());
             categoryMap.put("level", category.getLevel());
             categoryMap.put("sort", category.getSort());
@@ -273,20 +283,35 @@ public class CategoryService {
         
         // 处理图片：取第一张图片作为封面图
         if (product.getImages() != null && !product.getImages().isEmpty()) {
-            map.put("image", product.getImages().get(0));
-            map.put("coverImage", product.getImages().get(0));
+            String firstImage = product.getImages().get(0);
+            // 处理OSS URL签名（返回的URL都是签名URL）
+            map.put("image", ossUrlUtil.processUrl(firstImage));
+            map.put("coverImage", ossUrlUtil.processUrl(firstImage));
         } else {
             map.put("image", "");
             map.put("coverImage", "");
         }
         
-        map.put("images", product.getImages());
+        // 处理图片列表（images字段是List<String>，需要特殊处理）
+        if (product.getImages() != null && !product.getImages().isEmpty()) {
+            List<String> signedImages = new ArrayList<>();
+            for (String imageUrl : product.getImages()) {
+                if (imageUrl != null && !imageUrl.isEmpty()) {
+                    signedImages.add(ossUrlUtil.processUrl(imageUrl));
+                } else {
+                    signedImages.add(imageUrl);
+                }
+            }
+            map.put("images", signedImages);
+        } else {
+            map.put("images", product.getImages());
+        }
         map.put("specifications", product.getSpecifications());
         map.put("status", product.getStatus());
         map.put("createTime", product.getCreateTime());
         map.put("updateTime", product.getUpdateTime());
         map.put("categoryName", product.getCategoryName());
-        map.put("h5Link", product.getH5Link()); // H5链接
+        map.put("h5Link", product.getH5Link()); // 外部链接
         
         // 获取分类类型（如果分类ID存在）
         String categoryType = null;

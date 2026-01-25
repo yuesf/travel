@@ -1,7 +1,9 @@
 {
   "navigationBarTitleText": "商品分类",
+  "navigationStyle": "custom",
   "enablePullDownRefresh": true,
   "usingComponents": {
+    "custom-nav-bar": "/components/custom-nav-bar/index",
     "product-card": "/components/product-card/index",
     "skeleton": "/components/skeleton/index"
   }

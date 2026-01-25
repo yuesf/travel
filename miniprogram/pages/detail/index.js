@@ -145,8 +145,9 @@ Page({
       console.log('商品描述:', detail?.description);
       console.log('================================');
       
-      // 处理媒体列表（图片和视频）
+      // 处理媒体列表（图片和视频）- 后端已处理OSS签名，这里只处理localhost
       const mediaList = this.processMediaList(detail);
+      
       console.log('处理后的媒体列表:', mediaList);
       
       // 处理规格数据（如果是商品且有规格）
@@ -154,8 +155,8 @@ Page({
         // 确保规格值是数组格式，并转换为数组格式便于模板遍历
         const processedSpecs = {};
         const specList = []; // 用于模板遍历的数组格式
-        Object.keys(detail.specifications).forEach(key => {
-          const value = detail.specifications[key];
+        Object.keys(processedDetail.specifications).forEach(key => {
+          const value = processedDetail.specifications[key];
           let options = [];
           // 如果是数组，直接使用；如果是字符串，转换为数组
           if (Array.isArray(value)) {
@@ -176,7 +177,7 @@ Page({
         detail.specList = specList; // 添加数组格式的规格列表
       }
       
-      // 设置详情数据
+      // 设置详情数据（后端已处理OSS签名）
       this.setData({
         detail,
         mediaList,
@@ -228,6 +229,7 @@ Page({
     
     return mediaList;
   },
+
 
   /**
    * 轮播切换事件

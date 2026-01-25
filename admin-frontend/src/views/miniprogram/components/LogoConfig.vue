@@ -8,13 +8,23 @@
       </template>
       <el-form :model="logoForm" label-width="120px">
         <el-form-item label="Logo 图片">
-          <ImageUpload
-            v-model="logoForm.logoUrl"
-            :limit="1"
-            :max-size="2"
-          />
+          <div style="display: flex; align-items: flex-start; gap: 12px;">
+            <ImageUpload
+              v-model="logoForm.logoUrl"
+              :limit="1"
+              :max-size="2"
+              :disable-upload="true"
+            />
+            <el-button 
+              type="info" 
+              :icon="Folder"
+              @click="handleSelectLogoFromFileList"
+            >
+              从文件库选择
+            </el-button>
+          </div>
           <div style="margin-top: 8px; color: #909399; font-size: 12px;">
-            支持 PNG、JPG、JPEG 格式，建议尺寸 512x512 像素，最大 2MB
+            请从文件库中选择 Logo 图片，建议尺寸 512x512 像素
           </div>
         </el-form-item>
         
@@ -28,13 +38,24 @@
         </el-form-item>
       </el-form>
     </el-card>
+
+    <!-- 文件选择器对话框 -->
+    <FileSelector
+      v-model="fileSelectorVisible"
+      file-type="image"
+      :multiple="false"
+      :max-select="1"
+      @select="handleFileSelect"
+    />
   </div>
 </template>
 
 <script setup>
 import { reactive, ref, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { Folder } from '@element-plus/icons-vue'
 import ImageUpload from '@/components/ImageUpload.vue'
+import FileSelector from '@/components/FileSelector.vue'
 import {
   getConfigByKey,
   createConfig,
@@ -43,6 +64,7 @@ import {
 } from '@/api/miniprogram'
 
 const savingLogo = ref(false)
+const fileSelectorVisible = ref(false)
 
 // Logo 配置表单
 const logoForm = reactive({
@@ -113,6 +135,24 @@ const handleSaveLogo = async () => {
   } finally {
     savingLogo.value = false
   }
+}
+
+// 打开文件选择器选择 Logo
+const handleSelectLogoFromFileList = () => {
+  fileSelectorVisible.value = true
+}
+
+// 处理文件选择
+const handleFileSelect = (files) => {
+  if (files && files.length > 0) {
+    const selectedFile = files[0]
+    const fileUrl = selectedFile.fileUrl || selectedFile.url || ''
+    if (fileUrl) {
+      logoForm.logoUrl = fileUrl
+      ElMessage.success('已选择 Logo 图片')
+    }
+  }
+  fileSelectorVisible.value = false
 }
 
 // 删除 Logo 配置

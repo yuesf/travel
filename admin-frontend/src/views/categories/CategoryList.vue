@@ -28,9 +28,10 @@
           <template #default="{ row }">
             <span v-if="row.icon" class="category-icon">
               <el-image
-                :src="row.icon"
+                :src="getImageUrl(row)"
                 fit="cover"
                 style="width: 24px; height: 24px; margin-right: 8px; vertical-align: middle"
+                @error="(e) => handleImageError(row, e)"
               />
             </span>
             {{ row.name }}
@@ -98,7 +99,11 @@ import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Refresh, Plus } from '@element-plus/icons-vue'
 import { getCategoryTree, deleteCategory, deleteCategoryWithProducts } from '@/api/categories'
+import { getSignedUrlByUrl } from '@/api/file'
 import CategoryForm from './CategoryForm.vue'
+
+// 签名URL缓存
+const signedUrlCache = ref(new Map())
 
 // 表格数据
 const tableData = ref([])
@@ -109,6 +114,84 @@ const formDialogVisible = ref(false)
 const currentFormData = ref(null)
 const parentCategory = ref(null)
 
+// 判断是否是OSS URL
+const isOssUrl = (url) => {
+  if (!url || typeof url !== 'string') {
+    return false
+  }
+  // 检查是否是OSS URL：包含 oss- 或 aliyuncs.com 等常见OSS域名特征
+  const ossPatterns = [
+    /oss-.*\.aliyuncs\.com/i,
+    /\.oss\./i,
+    /\.qcloud\.com/i,
+    /\.amazonaws\.com/i,
+    /\.cos\./i,
+  ]
+  return url.startsWith('https://') && 
+         !url.includes('localhost') && 
+         ossPatterns.some(pattern => pattern.test(url))
+}
+
+// 递归处理分类树中的OSS URL（预加载签名URL到缓存）
+const processCategoryOssUrls = async (categories) => {
+  if (!categories || !Array.isArray(categories)) {
+    return
+  }
+  
+  for (const category of categories) {
+    if (category.icon && isOssUrl(category.icon)) {
+      // 如果缓存中没有，异步获取签名URL
+      if (!signedUrlCache.value.has(category.icon)) {
+        try {
+          const response = await getSignedUrlByUrl(category.icon)
+          if (response && response.code === 200 && response.data) {
+            signedUrlCache.value.set(category.icon, response.data)
+          }
+        } catch (error) {
+          console.warn('获取OSS签名URL失败:', category.icon, error)
+        }
+      }
+    }
+    
+    // 递归处理子分类
+    if (category.children && category.children.length > 0) {
+      await processCategoryOssUrls(category.children)
+    }
+  }
+}
+
+// 获取图片URL（优先使用签名URL）
+const getImageUrl = (row) => {
+  if (!row.icon) {
+    return ''
+  }
+  // 如果是OSS URL且缓存中有签名URL，使用签名URL
+  if (isOssUrl(row.icon) && signedUrlCache.value.has(row.icon)) {
+    return signedUrlCache.value.get(row.icon)
+  }
+  // 否则使用原始URL
+  return row.icon
+}
+
+// 处理图片加载错误（作为后备方案，如果签名URL失效）
+const handleImageError = async (row, event) => {
+  const originalUrl = row.icon
+  // 如果图片加载失败，可能是签名URL已过期，尝试重新获取
+  if (originalUrl && isOssUrl(originalUrl)) {
+    try {
+      const response = await getSignedUrlByUrl(originalUrl)
+      if (response && response.code === 200 && response.data) {
+        // 更新缓存的签名URL
+        signedUrlCache.value.set(originalUrl, response.data)
+        // 触发重新渲染（通过更新tableData）
+        tableData.value = [...tableData.value]
+      }
+    } catch (error) {
+      console.warn('重新获取签名URL失败:', error)
+    }
+  }
+}
+
 // 加载数据
 const loadData = async () => {
   loading.value = true
@@ -116,6 +199,8 @@ const loadData = async () => {
     const res = await getCategoryTree()
     if (res.data) {
       tableData.value = res.data || []
+      // 处理OSS URL，获取签名URL
+      await processCategoryOssUrls(tableData.value)
     }
   } catch (error) {
     console.error('加载分类列表失败:', error)

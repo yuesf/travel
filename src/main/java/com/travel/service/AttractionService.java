@@ -28,6 +28,9 @@ public class AttractionService {
     @Autowired
     private AttractionMapper attractionMapper;
     
+    @Autowired
+    private CacheService cacheService;
+    
     /**
      * 分页查询景点列表
      */
@@ -99,6 +102,15 @@ public class AttractionService {
         }
         
         log.info("创建景点成功: id={}, name={}", attraction.getId(), attraction.getName());
+        
+        // 自动刷新缓存
+        try {
+            cacheService.evictAttractionDetail(attraction.getId());
+            cacheService.evictHome();
+            log.info("景点创建成功后自动清除缓存，ID: {}", attraction.getId());
+        } catch (Exception e) {
+            log.error("清除景点缓存失败，但不影响景点创建，ID: {}", attraction.getId(), e);
+        }
         
         return attraction;
     }
@@ -172,6 +184,15 @@ public class AttractionService {
         
         log.info("更新景点成功: id={}, name={}", attraction.getId(), attraction.getName());
         
+        // 自动刷新缓存
+        try {
+            cacheService.evictAttractionDetail(id);
+            cacheService.evictHome();
+            log.info("景点更新成功后自动清除缓存，ID: {}", id);
+        } catch (Exception e) {
+            log.error("清除景点缓存失败，但不影响景点更新，ID: {}", id, e);
+        }
+        
         return attraction;
     }
     
@@ -195,5 +216,14 @@ public class AttractionService {
         update(id, updateRequest);
         
         log.info("删除景点成功（软删除）: id={}, name={}", attraction.getId(), attraction.getName());
+        
+        // 自动刷新缓存
+        try {
+            cacheService.evictAttractionDetail(id);
+            cacheService.evictHome();
+            log.info("景点删除成功后自动清除缓存，ID: {}", id);
+        } catch (Exception e) {
+            log.error("清除景点缓存失败，但不影响景点删除，ID: {}", id, e);
+        }
     }
 }

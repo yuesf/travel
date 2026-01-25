@@ -1,7 +1,9 @@
 {
   "navigationBarTitleText": "首页",
+  "navigationStyle": "custom",
   "enablePullDownRefresh": true,
   "usingComponents": {
+    "custom-nav-bar": "/components/custom-nav-bar/index",
     "banner": "/components/banner/index",
     "product-card": "/components/product-card/index",
     "skeleton": "/components/skeleton/index"

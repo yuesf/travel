@@ -1,6 +1,7 @@
 <template>
   <div class="video-upload-container">
     <el-upload
+      v-if="!disableUpload"
       :action="uploadUrl"
       :headers="uploadHeaders"
       :file-list="fileList"
@@ -22,6 +23,27 @@
         </div>
       </template>
     </el-upload>
+    
+    <!-- 当禁用上传时，只显示已选择的视频 -->
+    <div v-else-if="videoUrl" class="video-display">
+      <div class="video-item">
+        <video
+          :src="videoUrl"
+          controls
+          style="width: 100%; max-width: 500px;"
+        >
+          您的浏览器不支持视频播放
+        </video>
+        <el-button
+          type="danger"
+          size="small"
+          style="margin-top: 8px;"
+          @click="handleRemove"
+        >
+          删除
+        </el-button>
+      </div>
+    </div>
 
     <!-- 上传进度条 -->
     <div v-if="uploadProgress > 0 && uploadProgress < 100" class="upload-progress">
@@ -69,6 +91,11 @@ const props = defineProps({
   maxSize: {
     type: Number,
     default: 50, // MB
+  },
+  // 是否禁用上传（只显示和删除，不允许上传新文件）
+  disableUpload: {
+    type: Boolean,
+    default: false,
   },
 })
 

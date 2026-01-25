@@ -7,14 +7,17 @@ import com.travel.dto.ArticleListRequest;
 import com.travel.dto.ArticleUpdateRequest;
 import com.travel.dto.PageResult;
 import com.travel.entity.Article;
+import com.travel.entity.ArticleImage;
 import com.travel.entity.ArticleTagRelation;
 import com.travel.entity.UserArticleFavorite;
 import com.travel.entity.UserArticleLike;
 import com.travel.exception.BusinessException;
 import com.travel.mapper.ArticleMapper;
+import com.travel.mapper.ArticleImageMapper;
 import com.travel.mapper.ArticleTagRelationMapper;
 import com.travel.mapper.UserArticleFavoriteMapper;
 import com.travel.mapper.UserArticleLikeMapper;
+import com.travel.util.OssUrlUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -39,6 +42,9 @@ public class ArticleService {
     private ArticleMapper articleMapper;
     
     @Autowired
+    private ArticleImageMapper articleImageMapper;
+    
+    @Autowired
     private ArticleTagRelationMapper articleTagRelationMapper;
     
     @Autowired
@@ -48,12 +54,18 @@ public class ArticleService {
     private UserArticleFavoriteMapper userArticleFavoriteMapper;
     
     @Autowired
+    private CacheService cacheService;
+    
+    @Autowired
     @Qualifier("articleDetailCache")
     private Cache<Long, Article> articleDetailCache;
     
     @Autowired
     @Qualifier("articleViewCache")
     private Cache<String, Long> articleViewCache;
+    
+    @Autowired
+    private OssUrlUtil ossUrlUtil;
     
     /**
      * 分页查询文章列表
@@ -117,6 +129,15 @@ public class ArticleService {
             article.setTagIds(tagIds);
         }
         
+        // 加载文章图片列表
+        List<ArticleImage> images = articleImageMapper.selectByArticleId(id);
+        if (images != null && !images.isEmpty()) {
+            List<String> imageUrls = images.stream()
+                .map(ArticleImage::getImageUrl)
+                .collect(Collectors.toList());
+            article.setImages(imageUrls);
+        }
+        
         return article;
     }
     
@@ -174,6 +195,15 @@ public class ArticleService {
         }
         
         log.info("创建文章成功: id={}, title={}", article.getId(), article.getTitle());
+        
+        // 自动刷新缓存
+        try {
+            cacheService.evictArticleDetail(article.getId());
+            cacheService.evictHome();
+            log.info("文章创建成功后自动清除缓存，ID: {}", article.getId());
+        } catch (Exception e) {
+            log.error("清除文章缓存失败，但不影响文章创建，ID: {}", article.getId(), e);
+        }
         
         return article;
     }
@@ -247,6 +277,16 @@ public class ArticleService {
         
         log.info("更新文章成功: id={}, title={}", article.getId(), article.getTitle());
         
+        // 自动刷新缓存（状态变更时清除首页缓存）
+        try {
+            if (request.getStatus() != null) {
+                cacheService.evictHome();
+            }
+            log.info("文章更新成功后自动清除缓存，ID: {}", id);
+        } catch (Exception e) {
+            log.error("清除文章缓存失败，但不影响文章更新，ID: {}", id, e);
+        }
+        
         return article;
     }
     
@@ -264,6 +304,14 @@ public class ArticleService {
         update(id, updateRequest);
         
         log.info("删除文章成功（软删除）: id={}, title={}", article.getId(), article.getTitle());
+        
+        // 自动刷新缓存
+        try {
+            cacheService.evictHome();
+            log.info("文章删除成功后自动清除缓存，ID: {}", id);
+        } catch (Exception e) {
+            log.error("清除文章缓存失败，但不影响文章删除，ID: {}", id, e);
+        }
     }
     
     /**
@@ -326,6 +374,9 @@ public class ArticleService {
             }
         }
         
+        // 处理OSS URL签名（返回的URL都是签名URL）
+        processOssUrlsInArticles(list);
+        
         // 查询总数
         long total = articleMapper.countForMiniProgram(categoryId, tagId, keyword);
         
@@ -334,6 +385,7 @@ public class ArticleService {
     
     /**
      * 小程序：根据ID查询文章详情（带缓存）
+     * 注意：返回的图片URL（coverImage、images字段）都是签名URL（OSS文件），可直接使用
      */
     public Article getDetailForMiniProgram(Long id, Long userId) {
         if (id == null) {
@@ -354,11 +406,32 @@ public class ArticleService {
                     .collect(Collectors.toList());
                 a.setTagIds(tagIds);
             }
+            // 加载文章图片列表
+            List<ArticleImage> images = articleImageMapper.selectByArticleId(key);
+            if (images != null && !images.isEmpty()) {
+                List<String> imageUrls = images.stream()
+                    .map(ArticleImage::getImageUrl)
+                    .collect(Collectors.toList());
+                a.setImages(imageUrls);
+            }
             return a;
         });
         
         if (article == null) {
             throw new BusinessException(ResultCode.DATA_NOT_FOUND);
+        }
+        
+        // 如果缓存中的文章没有图片，重新加载图片（兼容旧缓存）
+        if (article.getImages() == null) {
+            List<ArticleImage> images = articleImageMapper.selectByArticleId(id);
+            if (images != null && !images.isEmpty()) {
+                List<String> imageUrls = images.stream()
+                    .map(ArticleImage::getImageUrl)
+                    .collect(Collectors.toList());
+                article.setImages(imageUrls);
+            } else {
+                article.setImages(List.of());
+            }
         }
         
         // 防刷机制：同一用户短时间内多次访问只统计一次
@@ -378,6 +451,9 @@ public class ArticleService {
         // 如果用户已登录，检查是否点赞和收藏
         // 注意：这里可以扩展Article实体类添加isLiked和isFavorited字段
         // 或者通过DTO返回这些信息，当前暂不实现
+        
+        // 处理OSS URL签名（返回的URL都是签名URL）
+        processOssUrlsInArticle(article);
         
         return article;
     }
@@ -412,6 +488,9 @@ public class ArticleService {
                 article.setTagIds(tagIds);
             }
         }
+        
+        // 处理OSS URL签名（返回的URL都是签名URL）
+        processOssUrlsInArticles(list);
         
         return list;
     }
@@ -625,6 +704,159 @@ public class ArticleService {
             }
         }
         
+        // 处理OSS URL签名（返回的URL都是签名URL）
+        processOssUrlsInArticles(articles);
+        
         return new PageResult<>(articles, total, page, pageSize);
+    }
+    
+    // ==================== 文章图片管理方法 ====================
+    
+    /**
+     * 获取文章图片列表
+     */
+    public List<ArticleImage> getArticleImages(Long articleId) {
+        if (articleId == null) {
+            throw new BusinessException(ResultCode.PARAM_ERROR);
+        }
+        return articleImageMapper.selectByArticleId(articleId);
+    }
+    
+    /**
+     * 保存文章图片（创建或更新）
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public void saveArticleImages(Long articleId, List<String> imageUrls) {
+        if (articleId == null) {
+            throw new BusinessException(ResultCode.PARAM_ERROR);
+        }
+        
+        // 验证文章是否存在
+        Article article = articleMapper.selectById(articleId);
+        if (article == null) {
+            throw new BusinessException(ResultCode.DATA_NOT_FOUND);
+        }
+        
+        // 验证图片数量（最多10张）
+        if (imageUrls != null && imageUrls.size() > 10) {
+            throw new BusinessException("图片数量不能超过10张");
+        }
+        
+        // 删除原有图片
+        articleImageMapper.deleteByArticleId(articleId);
+        
+        // 插入新图片
+        if (imageUrls != null && !imageUrls.isEmpty()) {
+            LocalDateTime now = LocalDateTime.now();
+            for (int i = 0; i < imageUrls.size(); i++) {
+                ArticleImage image = new ArticleImage();
+                image.setArticleId(articleId);
+                image.setImageUrl(imageUrls.get(i));
+                image.setSort(i);
+                image.setCreateTime(now);
+                image.setUpdateTime(now);
+                articleImageMapper.insert(image);
+            }
+        }
+        
+        // 清除文章详情缓存
+        articleDetailCache.invalidate(articleId);
+        log.info("保存文章图片成功: articleId={}, imageCount={}", articleId, 
+                imageUrls != null ? imageUrls.size() : 0);
+    }
+    
+    /**
+     * 删除单张图片
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public void deleteArticleImage(Long imageId) {
+        if (imageId == null) {
+            throw new BusinessException(ResultCode.PARAM_ERROR);
+        }
+        
+        // 查询图片记录获取文章ID
+        ArticleImage image = articleImageMapper.selectById(imageId);
+        if (image == null) {
+            throw new BusinessException(ResultCode.DATA_NOT_FOUND);
+        }
+        
+        Long articleId = image.getArticleId();
+        
+        // 删除图片记录
+        int result = articleImageMapper.deleteById(imageId);
+        if (result <= 0) {
+            throw new BusinessException(ResultCode.OPERATION_FAILED);
+        }
+        
+        // 清除文章详情缓存
+        articleDetailCache.invalidate(articleId);
+        log.info("删除文章图片成功: imageId={}, articleId={}", imageId, articleId);
+    }
+    
+    /**
+     * 更新图片排序
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public void updateImageSort(Long imageId, Integer sort) {
+        if (imageId == null || sort == null) {
+            throw new BusinessException(ResultCode.PARAM_ERROR);
+        }
+        
+        // 查询图片记录获取文章ID
+        ArticleImage image = articleImageMapper.selectById(imageId);
+        if (image == null) {
+            throw new BusinessException(ResultCode.DATA_NOT_FOUND);
+        }
+        
+        Long articleId = image.getArticleId();
+        
+        // 更新排序
+        int result = articleImageMapper.updateSort(imageId, sort);
+        if (result <= 0) {
+            throw new BusinessException(ResultCode.OPERATION_FAILED);
+        }
+        
+        // 清除文章详情缓存
+        articleDetailCache.invalidate(articleId);
+        log.info("更新图片排序成功: imageId={}, sort={}, articleId={}", imageId, sort, articleId);
+    }
+    
+    /**
+     * 处理文章中的OSS URL，生成签名URL
+     * 使用OssUrlUtil统一处理，返回的URL都是签名URL
+     */
+    private void processOssUrlsInArticle(Article article) {
+        if (article == null) {
+            return;
+        }
+        // 处理封面图
+        if (article.getCoverImage() != null && !article.getCoverImage().isEmpty()) {
+            article.setCoverImage(ossUrlUtil.processUrl(article.getCoverImage()));
+        }
+        // 处理图片列表（images字段是List<String>，需要特殊处理）
+        if (article.getImages() != null && !article.getImages().isEmpty()) {
+            List<String> signedImages = new java.util.ArrayList<>();
+            for (String imageUrl : article.getImages()) {
+                if (imageUrl != null && !imageUrl.isEmpty()) {
+                    signedImages.add(ossUrlUtil.processUrl(imageUrl));
+                } else {
+                    signedImages.add(imageUrl);
+                }
+            }
+            article.setImages(signedImages);
+        }
+    }
+    
+    /**
+     * 处理文章列表中的OSS URL，生成签名URL
+     * 使用OssUrlUtil统一处理，返回的URL都是签名URL
+     */
+    private void processOssUrlsInArticles(List<Article> articles) {
+        if (articles == null || articles.isEmpty()) {
+            return;
+        }
+        for (Article article : articles) {
+            processOssUrlsInArticle(article);
+        }
     }
 }

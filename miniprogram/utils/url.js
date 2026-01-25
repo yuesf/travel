@@ -1,6 +1,7 @@
 /**
  * URL处理工具
  * 用于处理图片、视频等媒体资源的URL，解决小程序无法访问localhost的问题
+ * 注意：后端统一返回签名URL，前端不再需要OSS URL处理逻辑
  */
 
 const { API_BASE_URL } = require('./constants');
@@ -30,6 +31,7 @@ function getBaseUrl() {
 /**
  * 规范化URL，将localhost替换为可访问的地址
  * 在开发环境中，如果URL包含localhost，尝试替换为本机IP或保持原样
+ * 注意：后端统一返回签名URL，直接使用即可
  * 
  * @param {string} url 原始URL
  * @returns {string} 规范化后的URL
@@ -39,7 +41,7 @@ function normalizeUrl(url) {
     return '';
   }
 
-  // 如果URL已经是完整路径且不包含localhost，直接返回
+  // 如果URL已经是完整路径且不包含localhost，直接返回（后端统一返回签名URL）
   if (url.startsWith('http') && !url.includes('localhost')) {
     return url;
   }

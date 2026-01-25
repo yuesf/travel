@@ -11,6 +11,7 @@ Page({
    * 页面的初始数据
    */
   data: {
+    navBarTotalHeight: 0, // 导航栏总高度
     userInfo: null, // 用户信息
     isLoggedIn: false, // 是否已登录
     loading: false, // 加载状态
@@ -45,6 +46,14 @@ Page({
       loading: true,
     });
     this.checkLoginStatus();
+  },
+
+  /**
+   * 生命周期函数--监听页面初次渲染完成
+   */
+  onReady() {
+    const navBarHelper = require('../../utils/nav-bar-helper');
+    navBarHelper.initNavBar(this);
   },
 
   /**

@@ -13,6 +13,7 @@ import com.travel.mapper.AttractionMapper;
 import com.travel.mapper.CartMapper;
 import com.travel.mapper.HotelRoomMapper;
 import com.travel.mapper.ProductMapper;
+import com.travel.util.OssUrlUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -42,6 +43,9 @@ public class CartService {
     @Autowired
     private ProductMapper productMapper;
     
+    @Autowired
+    private OssUrlUtil ossUrlUtil;
+    
     /**
      * 获取购物车列表（包含商品详情）
      */
@@ -58,6 +62,8 @@ public class CartService {
         for (Cart cart : cartList) {
             Object itemDetail = getItemDetail(cart.getItemType(), cart.getItemId());
             CartResponse response = CartResponse.fromCart(cart, itemDetail);
+            // 处理OSS URL签名（返回的URL都是签名URL）
+            processOssUrlsInCartResponse(response);
             responseList.add(response);
         }
         
@@ -223,6 +229,20 @@ public class CartService {
             if (product.getStock() != null && product.getStock() < quantity) {
                 throw new BusinessException(ResultCode.PARAM_ERROR.getCode(), "库存不足");
             }
+        }
+    }
+    
+    /**
+     * 处理购物车响应中的OSS URL，生成签名URL
+     * 使用OssUrlUtil统一处理，返回的URL都是签名URL
+     */
+    private void processOssUrlsInCartResponse(CartResponse response) {
+        if (response == null) {
+            return;
+        }
+        // 处理商品图片
+        if (response.getItemImage() != null && !response.getItemImage().isEmpty()) {
+            response.setItemImage(ossUrlUtil.processUrl(response.getItemImage()));
         }
     }
 }

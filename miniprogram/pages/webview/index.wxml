@@ -1,4 +1,4 @@
-<!--H5 链接 web-view 页面-->
+<!--外部链接 web-view 页面-->
 <view class="page-container">
   <web-view src="{{url}}" bindload="onWebViewLoad" binderror="onWebViewError"></web-view>
 </view>

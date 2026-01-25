@@ -188,3 +188,48 @@ export function removeTagFromArticle(articleId, tagId) {
     method: 'delete',
   })
 }
+
+/**
+ * 获取文章图片列表
+ */
+export function getArticleImages(articleId) {
+  return request({
+    url: `/admin/articles/${articleId}/images`,
+    method: 'get',
+  })
+}
+
+/**
+ * 保存文章图片
+ */
+export function saveArticleImages(articleId, imageUrls) {
+  return request({
+    url: `/admin/articles/${articleId}/images`,
+    method: 'post',
+    data: {
+      articleId,
+      imageUrls,
+    },
+  })
+}
+
+/**
+ * 删除单张图片
+ */
+export function deleteArticleImage(articleId, imageId) {
+  return request({
+    url: `/admin/articles/${articleId}/images/${imageId}`,
+    method: 'delete',
+  })
+}
+
+/**
+ * 更新图片排序
+ */
+export function updateImageSort(articleId, imageId, sort) {
+  return request({
+    url: `/admin/articles/${articleId}/images/${imageId}/sort`,
+    method: 'put',
+    params: { sort },
+  })
+}

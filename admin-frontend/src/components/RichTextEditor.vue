@@ -10,6 +10,14 @@
   <div v-else class="rich-text-editor-container" :id="props.id || undefined">
     <div ref="editorRef" class="editor-wrapper"></div>
   </div>
+  
+  <!-- 文件选择器对话框 -->
+  <FileSelector
+    v-model="fileSelectorVisible"
+    file-type="image"
+    :multiple="false"
+    @select="handleFileSelect"
+  />
 </template>
 
 <script setup>
@@ -17,9 +25,7 @@ import { ref, watch, onMounted, onBeforeUnmount } from 'vue'
 import { ElMessage } from 'element-plus'
 import Quill from 'quill'
 import 'quill/dist/quill.snow.css'
-import request from '@/utils/request'
-import { getToken } from '@/utils/auth'
-import { API_BASE_URL } from '@/config/api'
+import FileSelector from './FileSelector.vue'
 
 const props = defineProps({
   modelValue: {
@@ -44,6 +50,8 @@ const emit = defineEmits(['update:modelValue', 'change'])
 
 const editorRef = ref(null)
 let quill = null
+const fileSelectorVisible = ref(false)
+let savedRange = null // 保存光标位置
 
 // 初始化编辑器
 const initEditor = () => {
@@ -68,86 +76,17 @@ const initEditor = () => {
           ['clean'],
         ],
         handlers: {
-          image: async function () {
-            // 自定义图片上传处理
-            const input = document.createElement('input')
-            input.setAttribute('type', 'file')
-            input.setAttribute('accept', 'image/jpeg,image/jpg,image/png,image/webp')
-            input.click()
-
-            input.onchange = async () => {
-              const file = input.files[0]
-              if (!file) return
-
-              // 验证文件类型
-              const isValidType = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'].includes(file.type)
-              if (!isValidType) {
-                ElMessage.error('只能上传图片文件（JPG、PNG、WebP格式）')
-                return
-              }
-
-              // 验证文件大小（5MB）
-              const maxSize = 5 * 1024 * 1024 // 5MB
-              if (file.size > maxSize) {
-                ElMessage.error('图片大小不能超过5MB')
-                return
-              }
-
-              // 获取当前光标位置
-              const range = quill.getSelection(true)
-              if (!range) {
-                ElMessage.warning('请先选择插入位置')
-                return
-              }
-
-              // 插入加载占位符
-              quill.insertText(range.index, '上传中...', 'user')
-              quill.setSelection(range.index + 3)
-
-              try {
-                // 创建FormData
-                const formData = new FormData()
-                formData.append('file', file)
-                formData.append('module', 'article') // 默认使用article模块
-
-                // 构建上传URL：统一基于 API_BASE_URL
-                // 开发环境：/api/v1/common/file/upload/image
-                // 生产环境：/travel/api/v1/common/file/upload/image
-                const baseUrl = API_BASE_URL.replace(/\/$/, '')
-                const uploadUrl = `${baseUrl}/common/file/upload/image`
-
-                // 调用上传API
-                const token = getToken()
-                const response = await fetch(uploadUrl, {
-                  method: 'POST',
-                  headers: {
-                    Authorization: `Bearer ${token}`,
-                  },
-                  body: formData,
-                })
-
-                const result = await response.json()
-
-                if (result.code === 200) {
-                  const imageUrl = result.data?.url || result.data
-                  // 删除加载占位符
-                  quill.deleteText(range.index, 3)
-                  // 插入图片
-                  quill.insertEmbed(range.index, 'image', imageUrl, 'user')
-                  quill.setSelection(range.index + 1)
-                  ElMessage.success('图片上传成功')
-                } else {
-                  // 删除加载占位符
-                  quill.deleteText(range.index, 3)
-                  ElMessage.error(result.message || '图片上传失败')
-                }
-              } catch (error) {
-                console.error('图片上传失败:', error)
-                // 删除加载占位符
-                quill.deleteText(range.index, 3)
-                ElMessage.error('图片上传失败，请重试')
-              }
+          image: function () {
+            // 从文件库选择图片
+            // 获取当前光标位置并保存
+            const range = quill.getSelection(true)
+            if (!range) {
+              ElMessage.warning('请先选择插入位置')
+              return
             }
+            // 保存光标位置，用于后续插入图片
+            savedRange = range
+            fileSelectorVisible.value = true
           },
         },
       },
@@ -179,6 +118,45 @@ watch(
 )
 
 
+// 处理文件选择
+const handleFileSelect = (files) => {
+  if (!files || files.length === 0) {
+    return
+  }
+  
+  // 获取第一个选中的文件（单选模式）
+  const file = files[0]
+  
+  // 使用保存的光标位置，如果没有则尝试获取当前光标位置
+  let range = savedRange
+  if (!range) {
+    range = quill.getSelection(true)
+  }
+  
+  if (!range) {
+    ElMessage.warning('请先选择插入位置')
+    savedRange = null
+    return
+  }
+  
+  // 获取图片URL（优先使用预览URL，如果没有则使用原始URL）
+  const imageUrl = file.previewUrl || file.fileUrl || ''
+  
+  if (!imageUrl) {
+    ElMessage.error('图片URL不存在')
+    savedRange = null
+    return
+  }
+  
+  // 插入图片
+  quill.insertEmbed(range.index, 'image', imageUrl, 'user')
+  quill.setSelection(range.index + 1)
+  ElMessage.success('图片插入成功')
+  
+  // 清除保存的光标位置
+  savedRange = null
+}
+
 // 监听禁用状态
 watch(
   () => props.disabled,
@@ -187,11 +165,6 @@ watch(
       // 切换到禁用状态：销毁 Quill 实例
       if (quill) {
         quill = null
-      }
-      // 停止 MutationObserver
-      if (mutationObserver) {
-        mutationObserver.disconnect()
-        mutationObserver = null
       }
     } else {
       // 切换到启用状态：初始化 Quill

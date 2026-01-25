@@ -192,7 +192,7 @@ Page({
           name: product.name,
           image: product.image || product.coverImage || '/static/images/default-product.png',
           description: description,
-          h5Link: product.h5Link || null, // H5链接
+          h5Link: product.h5Link || null, // 外部链接
         };
       });
       
@@ -245,7 +245,7 @@ Page({
     const h5Link = e.currentTarget.dataset.h5Link;
     if (!h5Link) {
       wx.showToast({
-        title: 'H5链接不存在',
+        title: '外部链接不存在',
         icon: 'none',
       });
       return;

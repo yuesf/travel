@@ -2,11 +2,13 @@ package com.travel.controller.admin;
 
 import com.travel.common.Result;
 import com.travel.dto.ArticleCreateRequest;
+import com.travel.dto.ArticleImageRequest;
 import com.travel.dto.ArticleListRequest;
 import com.travel.dto.ArticleUpdateRequest;
 import com.travel.dto.PageResult;
 import com.travel.entity.AdminUser;
 import com.travel.entity.Article;
+import com.travel.entity.ArticleImage;
 import com.travel.service.ArticleService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -93,6 +95,54 @@ public class ArticleController {
     @Operation(summary = "批量删除文章")
     public Result<?> deleteBatch(@RequestBody List<Long> ids) {
         articleService.deleteBatch(ids);
+        return Result.success();
+    }
+    
+    /**
+     * 获取文章图片列表
+     */
+    @GetMapping("/{id}/images")
+    @Operation(summary = "获取文章图片列表")
+    public Result<List<ArticleImage>> getArticleImages(@PathVariable Long id) {
+        List<ArticleImage> images = articleService.getArticleImages(id);
+        return Result.success(images);
+    }
+    
+    /**
+     * 保存文章图片
+     */
+    @PostMapping("/{id}/images")
+    @Operation(summary = "保存文章图片")
+    public Result<?> saveArticleImages(@PathVariable Long id, 
+                                      @Valid @RequestBody ArticleImageRequest request) {
+        // 确保路径中的ID和请求体中的ID一致
+        if (!id.equals(request.getArticleId())) {
+            return Result.error("路径中的文章ID与请求体中的ID不一致");
+        }
+        articleService.saveArticleImages(id, request.getImageUrls());
+        return Result.success();
+    }
+    
+    /**
+     * 删除单张图片
+     */
+    @DeleteMapping("/{id}/images/{imageId}")
+    @Operation(summary = "删除单张图片")
+    public Result<?> deleteArticleImage(@PathVariable Long id, 
+                                       @PathVariable Long imageId) {
+        articleService.deleteArticleImage(imageId);
+        return Result.success();
+    }
+    
+    /**
+     * 更新图片排序
+     */
+    @PutMapping("/{id}/images/{imageId}/sort")
+    @Operation(summary = "更新图片排序")
+    public Result<?> updateImageSort(@PathVariable Long id,
+                                    @PathVariable Long imageId,
+                                    @RequestParam Integer sort) {
+        articleService.updateImageSort(imageId, sort);
         return Result.success();
     }
     

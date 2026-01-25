@@ -1,0 +1,113 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.travel.mapper.CacheRefreshTaskMapper">
+
+    <resultMap id="BaseResultMap" type="com.travel.entity.CacheRefreshTask">
+        <id column="id" property="id"/>
+        <result column="task_id" property="taskId"/>
+        <result column="cache_type" property="cacheType"/>
+        <result column="status" property="status"/>
+        <result column="total_count" property="totalCount"/>
+        <result column="processed_count" property="processedCount"/>
+        <result column="success_count" property="successCount"/>
+        <result column="failure_count" property="failureCount"/>
+        <result column="error_message" property="errorMessage"/>
+        <result column="start_time" property="startTime"/>
+        <result column="end_time" property="endTime"/>
+        <result column="created_at" property="createdAt"/>
+        <result column="updated_at" property="updatedAt"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id, task_id, cache_type, status, total_count, processed_count, success_count,
+        failure_count, error_message, start_time, end_time, created_at, updated_at
+    </sql>
+
+    <!-- 插入任务 -->
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO cache_refresh_task (
+            task_id, cache_type, status, total_count, processed_count,
+            success_count, failure_count, error_message, start_time
+        ) VALUES (
+            #{taskId}, #{cacheType}, #{status}, #{totalCount}, #{processedCount},
+            #{successCount}, #{failureCount}, #{errorMessage}, #{startTime}
+        )
+    </insert>
+
+    <!-- 根据任务ID查询 -->
+    <select id="selectByTaskId" resultMap="BaseResultMap">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM cache_refresh_task
+        WHERE task_id = #{taskId}
+    </select>
+
+    <!-- 根据主键ID查询 -->
+    <select id="selectById" resultMap="BaseResultMap">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM cache_refresh_task
+        WHERE id = #{id}
+    </select>
+
+    <!-- 更新任务状态 -->
+    <update id="updateStatus">
+        UPDATE cache_refresh_task
+        SET status = #{status},
+            <if test='status == "RUNNING"'>
+                start_time = NOW(),
+            </if>
+            <if test='status == "COMPLETED" or status == "FAILED"'>
+                end_time = NOW(),
+            </if>
+            updated_at = NOW()
+        WHERE task_id = #{taskId}
+    </update>
+
+    <!-- 更新任务进度 -->
+    <update id="updateProgress">
+        UPDATE cache_refresh_task
+        SET processed_count = #{processedCount},
+            success_count = #{successCount},
+            failure_count = #{failureCount},
+            updated_at = NOW()
+        WHERE task_id = #{taskId}
+    </update>
+
+    <!-- 更新任务（全量更新） -->
+    <update id="update">
+        UPDATE cache_refresh_task
+        SET cache_type = #{cacheType},
+            status = #{status},
+            total_count = #{totalCount},
+            processed_count = #{processedCount},
+            success_count = #{successCount},
+            failure_count = #{failureCount},
+            error_message = #{errorMessage},
+            start_time = #{startTime},
+            end_time = #{endTime},
+            updated_at = NOW()
+        WHERE task_id = #{taskId}
+    </update>
+
+    <!-- 查询最近的任务 -->
+    <select id="selectRecent" resultMap="BaseResultMap">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM cache_refresh_task
+        ORDER BY created_at DESC
+        LIMIT #{limit}
+    </select>
+
+    <!-- 根据状态查询任务 -->
+    <select id="selectByStatus" resultMap="BaseResultMap">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM cache_refresh_task
+        WHERE status = #{status}
+        ORDER BY created_at DESC
+    </select>
+
+</mapper>

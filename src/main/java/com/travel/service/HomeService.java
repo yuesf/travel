@@ -14,6 +14,7 @@ import com.travel.mapper.AttractionMapper;
 import com.travel.mapper.MiniProgramConfigMapper;
 import com.travel.mapper.ProductMapper;
 import com.travel.mapper.ProductCategoryMapper;
+import com.travel.util.OssUrlUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -47,6 +48,9 @@ public class HomeService {
     private ProductCategoryMapper productCategoryMapper;
     
     @Autowired
+    private OssUrlUtil ossUrlUtil;
+    
+    @Autowired
     @Qualifier("homeCache")
     private Cache<String, HomeResponse> homeCache;
     
@@ -55,6 +59,7 @@ public class HomeService {
     
     /**
      * 获取首页数据
+     * 注意：返回的所有URL字段（image、video、icon等）都是签名URL（OSS文件），可直接使用
      */
     public HomeResponse getHomeData() {
         // 先从缓存获取
@@ -62,6 +67,8 @@ public class HomeService {
         if (cached != null) {
             log.info("从缓存获取首页数据 - 轮播图数量: {}", 
                 cached.getBanners() != null ? cached.getBanners().size() : 0);
+            // 缓存中的数据也需要处理OSS URL签名（因为签名URL有过期时间，需要重新生成）
+            processOssUrlsInResponse(cached);
             return cached;
         }
         
@@ -79,15 +86,23 @@ public class HomeService {
         }
         List<HomeResponse.BannerItem> banners = buildBanners(bannerConfigs);
         log.info("构建后的轮播图数量: {}", banners.size());
+        // 处理OSS URL签名
+        processOssUrlsInBanners(banners);
         response.setBanners(banners);
         
         // 获取Icon图标配置
         List<MiniProgramConfig> iconConfigs = miniProgramConfigMapper.selectByConfigType("ICON", 1);
-        response.setIcons(buildIcons(iconConfigs));
+        List<HomeResponse.IconItem> icons = buildIcons(iconConfigs);
+        // 处理OSS URL签名
+        processOssUrlsInIcons(icons);
+        response.setIcons(icons);
         
         // 获取推荐景点配置
         List<MiniProgramConfig> recommendAttractionConfigs = miniProgramConfigMapper.selectByConfigType("RECOMMEND", 1);
-        response.setRecommendAttractions(buildRecommendAttractions(recommendAttractionConfigs));
+        List<HomeResponse.AttractionItem> recommendAttractions = buildRecommendAttractions(recommendAttractionConfigs);
+        // 处理OSS URL签名
+        processOssUrlsInAttractions(recommendAttractions);
+        response.setRecommendAttractions(recommendAttractions);
         
         // 获取推荐酒店配置（暂时使用空列表，等酒店模块实现后补充）
         response.setRecommendHotels(new ArrayList<>());
@@ -97,6 +112,8 @@ public class HomeService {
         if (recommendProductCategoryConfig != null && recommendProductCategoryConfig.getStatus() == 1) {
             // 构建按分类分组的推荐商品数据
             List<HomeResponse.ProductCategoryWithProducts> categoryProducts = buildRecommendProductCategories(recommendProductCategoryConfig);
+            // 处理OSS URL签名
+            processOssUrlsInProductCategories(categoryProducts);
             response.setRecommendProductCategories(categoryProducts);
             // 为了兼容性，也设置 recommendProducts（扁平化所有商品）
             List<HomeResponse.ProductItem> allProducts = new ArrayList<>();
@@ -241,11 +258,16 @@ public class HomeService {
                     banner.setType((String) bannerData.getOrDefault("type", "image"));
                     banner.setImage((String) bannerData.get("image"));
                     banner.setVideo((String) bannerData.get("video"));
-                    banner.setLink((String) bannerData.get("link"));
+                    banner.setLink((String) bannerData.get("link")); // 兼容旧版本
                     banner.setTitle((String) bannerData.get("title"));
+                    // 新的链接配置字段
+                    banner.setLinkType((String) bannerData.get("linkType"));
+                    banner.setLinkValue((String) bannerData.get("linkValue"));
+                    banner.setLinkDisplay((String) bannerData.get("linkDisplay"));
                     
-                    log.debug("构建轮播图项 - ID: {}, Type: {}, Image: {}, Title: {}", 
-                        banner.getId(), banner.getType(), banner.getImage(), banner.getTitle());
+                    log.debug("构建轮播图项 - ID: {}, Type: {}, Image: {}, Title: {}, LinkType: {}, LinkValue: {}", 
+                        banner.getId(), banner.getType(), banner.getImage(), banner.getTitle(), 
+                        banner.getLinkType(), banner.getLinkValue());
                     
                     banners.add(banner);
                     index++;
@@ -283,7 +305,7 @@ public class HomeService {
                     icon.setRelatedName((String) configData.get("relatedName"));
                     icon.setName((String) configData.get("name"));
                     icon.setIcon((String) configData.get("icon"));
-                    // 解析 linkUrl 字段（H5链接类型使用）
+                    // 解析 linkUrl 字段（外部链接类型使用）
                     if (configData.get("linkUrl") != null) {
                         icon.setLinkUrl((String) configData.get("linkUrl"));
                     }
@@ -502,5 +524,87 @@ public class HomeService {
         }
         
         return categories;
+    }
+    
+    /**
+     * 处理轮播图中的OSS URL，生成签名URL
+     * 使用OssUrlUtil统一处理，返回的URL都是签名URL
+     */
+    private void processOssUrlsInBanners(List<HomeResponse.BannerItem> banners) {
+        if (banners == null || banners.isEmpty()) {
+            return;
+        }
+        log.info("开始处理轮播图OSS URL签名，轮播图数量: {}", banners.size());
+        ossUrlUtil.processList(banners, new String[]{"image", "video"});
+        log.info("轮播图OSS URL签名处理完成");
+    }
+    
+    /**
+     * 处理Icon图标中的OSS URL，生成签名URL
+     * 使用OssUrlUtil统一处理，返回的URL都是签名URL
+     */
+    private void processOssUrlsInIcons(List<HomeResponse.IconItem> icons) {
+        if (icons == null || icons.isEmpty()) {
+            return;
+        }
+        ossUrlUtil.processList(icons, new String[]{"icon"});
+    }
+    
+    /**
+     * 处理推荐景点中的OSS URL，生成签名URL
+     * 使用OssUrlUtil统一处理，返回的URL都是签名URL
+     */
+    private void processOssUrlsInAttractions(List<HomeResponse.AttractionItem> attractions) {
+        if (attractions == null || attractions.isEmpty()) {
+            return;
+        }
+        ossUrlUtil.processList(attractions, new String[]{"image"});
+    }
+    
+    /**
+     * 处理推荐商品分类中的OSS URL，生成签名URL
+     * 使用OssUrlUtil统一处理，返回的URL都是签名URL
+     */
+    private void processOssUrlsInProductCategories(List<HomeResponse.ProductCategoryWithProducts> categories) {
+        if (categories == null || categories.isEmpty()) {
+            return;
+        }
+        // 处理分类图标和商品图片（OssUrlUtil会自动递归处理嵌套对象）
+        ossUrlUtil.processList(categories, new String[]{"categoryIcon", "image"});
+    }
+    
+    /**
+     * 处理整个响应对象中的OSS URL，生成签名URL
+     * 用于处理缓存中的数据
+     * 使用OssUrlUtil统一处理，返回的URL都是签名URL
+     */
+    private void processOssUrlsInResponse(HomeResponse response) {
+        if (response == null) {
+            return;
+        }
+        // 处理轮播图
+        if (response.getBanners() != null) {
+            processOssUrlsInBanners(response.getBanners());
+        }
+        // 处理图标
+        if (response.getIcons() != null) {
+            processOssUrlsInIcons(response.getIcons());
+        }
+        // 处理推荐景点
+        if (response.getRecommendAttractions() != null) {
+            processOssUrlsInAttractions(response.getRecommendAttractions());
+        }
+        // 处理推荐商品分类
+        if (response.getRecommendProductCategories() != null) {
+            processOssUrlsInProductCategories(response.getRecommendProductCategories());
+        }
+        // 处理推荐商品列表（扁平化的商品列表）
+        if (response.getRecommendProducts() != null && !response.getRecommendProducts().isEmpty()) {
+            ossUrlUtil.processList(response.getRecommendProducts(), new String[]{"image"});
+        }
+        // 处理分类导航
+        if (response.getCategories() != null && !response.getCategories().isEmpty()) {
+            ossUrlUtil.processList(response.getCategories(), new String[]{"icon"});
+        }
     }
 }

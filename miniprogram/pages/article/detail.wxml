@@ -7,6 +7,36 @@
 
   <!-- 文章内容 -->
   <view wx:elif="{{article}}" class="detail-content">
+    <!-- 文章图片轮播 -->
+    <view wx:if="{{article.images && article.images.length > 0}}" class="article-images-container">
+      <swiper
+        class="article-images-swiper"
+        indicator-dots="{{article.images.length > 1}}"
+        indicator-color="rgba(255, 255, 255, 0.5)"
+        indicator-active-color="#ffffff"
+        autoplay="{{false}}"
+        circular="{{article.images.length > 1}}"
+        bindchange="onSwiperChange"
+      >
+        <swiper-item wx:for="{{article.images}}" wx:key="index" class="article-image-item">
+          <image
+            class="article-image"
+            src="{{item}}"
+            mode="aspectFill"
+            data-index="{{index}}"
+            data-urls="{{article.images}}"
+            bindtap="onImageTap"
+            binderror="onImageError"
+            lazy-load="{{true}}"
+          />
+        </swiper-item>
+      </swiper>
+      <!-- 轮播指示器（数字） -->
+      <view wx:if="{{article.images.length > 1}}" class="swiper-indicator">
+        <text class="swiper-indicator-text">{{currentImageIndex + 1}}/{{article.images.length}}</text>
+      </view>
+    </view>
+
     <!-- 文章名称 -->
     <view class="article-title-container">
       <text class="article-title">{{article.title || '暂无标题'}}</text>

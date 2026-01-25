@@ -11,6 +11,7 @@ Page({
    * 页面的初始数据
    */
   data: {
+    navBarTotalHeight: 0, // 导航栏总高度
     defaultProductImage: constants.DEFAULT_IMAGES.PRODUCT,
     cartList: [], // 购物车列表（包含商品详情）
     selectedAll: false, // 是否全选
@@ -25,6 +26,14 @@ Page({
    */
   onLoad(options) {
     console.log('购物车页加载');
+  },
+
+  /**
+   * 生命周期函数--监听页面初次渲染完成
+   */
+  onReady() {
+    const navBarHelper = require('../../utils/nav-bar-helper');
+    navBarHelper.initNavBar(this);
   },
 
   /**

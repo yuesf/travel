@@ -18,6 +18,7 @@
       src="{{item.image}}"
       mode="aspectFill"
       bindtap="onBannerTap"
+      binderror="onImageError"
       data-index="{{index}}"
     />
 

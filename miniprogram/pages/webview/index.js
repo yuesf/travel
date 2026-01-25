@@ -1,5 +1,5 @@
 /**
- * H5 链接 web-view 页面
+ * 外部链接 web-view 页面
  */
 
 Page({
@@ -7,7 +7,7 @@ Page({
    * 页面的初始数据
    */
   data: {
-    url: '', // H5 链接地址
+    url: '', // 外部链接地址
   },
 
   /**
@@ -17,6 +17,7 @@ Page({
     console.log('web-view 页面加载', options);
     
     const url = options.url ? decodeURIComponent(options.url) : '';
+    const title = options.title ? decodeURIComponent(options.title) : '网页';
     
     // 验证 URL 格式
     if (!url || (!url.startsWith('http://') && !url.startsWith('https://'))) {
@@ -43,7 +44,7 @@ Page({
     
     // 设置导航栏标题
     wx.setNavigationBarTitle({
-      title: '加载中...',
+      title: title || '加载中...',
     });
   },
 
@@ -59,9 +60,7 @@ Page({
    */
   onWebViewLoad() {
     console.log('web-view 加载完成');
-    wx.setNavigationBarTitle({
-      title: '网页',
-    });
+    // 加载完成后不再修改标题，保持传入的标题
   },
 
   /**

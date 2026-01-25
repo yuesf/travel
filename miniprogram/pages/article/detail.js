@@ -2,7 +2,7 @@
  * 文章详情页
  */
 
-const articleApi = require('../api/article');
+const articleApi = require('../../api/article');
 const auth = require('../../utils/auth');
 
 Page({
@@ -14,6 +14,7 @@ Page({
     article: null, // 文章详情
     loading: false, // 加载状态
     isInitialized: false, // 是否已初始化加载
+    currentImageIndex: 0, // 当前图片索引
   },
 
   /**
@@ -142,13 +143,55 @@ Page({
   },
 
   /**
+   * 轮播图切换事件
+   */
+  onSwiperChange(e) {
+    const current = e.detail.current;
+    this.setData({
+      currentImageIndex: current,
+    });
+  },
+
+  /**
+   * 图片点击预览
+   */
+  onImageTap(e) {
+    const index = e.currentTarget.dataset.index;
+    const urls = e.currentTarget.dataset.urls || [];
+    
+    if (urls.length === 0) {
+      return;
+    }
+
+    wx.previewImage({
+      current: urls[index],
+      urls: urls,
+      fail: (err) => {
+        console.error('预览图片失败:', err);
+        wx.showToast({
+          title: '预览图片失败',
+          icon: 'none',
+        });
+      },
+    });
+  },
+
+  /**
+   * 图片加载错误
+   */
+  onImageError(e) {
+    console.error('图片加载失败:', e);
+    // 可以在这里设置默认占位图
+  },
+
+  /**
    * 分享文章
    */
   onShareAppMessage() {
     return {
       title: this.data.article ? this.data.article.title : '文章分享',
       path: `/pages/article/detail?id=${this.data.articleId}`,
-      imageUrl: this.data.article ? this.data.article.coverImage : '',
+      imageUrl: this.data.article ? (this.data.article.images && this.data.article.images.length > 0 ? this.data.article.images[0] : this.data.article.coverImage) : '',
     };
   },
 });

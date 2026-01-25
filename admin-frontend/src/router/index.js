@@ -190,18 +190,36 @@ const routes = [
       {
         path: 'miniprogram',
         component: () => import('@/views/miniprogram/MiniProgramLayout.vue'),
-        redirect: '/miniprogram/home',
+        redirect: '/miniprogram/banner',
         meta: {
           title: '小程序管理',
           requiresAuth: true,
         },
         children: [
           {
-            path: 'home',
-            name: 'MiniProgramHome',
-            component: () => import('@/views/miniprogram/components/HomeConfig.vue'),
+            path: 'banner',
+            name: 'MiniProgramBanner',
+            component: () => import('@/views/miniprogram/components/BannerConfig.vue'),
             meta: {
-              title: '首页配置',
+              title: '轮播图管理',
+              requiresAuth: true,
+            },
+          },
+          {
+            path: 'icon',
+            name: 'MiniProgramIcon',
+            component: () => import('@/views/miniprogram/components/IconConfig.vue'),
+            meta: {
+              title: 'Icon图片配置',
+              requiresAuth: true,
+            },
+          },
+          {
+            path: 'recommend',
+            name: 'MiniProgramRecommend',
+            component: () => import('@/views/miniprogram/components/RecommendConfig.vue'),
+            meta: {
+              title: '热门推荐',
               requiresAuth: true,
             },
           },
@@ -315,6 +333,24 @@ const routes = [
         component: () => import('@/views/system/MerchantConfig.vue'),
         meta: {
           title: '商家配置',
+          requiresAuth: true,
+        },
+      },
+      {
+        path: 'system/oss-config',
+        name: 'OssConfig',
+        component: () => import('@/views/system/OssConfig.vue'),
+        meta: {
+          title: 'OSS配置',
+          requiresAuth: true,
+        },
+      },
+      {
+        path: 'system/file-manage',
+        name: 'FileManage',
+        component: () => import('@/views/system/FileManage.vue'),
+        meta: {
+          title: '文件管理',
           requiresAuth: true,
         },
       },

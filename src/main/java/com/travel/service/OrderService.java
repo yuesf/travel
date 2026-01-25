@@ -9,6 +9,7 @@ import com.travel.dto.PageResult;
 import com.travel.entity.*;
 import com.travel.exception.BusinessException;
 import com.travel.mapper.*;
+import com.travel.util.OssUrlUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -60,6 +61,9 @@ public class OrderService {
     
     @Autowired
     private UserMapper userMapper;
+    
+    @Autowired
+    private OssUrlUtil ossUrlUtil;
     
     private final ObjectMapper objectMapper = new ObjectMapper();
     
@@ -134,6 +138,7 @@ public class OrderService {
     
     /**
      * 获取订单详情
+     * 注意：返回的订单项中的itemImage字段是签名URL（OSS文件），可直接使用
      */
     public Order getOrderDetail(Long orderId, Long userId) {
         if (orderId == null) {
@@ -155,6 +160,9 @@ public class OrderService {
         
         // 填充订单项商品信息
         enrichOrderItems(items);
+        
+        // 处理OSS URL签名（返回的URL都是签名URL）
+        processOssUrlsInOrderItems(items);
         
         // 设置订单项列表
         order.setItems(items);
@@ -701,5 +709,21 @@ public class OrderService {
         String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss"));
         String random = UUID.randomUUID().toString().substring(0, 8).toUpperCase();
         return "ORDER" + timestamp + random;
+    }
+    
+    /**
+     * 处理订单项中的OSS URL，生成签名URL
+     * 使用OssUrlUtil统一处理，返回的URL都是签名URL
+     */
+    private void processOssUrlsInOrderItems(List<OrderItem> items) {
+        if (items == null || items.isEmpty()) {
+            return;
+        }
+        for (OrderItem item : items) {
+            // 处理商品图片
+            if (item.getItemImage() != null && !item.getItemImage().isEmpty()) {
+                item.setItemImage(ossUrlUtil.processUrl(item.getItemImage()));
+            }
+        }
     }
 }

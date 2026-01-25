@@ -16,7 +16,7 @@
       :disabled="disabled"
       accept="image/jpeg,image/jpg,image/png,image/webp"
     >
-      <el-icon><Plus /></el-icon>
+      <el-icon v-if="!disableUpload"><Plus /></el-icon>
     </el-upload>
 
     <!-- 图片预览对话框 -->
@@ -38,6 +38,7 @@ import { Plus } from '@element-plus/icons-vue'
 import Sortable from 'sortablejs'
 import { getToken } from '@/utils/auth'
 import { API_BASE_URL } from '@/config/api'
+// 不再需要getSignedUrlByUrl，后端统一返回签名URL
 
 const props = defineProps({
   modelValue: {
@@ -64,6 +65,11 @@ const props = defineProps({
     type: Object,
     default: () => ({ width: 32, height: 32 }),
   },
+  // 是否禁用上传（只显示和删除，不允许上传新文件）
+  disableUpload: {
+    type: Boolean,
+    default: false,
+  },
 })
 
 const emit = defineEmits(['update:modelValue', 'change'])
@@ -88,50 +94,67 @@ const fileList = ref([])
 const previewVisible = ref(false)
 const previewImageUrl = ref('')
 let sortableInstance = null
+const isRemoving = ref(false) // 标记是否正在删除，防止 watch 重新同步
+// 注意：后端统一返回签名URL，前端不再需要OSS URL判断和处理逻辑
 
 // 同步外部值到内部列表
 watch(
   () => props.modelValue,
   (newVal) => {
+    // 如果正在删除，跳过同步，避免删除操作被覆盖
+    if (isRemoving.value) {
+      return
+    }
+    
     if (props.limit === 1) {
       // 单文件模式：modelValue是字符串
       if (newVal && typeof newVal === 'string' && newVal.trim() !== '') {
-        fileList.value = [{
+        const fileItem = {
           uid: 'image-1',
           name: 'image.jpg',
           url: newVal,
           status: 'success',
-        }]
+        }
+        fileList.value = [fileItem]
+        // 后端统一返回签名URL，直接使用即可
       } else if (Array.isArray(newVal) && newVal.length > 0) {
         // 兼容数组格式
-        fileList.value = [{
+        const fileItem = {
           uid: 'image-1',
           name: 'image.jpg',
           url: newVal[0],
           status: 'success',
-        }]
+        }
+        fileList.value = [fileItem]
+        // 如果是OSS URL，异步获取签名URL
+        updateOssImageUrl(newVal[0], fileItem.uid)
       } else {
         fileList.value = []
       }
     } else {
       // 多文件模式：modelValue是数组
       if (Array.isArray(newVal)) {
-        fileList.value = newVal
-          .filter(url => url && typeof url === 'string' && url.trim() !== '')
-          .map((url, index) => ({
+        const urls = newVal.filter(url => url && typeof url === 'string' && url.trim() !== '')
+        fileList.value = urls.map((url, index) => {
+          const fileItem = {
             uid: `image-${index}`,
             name: `image-${index}.jpg`,
             url: url,
             status: 'success',
-          }))
+          }
+          // 后端统一返回签名URL，直接使用即可
+          return fileItem
+        })
       } else if (typeof newVal === 'string' && newVal.trim() !== '') {
         // 兼容字符串格式（单个图片URL）
-        fileList.value = [{
+        const fileItem = {
           uid: 'image-0',
           name: 'image.jpg',
           url: newVal,
           status: 'success',
-        }]
+        }
+        fileList.value = [fileItem]
+        // 后端统一返回签名URL，直接使用即可
       } else {
         fileList.value = []
       }
@@ -335,24 +358,41 @@ const handleError = (error, file) => {
 
 // 移除文件
 const handleRemove = (file) => {
-  const index = fileList.value.findIndex((item) => item.uid === file.uid)
-  if (index > -1) {
-    fileList.value.splice(index, 1)
-    updateValue()
-  }
+  return new Promise((resolve) => {
+    // 设置删除标志，防止 watch 重新同步
+    isRemoving.value = true
+    
+    const index = fileList.value.findIndex((item) => item.uid === file.uid)
+    if (index > -1) {
+      fileList.value.splice(index, 1)
+      updateValue()
+    }
+    
+    // 等待 DOM 更新完成后再重置标志
+    nextTick(() => {
+      // 延迟重置标志，确保父组件的更新已经完成
+      setTimeout(() => {
+        isRemoving.value = false
+        resolve(true)
+      }, 100)
+    })
+  })
 }
 
 // 预览图片
-const handlePreview = (file) => {
+const handlePreview = async (file) => {
+  // 后端统一返回签名URL，直接使用即可
   const url = file.url || file.response?.data?.url || file.response?.data || ''
   previewImageUrl.value = url
   previewVisible.value = true
 }
 
 // 图片加载错误
-const handleImageError = (e) => {
-  console.error('图片加载失败:', previewImageUrl.value)
-  ElMessage.error('图片加载失败')
+const handleImageError = async (e) => {
+  const currentUrl = previewImageUrl.value
+  console.error('图片加载失败:', currentUrl)
+  // 后端统一返回签名URL，如果加载失败可能是URL过期或其他原因
+  ElMessage.error('图片加载失败，请刷新页面重试')
 }
 
 // 超出限制
@@ -396,6 +436,11 @@ const initSortable = () => {
 
 // 确保上传按钮可点击
 const ensureUploadButtonClickable = () => {
+  // 如果禁用了上传，不处理上传按钮
+  if (props.disableUpload) {
+    return
+  }
+  
   nextTick(() => {
     if (!uploadRef.value?.$el) return
     
@@ -518,5 +563,20 @@ onBeforeUnmount(() => {
   height: 120px;
   margin-right: 8px;
   margin-bottom: 8px;
+}
+
+/* 确保删除按钮在非禁用状态下可见 */
+:deep(.el-upload-list--picture-card .el-upload-list__item:not(.is-disabled) .el-upload-list__item-actions) {
+  opacity: 0;
+  transition: opacity var(--el-transition-duration);
+}
+
+:deep(.el-upload-list--picture-card .el-upload-list__item:not(.is-disabled):hover .el-upload-list__item-actions) {
+  opacity: 1;
+}
+
+/* 当禁用上传时，隐藏上传按钮 */
+:deep(.el-upload--picture-card:not(:has(.el-icon--plus))) {
+  display: none !important;
 }
 </style>

@@ -1,10 +1,15 @@
 <!--我的页面-->
 <view class="page-container">
-  <!-- 骨架屏：首次加载时显示 -->
-  <skeleton wx:if="{{loading && !isLoggedIn}}" type="list" loading="{{true}}" rows="{{5}}" animated="{{true}}" />
+  <!-- 自定义导航栏 -->
+  <custom-nav-bar title="我的" id="navBar" />
 
-  <!-- 实际内容 -->
-  <view wx:if="{{!loading || isLoggedIn}}">
+  <!-- 页面内容区域 -->
+  <view class="page-content" style="padding-top: {{navBarTotalHeight}}px;">
+    <!-- 骨架屏：首次加载时显示 -->
+    <skeleton wx:if="{{loading && !isLoggedIn}}" type="list" loading="{{true}}" rows="{{5}}" animated="{{true}}" />
+
+    <!-- 实际内容 -->
+    <view wx:if="{{!loading || isLoggedIn}}">
     <!-- 用户信息卡片 -->
     <view class="user-card">
     <view wx:if="{{isLoggedIn}}" class="user-info">
@@ -92,5 +97,7 @@
     <view class="logout-section" wx:if="{{isLoggedIn}}">
       <button class="logout-btn" bindtap="logout">退出登录</button>
     </view>
+  </view>
+  <!-- 页面内容区域结束 -->
   </view>
 </view>

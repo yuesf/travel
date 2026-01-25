@@ -5,6 +5,7 @@ import java.util.List;
 
 /**
  * 首页数据响应DTO
+ * 注意：所有URL字段（image、video、icon等）都是签名URL（OSS文件），可直接使用
  * 
  * @author travel-platform
  */
@@ -58,14 +59,36 @@ public class HomeResponse {
         private String type;
         /**
          * 图片URL（类型为image时使用）
+         * 注意：OSS文件返回的是签名URL，可直接使用
          */
         private String image;
         /**
          * 视频URL（类型为video时使用）
+         * 注意：OSS文件返回的是签名URL，可直接使用
          */
         private String video;
+        /**
+         * 链接地址（旧版本，兼容使用）
+         */
         private String link;
+        /**
+         * 标题
+         */
         private String title;
+        /**
+         * 链接类型：NONE-无跳转, EXTERNAL-外部链接, PRODUCT_CATEGORY-商品分类, 
+         * PRODUCT-商品, ARTICLE_CATEGORY-文章分类, ARTICLE-文章, 
+         * ATTRACTION-景点, HOTEL-酒店, MAP-地图
+         */
+        private String linkType;
+        /**
+         * 链接值（ID或URL）
+         */
+        private String linkValue;
+        /**
+         * 链接显示文本
+         */
+        private String linkDisplay;
     }
     
     /**
@@ -75,6 +98,9 @@ public class HomeResponse {
     public static class AttractionItem {
         private Long id;
         private String name;
+        /**
+         * 图片URL（OSS文件返回签名URL）
+         */
         private String image;
         private String city;
         private java.math.BigDecimal price;
@@ -88,6 +114,9 @@ public class HomeResponse {
     public static class HotelItem {
         private Long id;
         private String name;
+        /**
+         * 图片URL（OSS文件返回签名URL）
+         */
         private String image;
         private String city;
         private java.math.BigDecimal price;
@@ -102,6 +131,9 @@ public class HomeResponse {
     public static class ProductItem {
         private Long id;
         private String name;
+        /**
+         * 图片URL（OSS文件返回签名URL）
+         */
         private String image;
         private java.math.BigDecimal price;
         private java.math.BigDecimal originalPrice;
@@ -116,6 +148,9 @@ public class HomeResponse {
     public static class CategoryItem {
         private Long id;
         private String name;
+        /**
+         * 图标URL（OSS文件返回签名URL）
+         */
         private String icon;
         private Integer level;
         private Long parentId;
@@ -128,7 +163,7 @@ public class HomeResponse {
     public static class IconItem {
         private Long id;
         /**
-         * 类型：product_category-商品分类，article_category-文章分类，product-商品，article-文章，attraction-景点，hotel-酒店，h5_link-H5链接
+         * 类型：product_category-商品分类，article_category-文章分类，product-商品，article-文章，attraction-景点，hotel-酒店，h5_link-外部链接
          */
         private String type;
         /**
@@ -144,11 +179,11 @@ public class HomeResponse {
          */
         private String name;
         /**
-         * 图标图片URL
+         * 图标图片URL（OSS文件返回签名URL）
          */
         private String icon;
         /**
-         * H5链接地址（仅h5_link类型使用）
+         * 外部链接地址（仅h5_link类型使用）
          */
         private String linkUrl;
         /**
@@ -171,7 +206,7 @@ public class HomeResponse {
          */
         private String categoryName;
         /**
-         * 分类图标
+         * 分类图标URL（OSS文件返回签名URL）
          */
         private String categoryIcon;
         /**

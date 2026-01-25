@@ -59,9 +59,10 @@
             :src="getBannerImage(row)"
             fit="cover"
             style="width: 120px; height: 80px; border-radius: 4px;"
-            :preview-src-list="[getBannerImage(row)]"
+            :preview-src-list="getPreviewImageList(row)"
             preview-teleported
             :lazy="false"
+            @error="() => handleBannerImageError(row, $event)"
           >
             <template #error>
               <div class="image-slot">
@@ -128,26 +129,45 @@
           label="图片" 
           prop="image"
         >
-          <ImageUpload
-            v-model="formData.image"
-            :limit="1"
-            :max-size="5"
-          />
+          <div style="display: flex; align-items: flex-start; gap: 12px;">
+            <ImageUpload
+              v-model="formData.image"
+              :limit="1"
+              :max-size="5"
+              :disable-upload="true"
+            />
+            <el-button 
+              type="info" 
+              :icon="Folder"
+              @click="handleSelectFromFileList('image')"
+            >
+              从文件库选择
+            </el-button>
+          </div>
         </el-form-item>
         <el-form-item 
           v-if="formData.type === 'video'" 
           label="视频" 
           prop="video"
         >
-          <VideoUpload
-            v-model="formData.video"
-            :limit="1"
-            :max-size="50"
-          />
+          <div style="display: flex; align-items: flex-start; gap: 12px;">
+            <VideoUpload
+              v-model="formData.video"
+              :limit="1"
+              :max-size="50"
+              :disable-upload="true"
+            />
+            <el-button 
+              type="info" 
+              :icon="Folder"
+              @click="handleSelectFromFileList('video')"
+            >
+              从文件库选择
+            </el-button>
+          </div>
         </el-form-item>
-        <el-form-item label="跳转链接" prop="link">
-          <el-input v-model="formData.link" placeholder="请输入跳转链接（可选）" />
-        </el-form-item>
+        <!-- 新的链接配置 -->
+        <LinkTypeSelector v-model="linkConfig" />
         <el-form-item label="排序" prop="sort">
           <el-input-number v-model="formData.sort" :min="0" :max="999" />
         </el-form-item>
@@ -165,21 +185,33 @@
         </el-button>
       </template>
     </el-dialog>
+
+    <!-- 文件选择器对话框 -->
+    <FileSelector
+      v-model="fileSelectorVisible"
+      :file-type="fileSelectorType"
+      :multiple="false"
+      :max-select="1"
+      @select="handleFileSelect"
+    />
   </div>
 </template>
 
 <script setup>
 import { ref, reactive, computed, onMounted, nextTick, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Plus, ArrowUp, ArrowDown, Picture } from '@element-plus/icons-vue'
+import { Plus, ArrowUp, ArrowDown, Picture, Folder } from '@element-plus/icons-vue'
 import ImageUpload from './ImageUpload.vue'
 import VideoUpload from './VideoUpload.vue'
+import LinkTypeSelector from './LinkTypeSelector.vue'
+import FileSelector from './FileSelector.vue'
 import {
   getConfigByType,
   createConfig,
   updateConfig,
   deleteConfig,
 } from '@/api/miniprogram'
+// 不再需要getSignedUrlByUrl，后端统一返回签名URL
 
 const props = defineProps({
   modelValue: {
@@ -197,6 +229,8 @@ const submitting = ref(false)
 const formRef = ref(null)
 const bannerList = ref([])
 const editingIndex = ref(-1)
+const fileSelectorVisible = ref(false)
+const fileSelectorType = ref('image') // 'image' 或 'video'
 
 // 表单数据
 const formData = reactive({
@@ -204,9 +238,26 @@ const formData = reactive({
   type: 'image', // 'image' 或 'video'
   image: '',
   video: '',
-  link: '',
+  link: '', // 保留以兼容旧数据
+  linkType: 'NONE',
+  linkValue: '',
+  linkDisplay: '',
   sort: 0,
   status: 1,
+})
+
+// 链接配置计算属性（用于双向绑定 LinkTypeSelector）
+const linkConfig = computed({
+  get: () => ({
+    linkType: formData.linkType,
+    linkValue: formData.linkValue,
+    linkDisplay: formData.linkDisplay,
+  }),
+  set: (value) => {
+    formData.linkType = value.linkType
+    formData.linkValue = value.linkValue
+    formData.linkDisplay = value.linkDisplay
+  },
 })
 
 // 表单验证规则
@@ -250,7 +301,9 @@ const getBannerType = (row) => {
   }
 }
 
-// 获取轮播图图片
+// 注意：后端统一返回签名URL，前端不再需要OSS URL判断和处理逻辑
+
+// 获取轮播图图片（后端统一返回签名URL，直接使用即可）
 const getBannerImage = (row) => {
   try {
     const configValue = typeof row.configValue === 'string' 
@@ -260,6 +313,19 @@ const getBannerImage = (row) => {
   } catch (e) {
     return ''
   }
+}
+
+// 获取预览用的图片URL列表（带签名URL处理）
+const getPreviewImageList = (row) => {
+  const imageUrl = getBannerImage(row)
+  return imageUrl ? [imageUrl] : []
+}
+
+// 处理图片加载错误
+const handleBannerImageError = async (row, event) => {
+  console.error('图片加载失败:', row)
+  // 后端统一返回签名URL，如果加载失败可能是URL过期或其他原因
+  ElMessage.warning('图片加载失败，请刷新页面重试')
 }
 
 // 获取轮播图视频
@@ -274,6 +340,8 @@ const getBannerVideo = (row) => {
   }
 }
 
+// 注意：后端统一返回签名URL，不再需要批量预加载签名URL
+
 // 加载轮播图列表
 const loadBanners = async () => {
   loading.value = true
@@ -283,6 +351,22 @@ const loadBanners = async () => {
       bannerList.value = res.data.sort((a, b) => (a.sort || 0) - (b.sort || 0))
       emit('update:modelValue', bannerList.value)
       emit('change', bannerList.value)
+      
+      // 批量预加载所有OSS图片的签名URL
+      const imageUrls = bannerList.value
+        .map(item => {
+          try {
+            const configValue = typeof item.configValue === 'string' 
+              ? JSON.parse(item.configValue) 
+              : item.configValue
+            return configValue?.image || ''
+          } catch (e) {
+            return ''
+          }
+        })
+        .filter(url => url)
+      
+      // 后端统一返回签名URL，不再需要预加载
     }
   } catch (error) {
     console.error('加载轮播图列表失败:', error)
@@ -379,6 +463,24 @@ const handleEdit = (row, index) => {
     formData.link = configValue?.link || ''
     formData.sort = row.sort || 0
     formData.status = row.status !== undefined ? row.status : 1
+    
+    // 加载链接配置（兼容旧数据）
+    if (configValue?.linkType) {
+      // 新格式数据
+      formData.linkType = configValue.linkType
+      formData.linkValue = configValue.linkValue || ''
+      formData.linkDisplay = configValue.linkDisplay || ''
+    } else if (configValue?.link) {
+      // 旧格式数据：有 link 字段，视为外部链接
+      formData.linkType = 'EXTERNAL'
+      formData.linkValue = configValue.link
+      formData.linkDisplay = configValue.link
+    } else {
+      // 无链接配置
+      formData.linkType = 'NONE'
+      formData.linkValue = ''
+      formData.linkDisplay = ''
+    }
   } catch (e) {
     console.error('解析配置值失败:', e)
   }
@@ -427,13 +529,42 @@ const getBannerTitle = (row) => {
   }
 }
 
-// 获取轮播图跳转链接
+// 获取轮播图跳转链接配置摘要
 const getBannerLink = (row) => {
   try {
     const configValue = typeof row.configValue === 'string'
       ? JSON.parse(row.configValue)
       : row.configValue
-    return configValue?.link || '-'
+    
+    // 链接类型标签映射
+    const linkTypeLabels = {
+      NONE: '无跳转',
+      EXTERNAL: '外部链接',
+      PRODUCT_CATEGORY: '商品分类',
+      PRODUCT: '商品',
+      ARTICLE_CATEGORY: '文章分类',
+      ARTICLE: '文章',
+      ATTRACTION: '景点',
+      HOTEL: '酒店',
+      MAP: '地图',
+    }
+    
+    // 优先使用新格式
+    if (configValue?.linkType) {
+      const typeLabel = linkTypeLabels[configValue.linkType] || '未知类型'
+      if (configValue.linkType === 'NONE') {
+        return typeLabel
+      }
+      const display = configValue.linkDisplay || configValue.linkValue || '-'
+      return `${typeLabel}：${display}`
+    }
+    
+    // 兼容旧格式
+    if (configValue?.link) {
+      return `外部链接：${configValue.link}`
+    }
+    
+    return '无跳转'
   } catch (e) {
     return '-'
   }
@@ -452,7 +583,10 @@ const handleSubmit = async () => {
       type: formData.type,
       image: formData.type === 'image' ? formData.image : '',
       video: formData.type === 'video' ? formData.video : '',
-      link: formData.link || '',
+      link: formData.link || '', // 保留以兼容旧版本
+      linkType: formData.linkType,
+      linkValue: formData.linkValue,
+      linkDisplay: formData.linkDisplay,
     }
 
     if (editingIndex.value >= 0) {
@@ -500,6 +634,9 @@ const resetForm = () => {
   formData.image = ''
   formData.video = ''
   formData.link = ''
+  formData.linkType = 'NONE'
+  formData.linkValue = ''
+  formData.linkDisplay = ''
   formData.sort = bannerList.value.length > 0
     ? Math.max(...bannerList.value.map(item => item.sort || 0)) + 1
     : 1
@@ -525,6 +662,36 @@ watch(() => formData.type, (newType) => {
 const handleDialogClose = () => {
   resetForm()
   editingIndex.value = -1
+}
+
+// 打开文件选择器
+const handleSelectFromFileList = (type) => {
+  fileSelectorType.value = type
+  fileSelectorVisible.value = true
+}
+
+// 处理文件选择
+const handleFileSelect = (files) => {
+  if (files && files.length > 0) {
+    const selectedFile = files[0]
+    const fileUrl = selectedFile.fileUrl || selectedFile.url || ''
+    
+    if (fileSelectorType.value === 'image') {
+      formData.image = fileUrl
+      // 触发表单验证
+      if (formRef.value) {
+        formRef.value.validateField('image')
+      }
+    } else if (fileSelectorType.value === 'video') {
+      formData.video = fileUrl
+      // 触发表单验证
+      if (formRef.value) {
+        formRef.value.validateField('video')
+      }
+    }
+    
+    ElMessage.success('已选择文件')
+  }
 }
 
 onMounted(() => {

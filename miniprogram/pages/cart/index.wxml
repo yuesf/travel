@@ -1,22 +1,23 @@
 <!--购物车页-->
 <view class="page-container">
-  <!-- 顶部导航栏 -->
-  <view class="cart-header">
-    <view class="header-title">购物车</view>
-    <view class="header-edit" bindtap="onToggleEditMode">
+  <!-- 自定义导航栏 -->
+  <custom-nav-bar title="购物车" id="navBar">
+    <view slot="right" class="nav-edit-btn" bindtap="onToggleEditMode">
       {{editMode ? '完成' : '编辑'}}
     </view>
-  </view>
+  </custom-nav-bar>
 
-  <!-- 购物车列表 -->
-  <scroll-view
-    class="cart-scroll"
-    scroll-y
-    enable-back-to-top
-    refresher-enabled
-    refresher-triggered="{{loading}}"
-    bindrefresherrefresh="onPullDownRefresh"
-  >
+  <!-- 页面内容区域 -->
+  <view class="page-content" style="padding-top: {{navBarTotalHeight}}px;">
+    <!-- 购物车列表 -->
+    <scroll-view
+      class="cart-scroll"
+      scroll-y
+      enable-back-to-top
+      refresher-enabled
+      refresher-triggered="{{loading}}"
+      bindrefresherrefresh="onPullDownRefresh"
+    >
     <!-- 骨架屏：首次加载时显示 -->
     <skeleton wx:if="{{loading && cartList.length === 0}}" type="list" loading="{{true}}" rows="{{3}}" animated="{{true}}" />
 
@@ -133,5 +134,7 @@
         结算({{selectedItemsCount}})
       </button>
     </view>
+  </view>
+  <!-- 页面内容区域结束 -->
   </view>
 </view>

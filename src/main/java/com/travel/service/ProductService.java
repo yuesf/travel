@@ -33,6 +33,9 @@ public class ProductService {
     @Autowired
     private ProductCategoryService productCategoryService;
     
+    @Autowired
+    private CacheService cacheService;
+    
     /**
      * 分页查询商品列表
      */
@@ -103,11 +106,11 @@ public class ProductService {
                 isH5Type = true;
                 // H5类型分类，h5Link必填
                 if (request.getH5Link() == null || request.getH5Link().trim().isEmpty()) {
-                    throw new BusinessException(ResultCode.PARAM_ERROR.getCode(), "H5类型商品必须填写H5链接");
+                    throw new BusinessException(ResultCode.PARAM_ERROR.getCode(), "H5类型商品必须填写外部链接");
                 }
                 // 验证URL格式
                 if (!request.getH5Link().startsWith("http://") && !request.getH5Link().startsWith("https://")) {
-                    throw new BusinessException(ResultCode.PARAM_ERROR.getCode(), "H5链接格式不正确，必须以http://或https://开头");
+                    throw new BusinessException(ResultCode.PARAM_ERROR.getCode(), "外部链接格式不正确，必须以http://或https://开头");
                 }
             }
         }
@@ -146,6 +149,15 @@ public class ProductService {
         
         log.info("创建商品成功: id={}, name={}", product.getId(), product.getName());
         
+        // 自动刷新缓存
+        try {
+            cacheService.evictProductDetail(product.getId());
+            cacheService.evictHome();
+            log.info("商品创建成功后自动清除缓存，ID: {}", product.getId());
+        } catch (Exception e) {
+            log.error("清除商品缓存失败，但不影响商品创建，ID: {}", product.getId(), e);
+        }
+        
         return product;
     }
     
@@ -169,11 +181,11 @@ public class ProductService {
                 // H5类型分类，h5Link必填
                 String h5Link = request.getH5Link() != null ? request.getH5Link() : product.getH5Link();
                 if (h5Link == null || h5Link.trim().isEmpty()) {
-                    throw new BusinessException(ResultCode.PARAM_ERROR.getCode(), "H5类型商品必须填写H5链接");
+                    throw new BusinessException(ResultCode.PARAM_ERROR.getCode(), "H5类型商品必须填写外部链接");
                 }
                 // 验证URL格式
                 if (!h5Link.startsWith("http://") && !h5Link.startsWith("https://")) {
-                    throw new BusinessException(ResultCode.PARAM_ERROR.getCode(), "H5链接格式不正确，必须以http://或https://开头");
+                    throw new BusinessException(ResultCode.PARAM_ERROR.getCode(), "外部链接格式不正确，必须以http://或https://开头");
                 }
             }
         }
@@ -235,6 +247,18 @@ public class ProductService {
         
         log.info("更新商品成功: id={}, name={}", product.getId(), product.getName());
         
+        // 自动刷新缓存
+        try {
+            cacheService.evictProductDetail(id);
+            // 如果状态或分类发生变更，清除首页缓存
+            if (request.getStatus() != null || request.getCategoryId() != null) {
+                cacheService.evictHome();
+            }
+            log.info("商品更新成功后自动清除缓存，ID: {}", id);
+        } catch (Exception e) {
+            log.error("清除商品缓存失败，但不影响商品更新，ID: {}", id, e);
+        }
+        
         return product;
     }
     
@@ -259,6 +283,15 @@ public class ProductService {
         }
         
         log.info("删除商品成功: id={}, name={}", product.getId(), product.getName());
+        
+        // 自动刷新缓存
+        try {
+            cacheService.evictProductDetail(id);
+            cacheService.evictHome();
+            log.info("商品删除成功后自动清除缓存，ID: {}", id);
+        } catch (Exception e) {
+            log.error("清除商品缓存失败，但不影响商品删除，ID: {}", id, e);
+        }
     }
     
     /**

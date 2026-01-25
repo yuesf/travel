@@ -42,9 +42,10 @@
             :src="getIconImage(row)"
             fit="cover"
             style="width: 60px; height: 60px; border-radius: 4px;"
-            :preview-src-list="[getIconImage(row)]"
+            :preview-src-list="getPreviewImageList(row)"
             preview-teleported
             :lazy="false"
+            @error="() => handleIconImageError(row, $event)"
           >
             <template #error>
               <div class="image-slot">
@@ -117,7 +118,7 @@
             <el-option label="文章" value="article" />
             <el-option label="景点" value="attraction" />
             <el-option label="酒店" value="hotel" />
-            <el-option label="H5链接" value="h5_link" />
+            <el-option label="外部链接" value="h5_link" />
             <el-option label="分类导航" value="category_navigation" />
             <el-option label="地图" value="map" />
           </el-select>
@@ -226,7 +227,7 @@
             :disabled="!!(formData.relatedId || formData.categoryId)"
           />
         </el-form-item>
-        <!-- H5链接地址输入 -->
+        <!-- 外部链接地址输入 -->
         <el-form-item 
           v-if="formData.type === 'h5_link'"
           label="链接地址"
@@ -238,13 +239,23 @@
           />
         </el-form-item>
         <el-form-item label="图标图片" prop="icon">
-          <ImageUpload
-            v-model="formData.icon"
-            :limit="1"
-            :max-size="2"
-            :compress="true"
-            :compress-size="{ width: 32, height: 32 }"
-          />
+          <div style="display: flex; align-items: flex-start; gap: 12px;">
+            <ImageUpload
+              v-model="formData.icon"
+              :limit="1"
+              :max-size="2"
+              :compress="true"
+              :compress-size="{ width: 32, height: 32 }"
+              :disable-upload="true"
+            />
+            <el-button 
+              type="info" 
+              :icon="Folder"
+              @click="handleSelectIconFromFileList"
+            >
+              从文件库选择
+            </el-button>
+          </div>
         </el-form-item>
         <el-form-item label="排序" prop="sort">
           <el-input-number v-model="formData.sort" :min="0" :max="999" />
@@ -263,14 +274,24 @@
         </el-button>
       </template>
     </el-dialog>
+
+    <!-- 文件选择器对话框 -->
+    <FileSelector
+      v-model="fileSelectorVisible"
+      file-type="image"
+      :multiple="false"
+      :max-select="1"
+      @select="handleFileSelect"
+    />
   </div>
 </template>
 
 <script setup>
 import { ref, reactive, onMounted, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Plus, ArrowUp, ArrowDown, Picture } from '@element-plus/icons-vue'
+import { Plus, ArrowUp, ArrowDown, Picture, Folder } from '@element-plus/icons-vue'
 import ImageUpload from './ImageUpload.vue'
+import FileSelector from './FileSelector.vue'
 import {
   getConfigByType,
   createConfig,
@@ -282,6 +303,7 @@ import { getArticleCategoryList, getArticleList } from '@/api/articles'
 import { getAttractionList } from '@/api/attractions'
 import { getProductList } from '@/api/products'
 import { getMapList } from '@/api/maps'
+// 不再需要getSignedUrlByUrl，后端统一返回签名URL
 
 const props = defineProps({
   modelValue: {
@@ -306,6 +328,9 @@ const categoryList = ref([])
 const categoryLoading = ref(false)
 const articleList = ref([])
 const articlesLoading = ref(false)
+// 文件选择器相关状态
+const fileSelectorVisible = ref(false)
+// 注意：后端统一返回签名URL，前端不再需要OSS URL判断和处理逻辑
 
 // 表单数据
 const formData = reactive({
@@ -314,7 +339,7 @@ const formData = reactive({
   categoryId: null, // 文章分类ID（仅用于 article_category 类型）
   name: '',
   icon: '',
-  linkUrl: '', // H5链接地址（仅用于 h5_link 类型）
+  linkUrl: '', // 外部链接地址（仅用于 h5_link 类型）
   sort: 0,
   status: 1,
 })
@@ -337,7 +362,7 @@ const formRules = {
   relatedId: [
     {
       validator: (rule, value, callback) => {
-        // H5链接类型时，relatedId 可以为空
+        // 外部链接类型时，relatedId 可以为空
         if (formData.type === 'h5_link') {
           callback()
           return
@@ -400,7 +425,7 @@ const formRules = {
   ],
 }
 
-// 获取图标图片
+// 获取图标图片（后端统一返回签名URL，直接使用即可）
 const getIconImage = (row) => {
   try {
     const configValue = typeof row.configValue === 'string' 
@@ -410,6 +435,19 @@ const getIconImage = (row) => {
   } catch (e) {
     return ''
   }
+}
+
+// 获取预览用的图片URL列表（带签名URL处理）
+const getPreviewImageList = (row) => {
+  const imageUrl = getIconImage(row)
+  return imageUrl ? [imageUrl] : []
+}
+
+// 处理图片加载错误
+const handleIconImageError = async (row, event) => {
+  console.error('图片加载失败:', row)
+  // 后端统一返回签名URL，如果加载失败可能是URL过期或其他原因
+  ElMessage.warning('图片加载失败，请刷新页面重试')
 }
 
 // 获取图标名称
@@ -446,7 +484,7 @@ const getIconTypeLabel = (row) => {
     article: '文章',
     attraction: '景点',
     hotel: '酒店',
-    h5_link: 'H5链接',
+    h5_link: '外部链接',
     category_navigation: '分类导航',
     map: '地图',
   }
@@ -491,7 +529,7 @@ const getTypeLabel = (type) => {
     article: '文章',
     attraction: '景点',
     hotel: '酒店',
-    h5_link: 'H5链接',
+    h5_link: '外部链接',
     category_navigation: '分类导航',
     map: '地图',
   }
@@ -739,6 +777,8 @@ watch(() => formData.relatedId, (newId) => {
   }
 })
 
+// 注意：后端统一返回签名URL，不再需要批量预加载签名URL
+
 // 加载图标列表
 const loadIcons = async () => {
   loading.value = true
@@ -748,6 +788,8 @@ const loadIcons = async () => {
       iconList.value = res.data.sort((a, b) => (a.sort || 0) - (b.sort || 0))
       emit('update:modelValue', iconList.value)
       emit('change', iconList.value)
+      
+      // 后端统一返回签名URL，不再需要预加载
     }
   } catch (error) {
     console.error('加载图标列表失败:', error)
@@ -923,7 +965,7 @@ const handleSubmit = async () => {
         relatedName = article ? article.title : ''
       }
     } else if (formData.type === 'h5_link') {
-      // H5链接类型，relatedName 可以为空
+      // 外部链接类型，relatedName 可以为空
       relatedName = formData.name
     } else if (formData.type === 'category_navigation') {
       // 分类导航类型，relatedName 可以为空
@@ -964,7 +1006,7 @@ const handleSubmit = async () => {
       }
     }
     
-    // H5链接类型时，保存 linkUrl
+    // 外部链接类型时，保存 linkUrl
     if (formData.type === 'h5_link' && formData.linkUrl) {
       configValue.linkUrl = formData.linkUrl
     }
@@ -1025,6 +1067,28 @@ const resetForm = () => {
   if (formRef.value) {
     formRef.value.clearValidate()
   }
+}
+
+// 打开文件选择器选择图标
+const handleSelectIconFromFileList = () => {
+  fileSelectorVisible.value = true
+}
+
+// 处理文件选择
+const handleFileSelect = (files) => {
+  if (files && files.length > 0) {
+    const selectedFile = files[0]
+    const fileUrl = selectedFile.fileUrl || selectedFile.url || ''
+    if (fileUrl) {
+      formData.icon = fileUrl
+      // 触发表单验证
+      if (formRef.value) {
+        formRef.value.validateField('icon')
+      }
+      ElMessage.success('已选择图标')
+    }
+  }
+  fileSelectorVisible.value = false
 }
 
 // 对话框关闭

@@ -60,17 +60,17 @@
               </el-col>
             </el-row>
 
-            <!-- H5类型：显示H5链接字段 -->
+            <!-- H5类型：显示外部链接字段 -->
             <el-row :gutter="20" v-if="isH5Type">
               <el-col :span="24">
-                <el-form-item label="H5链接" prop="h5Link">
+                <el-form-item label="外部链接" prop="h5Link">
                   <el-input 
                     id="product-h5-link"
                     v-model="formData.h5Link" 
-                    placeholder="请输入完整的H5页面链接（必须以http://或https://开头）"
+                    placeholder="请输入完整的外部页面链接（必须以http://或https://开头）"
                     :disabled="isViewMode"
                   />
-                  <div class="form-tip">H5类型商品必须填写H5链接，用于小程序端跳转</div>
+                  <div class="form-tip">H5类型商品必须填写外部链接，用于小程序端跳转</div>
                 </el-form-item>
               </el-col>
             </el-row>
@@ -147,17 +147,26 @@
           <!-- Tab 2: 商品图片 -->
           <el-tab-pane label="商品图片" name="images">
             <el-form-item label="商品图片">
-              <div id="product-images">
+              <div id="product-images" style="display: flex; align-items: flex-start; gap: 12px; flex-wrap: wrap;">
                 <ImageUpload
                   ref="imageUploadRef"
                   v-model="formData.images"
                   :limit="9"
                   :max-size="5"
                   :disabled="isViewMode"
+                  :disable-upload="true"
                   @change="handleImagesChange"
                 />
+                <el-button 
+                  v-if="!isViewMode"
+                  type="info" 
+                  :icon="Folder"
+                  @click="handleSelectImagesFromFileList"
+                >
+                  从文件库选择
+                </el-button>
               </div>
-              <div class="form-tip">最多上传9张图片，单张图片不超过5MB，支持JPG、PNG、WebP格式</div>
+              <div class="form-tip">最多选择9张图片，请从文件库中选择</div>
             </el-form-item>
           </el-tab-pane>
 
@@ -222,6 +231,15 @@
         </el-tabs>
       </el-form>
     </el-card>
+
+    <!-- 文件选择器对话框 -->
+    <FileSelector
+      v-model="fileSelectorVisible"
+      file-type="image"
+      :multiple="true"
+      :max-select="9"
+      @select="handleFileSelect"
+    />
   </div>
 </template>
 
@@ -229,9 +247,10 @@
 import { ref, reactive, computed, onMounted, watch, nextTick } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Plus, Delete } from '@element-plus/icons-vue'
+import { Plus, Delete, Folder } from '@element-plus/icons-vue'
 import ImageUpload from '@/components/ImageUpload.vue'
 import RichTextEditor from '@/components/RichTextEditor.vue'
+import FileSelector from '@/components/FileSelector.vue'
 import { getProductById, createProduct, updateProduct } from '@/api/products'
 import { getCategoryTree, getCategoryById } from '@/api/categories'
 
@@ -242,6 +261,7 @@ const formRef = ref(null)
 const imageUploadRef = ref(null)
 const activeTab = ref('basic')
 const submitting = ref(false)
+const fileSelectorVisible = ref(false)
 
 const isEdit = computed(() => !!route.params.id)
 const isViewMode = computed(() => route.query.view === 'true')
@@ -271,7 +291,7 @@ const formData = reactive({
   images: [],
   specifications: {},
   status: 1, // 默认上架
-  h5Link: '', // H5链接
+  h5Link: '', // 外部链接
 })
 
 // 表单验证规则
@@ -283,10 +303,10 @@ const formRules = computed(() => {
   // H5类型时，h5Link必填，价格和库存不需要
   if (isH5Type.value) {
     rules.h5Link = [
-      { required: true, message: 'H5链接不能为空', trigger: 'blur' },
+      { required: true, message: '外部链接不能为空', trigger: 'blur' },
       { 
         pattern: /^https?:\/\/.+/, 
-        message: 'H5链接格式不正确，必须以http://或https://开头', 
+        message: '外部链接格式不正确，必须以http://或https://开头', 
         trigger: 'blur' 
       }
     ]
@@ -349,7 +369,7 @@ watch(() => formData.categoryId, async (newCategoryId, oldCategoryId) => {
   // 只有在用户主动切换分类时才清空数据（oldCategoryId不为null表示是切换，不是初始化）
   if (oldCategoryId !== null && oldCategoryId !== undefined) {
     await checkCategoryType(newCategoryId)
-    // 如果切换到非H5类型，清空H5链接
+    // 如果切换到非H5类型，清空外部链接
     if (!isH5Type.value) {
       formData.h5Link = ''
     }
@@ -427,6 +447,26 @@ const loadDetail = async () => {
 }
 
 // 图片变化
+// 打开文件选择器选择图片
+const handleSelectImagesFromFileList = () => {
+  fileSelectorVisible.value = true
+}
+
+// 处理文件选择
+const handleFileSelect = (files) => {
+  if (files && files.length > 0) {
+    const urls = files.map(file => file.fileUrl || file.url).filter(Boolean)
+    if (urls.length > 0) {
+      // 合并到现有图片列表（最多9张）
+      const currentImages = Array.isArray(formData.images) ? formData.images : []
+      const newImages = [...currentImages, ...urls].slice(0, 9)
+      formData.images = newImages
+      ElMessage.success(`已选择 ${urls.length} 张图片`)
+    }
+  }
+  fileSelectorVisible.value = false
+}
+
 const handleImagesChange = (urls) => {
   formData.images = urls
 }

@@ -1,0 +1,22 @@
+<!-- 自定义导航栏组件 -->
+<view class="custom-nav-bar" style="padding-top: {{statusBarHeight}}px;">
+  <view class="nav-content" style="height: {{navBarHeight}}px;">
+    <!-- Logo（左侧） -->
+    <view class="nav-left">
+      <image 
+        class="nav-logo" 
+        src="{{logoUrl}}" 
+        mode="aspectFit"
+        binderror="onLogoError"
+      />
+    </view>
+    <!-- 标题（居中） -->
+    <view class="nav-center">
+      <text class="nav-title">{{title}}</text>
+    </view>
+    <!-- 右侧扩展插槽 -->
+    <view class="nav-right">
+      <slot name="right"></slot>
+    </view>
+  </view>
+</view>

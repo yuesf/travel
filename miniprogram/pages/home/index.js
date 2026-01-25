@@ -15,6 +15,7 @@ Page({
    * 页面的初始数据
    */
   data: {
+    navBarTotalHeight: 0, // 导航栏总高度（状态栏 + 导航栏）
     banners: [], // 轮播图数据
     icons: [], // Icon 图标列表
     recommendAttractions: [], // 推荐景点
@@ -31,11 +32,27 @@ Page({
    */
   onLoad(options) {
     console.log('首页加载');
+    // 加载首页数据
     this.loadData().then(() => {
       this.setData({
         isPageLoaded: true,
       });
     });
+  },
+
+  /**
+   * 生命周期函数--监听页面初次渲染完成
+   */
+  onReady() {
+    console.log('首页渲染完成');
+    // 获取导航栏组件实例，设置页面内容区域的 padding
+    const navBar = this.selectComponent('#navBar');
+    if (navBar) {
+      const navBarHeight = navBar.getNavBarHeight();
+      this.setData({
+        navBarTotalHeight: navBarHeight
+      });
+    }
   },
 
   /**
@@ -52,13 +69,6 @@ Page({
     if (this.data.isPageLoaded) {
       this.loadData(true);
     }
-  },
-
-  /**
-   * 生命周期函数--监听页面初次渲染完成
-   */
-  onReady() {
-    console.log('首页渲染完成');
   },
 
   /**
@@ -103,23 +113,42 @@ Page({
         }
       }
 
-      // 调用API获取数据
+      // 调用API获取数据（后端已处理OSS URL签名）
       const homeData = await homeApi.getHome();
       console.log('首页原始数据:', JSON.stringify(homeData, null, 2));
       
       // 处理数据 - 确保 banners 存在且是数组
       const bannersData = homeData?.banners || [];
-      console.log('轮播图原始数据:', bannersData, '数量:', bannersData.length);
+      console.log('========== 轮播图数据调试 ==========');
+      console.log('轮播图数量:', bannersData.length);
+      
+      // 详细检查每个轮播图
+      bannersData.forEach((banner, idx) => {
+        console.log(`轮播图 ${idx + 1}:`, {
+          id: banner.id,
+          type: banner.type,
+          hasImage: !!banner.image,
+          image: banner.image ? banner.image.substring(0, 50) + '...' : 'null',
+          title: banner.title,
+          linkType: banner.linkType,
+        });
+      });
       
       const banners = bannersData.map((banner, index) => ({
         id: banner.id || `banner_${index}`,
         type: banner.type || 'image',
         image: normalizeUrl(banner.image || ''),
         video: normalizeUrl(banner.video || ''),
-        link: banner.link || '',
+        link: banner.link || '', // 兼容旧版本
         title: banner.title || '',
+        // 新的链接配置字段
+        linkType: banner.linkType || '',
+        linkValue: banner.linkValue || '',
+        linkDisplay: banner.linkDisplay || '',
       }));
-      console.log('处理后的轮播图数据:', banners);
+      
+      console.log('✅ 处理后的轮播图数量:', banners.length);
+      console.log('========================================');
 
       const icons = (homeData?.icons || []).map(icon => ({
         id: icon.id,
@@ -127,8 +156,8 @@ Page({
         relatedId: icon.relatedId || null,
         relatedName: icon.relatedName || '',
         name: icon.name || '',
-        icon: normalizeUrl(icon.icon || ''),
-        linkUrl: icon.linkUrl || '', // H5链接地址
+        icon: normalizeUrl(icon.icon || ''), // 后端已处理OSS签名，这里只处理localhost
+        linkUrl: icon.linkUrl || '', // 外部链接地址
         categoryId: icon.categoryId || null, // 文章分类ID
       }));
       console.log('处理后的图标数据:', icons);
@@ -136,7 +165,7 @@ Page({
       const recommendAttractions = (homeData.recommendAttractions || []).map(item => ({
         id: item.id,
         name: item.name || '',
-        image: normalizeUrl(item.image || ''),
+        image: normalizeUrl(item.image || ''), // 后端已处理OSS签名，这里只处理localhost
         coverImage: normalizeUrl(item.image || ''),
         city: item.city || '',
         price: item.price || 0,
@@ -147,7 +176,7 @@ Page({
       const recommendHotels = (homeData.recommendHotels || []).map(item => ({
         id: item.id,
         name: item.name || '',
-        image: normalizeUrl(item.image || ''),
+        image: normalizeUrl(item.image || ''), // 后端已处理OSS签名，这里只处理localhost
         coverImage: normalizeUrl(item.image || ''),
         city: item.city || '',
         price: item.price || 0,
@@ -159,7 +188,7 @@ Page({
       const recommendProducts = (homeData.recommendProducts || []).map(item => ({
         id: item.id,
         name: item.name || '',
-        image: normalizeUrl(item.image || ''),
+        image: normalizeUrl(item.image || ''), // 后端已处理OSS签名，这里只处理localhost
         coverImage: normalizeUrl(item.image || ''),
         price: item.price || 0,
         minPrice: item.price || 0,
@@ -172,11 +201,11 @@ Page({
       const recommendProductCategories = (homeData.recommendProductCategories || []).map(category => ({
         categoryId: category.categoryId,
         categoryName: category.categoryName || '',
-        categoryIcon: normalizeUrl(category.categoryIcon || ''),
+        categoryIcon: normalizeUrl(category.categoryIcon || ''), // 后端已处理OSS签名，这里只处理localhost
         products: (category.products || []).map(item => ({
           id: item.id,
           name: item.name || '',
-          image: normalizeUrl(item.image || ''),
+          image: normalizeUrl(item.image || ''), // 后端已处理OSS签名，这里只处理localhost
           coverImage: normalizeUrl(item.image || ''),
           price: item.price || 0,
           minPrice: item.price || 0,
@@ -186,7 +215,7 @@ Page({
         })),
       }));
 
-      // 更新页面数据
+      // 更新页面数据（此时所有OSS URL都已获取签名URL）
       this.setData({
         banners,
         icons,
@@ -264,6 +293,7 @@ Page({
       console.error('设置缓存数据失败:', error);
     }
   },
+
 
   /**
    * 点击搜索框
@@ -432,7 +462,7 @@ Page({
         },
       });
     } else if (type === 'h5_link') {
-      // H5 链接类型：跳转到外部链接
+      // 外部链接类型：跳转到外部链接
       if (linkUrl) {
         // 验证 URL 格式
         if (!linkUrl.startsWith('http://') && !linkUrl.startsWith('https://')) {

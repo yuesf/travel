@@ -202,7 +202,7 @@ CREATE TABLE IF NOT EXISTS `product` (
   `description` TEXT COMMENT '描述',
   `images` JSON COMMENT '图片列表（JSON数组）',
   `specifications` JSON COMMENT '规格（JSON对象）',
-  `h5_link` VARCHAR(500) COMMENT 'H5链接（H5类型商品使用）',
+  `h5_link` VARCHAR(500) COMMENT '外部链接（H5类型商品使用）',
   `status` TINYINT DEFAULT 1 COMMENT '状态：0-下架，1-上架',
   `create_time` DATETIME DEFAULT CURRENT_TIMESTAMP,
   `update_time` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -292,6 +292,20 @@ CREATE TABLE IF NOT EXISTS `order_item` (
   `create_time` DATETIME DEFAULT CURRENT_TIMESTAMP,
   INDEX `idx_order_id` (`order_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='订单明细表';
+
+-- 地图表
+CREATE TABLE IF NOT EXISTS `map` (
+  `id` BIGINT PRIMARY KEY AUTO_INCREMENT,
+  `name` VARCHAR(200) NOT NULL COMMENT '地图名称',
+  `longitude` DECIMAL(10,7) NOT NULL COMMENT '经度',
+  `latitude` DECIMAL(10,7) NOT NULL COMMENT '纬度',
+  `address` VARCHAR(500) COMMENT '地址描述',
+  `announcement` TEXT COMMENT '公告内容',
+  `status` TINYINT DEFAULT 1 COMMENT '状态：0-禁用，1-启用',
+  `create_time` DATETIME DEFAULT CURRENT_TIMESTAMP,
+  `update_time` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  INDEX `idx_status` (`status`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='地图表';
 
 -- ============================================
 -- 系统相关表
@@ -404,6 +418,64 @@ CREATE TABLE IF NOT EXISTS `cart` (
   INDEX `idx_user_id` (`user_id`),
   UNIQUE KEY `uk_user_item` (`user_id`, `item_type`, `item_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='购物车表';
+
+-- OSS配置表（单例表，只有一条记录）
+CREATE TABLE IF NOT EXISTS `oss_config` (
+  `id` BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '主键ID',
+  `endpoint` VARCHAR(255) NOT NULL COMMENT 'OSS Endpoint（如：oss-cn-hangzhou.aliyuncs.com）',
+  `access_key_id` VARCHAR(255) NOT NULL COMMENT 'Access Key ID',
+  `access_key_secret` VARCHAR(500) NOT NULL COMMENT 'Access Key Secret（加密存储）',
+  `bucket_name` VARCHAR(255) NOT NULL COMMENT 'Bucket名称',
+  `enabled` TINYINT(1) DEFAULT 1 COMMENT '是否启用（1:启用, 0:禁用）',
+  `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  `created_by` BIGINT COMMENT '创建人ID',
+  `updated_by` BIGINT COMMENT '更新人ID',
+  UNIQUE KEY `uk_singleton` (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='OSS配置表（单例表，只有一条记录）';
+
+-- 文件记录表
+CREATE TABLE IF NOT EXISTS `file_record` (
+  `id` BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '主键ID',
+  `file_name` VARCHAR(255) NOT NULL COMMENT '文件名（UUID生成）',
+  `original_name` VARCHAR(255) NOT NULL COMMENT '原始文件名',
+  `file_path` VARCHAR(500) NOT NULL COMMENT '文件路径（相对路径）',
+  `file_url` VARCHAR(500) NOT NULL COMMENT '文件访问URL（完整URL）',
+  `file_size` BIGINT NOT NULL COMMENT '文件大小（字节）',
+  `file_type` VARCHAR(50) NOT NULL COMMENT '文件类型（image/video）',
+  `file_extension` VARCHAR(20) NOT NULL COMMENT '文件扩展名（jpg/png/mp4等）',
+  `module` VARCHAR(50) NOT NULL COMMENT '模块名称（common/article/banner等）',
+  `storage_type` VARCHAR(20) NOT NULL COMMENT '存储类型（OSS/LOCAL）',
+  `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '上传时间',
+  `created_by` BIGINT COMMENT '上传人ID',
+  INDEX `idx_module` (`module`) COMMENT '模块索引',
+  INDEX `idx_file_type` (`file_type`) COMMENT '文件类型索引',
+  INDEX `idx_storage_type` (`storage_type`) COMMENT '存储类型索引',
+  INDEX `idx_created_at` (`created_at`) COMMENT '创建时间索引',
+  INDEX `idx_created_by` (`created_by`) COMMENT '创建人索引'
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='文件记录表';
+
+-- 缓存刷新任务表
+CREATE TABLE IF NOT EXISTS `cache_refresh_task` (
+    `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+    `task_id` VARCHAR(64) NOT NULL COMMENT '任务ID（UUID）',
+    `cache_type` VARCHAR(50) NOT NULL COMMENT '缓存类型',
+    `status` VARCHAR(20) NOT NULL COMMENT '任务状态：PENDING(等待中), RUNNING(执行中), COMPLETED(已完成), FAILED(失败)',
+    `total_count` INT NOT NULL DEFAULT 0 COMMENT '总数量',
+    `processed_count` INT NOT NULL DEFAULT 0 COMMENT '已处理数量',
+    `success_count` INT NOT NULL DEFAULT 0 COMMENT '成功数量',
+    `failure_count` INT NOT NULL DEFAULT 0 COMMENT '失败数量',
+    `error_message` TEXT COMMENT '错误信息',
+    `start_time` DATETIME COMMENT '开始时间',
+    `end_time` DATETIME COMMENT '完成时间',
+    `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uk_task_id` (`task_id`),
+    KEY `idx_status` (`status`),
+    KEY `idx_cache_type` (`cache_type`),
+    KEY `idx_created_at` (`created_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='缓存刷新任务表';
 
 -- ============================================
 -- 文章相关表

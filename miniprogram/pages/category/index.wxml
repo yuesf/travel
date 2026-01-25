@@ -1,7 +1,12 @@
 <!--分类页-->
 <view class="page-container">
-  <!-- 左右分栏布局 -->
-  <view class="category-layout">
+  <!-- 自定义导航栏 -->
+  <custom-nav-bar title="商品分类" id="navBar" />
+
+  <!-- 内容区域 -->
+  <view class="page-content" style="padding-top: {{navBarTotalHeight}}px;">
+    <!-- 左右分栏布局 -->
+    <view class="category-layout">
     <!-- 左侧分类列表（浏览模式时隐藏） -->
     <scroll-view wx:if="{{showCategorySidebar}}" class="category-sidebar" scroll-y="true">
       <view 
@@ -176,5 +181,7 @@
         </view>
       </view>
     </view>
+  </view>
+  <!-- 页面内容区域结束 -->
   </view>
 </view>

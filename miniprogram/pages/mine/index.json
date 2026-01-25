@@ -1,8 +1,10 @@
 {
   "navigationBarTitleText": "我的",
+  "navigationStyle": "custom",
   "enablePullDownRefresh": true,
   "backgroundTextStyle": "dark",
   "usingComponents": {
+    "custom-nav-bar": "/components/custom-nav-bar/index",
     "skeleton": "/components/skeleton/index"
   }
 }

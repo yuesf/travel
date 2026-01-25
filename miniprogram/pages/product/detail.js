@@ -137,7 +137,7 @@ Page({
         name: product.name,
         images: product.images || (product.image ? [product.image] : []) || (product.coverImage ? [product.coverImage] : []),
         description: description,
-        h5Link: product.h5Link || null, // H5链接
+        h5Link: product.h5Link || null, // 外部链接
       };
 
       // 设置页面标题为商品名称
@@ -174,7 +174,7 @@ Page({
     const h5Link = this.data.product?.h5Link;
     if (!h5Link) {
       wx.showToast({
-        title: 'H5链接不存在',
+        title: '外部链接不存在',
         icon: 'none',
       });
       return;

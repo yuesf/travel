@@ -112,4 +112,10 @@ public class Article implements Serializable {
      */
     @JsonInclude(JsonInclude.Include.NON_NULL)
     private List<Long> tagIds;
+    
+    /**
+     * 文章图片URL列表（非数据库字段，用于前端展示）
+     */
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    private List<String> images;
 }

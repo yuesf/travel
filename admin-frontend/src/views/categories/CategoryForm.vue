@@ -30,10 +30,19 @@
             v-model="form.icon"
             :limit="1"
             :max-size="2"
+            :disable-upload="true"
             style="display: inline-block"
           />
+          <el-button 
+            type="info" 
+            :icon="Folder"
+            @click="handleSelectImageFromFileList"
+            style="margin-left: 8px"
+          >
+            从文件库选择
+          </el-button>
         </div>
-        <div class="form-tip">支持图片URL或上传图片，建议尺寸：64x64px</div>
+        <div class="form-tip">支持图片URL或从文件库选择，建议尺寸：64x64px</div>
       </el-form-item>
 
       <el-form-item label="分类类型" prop="type">
@@ -69,13 +78,24 @@
         确定
       </el-button>
     </template>
+
+    <!-- 文件选择器对话框 -->
+    <FileSelector
+      v-model="fileSelectorVisible"
+      file-type="image"
+      :multiple="false"
+      :max-select="1"
+      @select="handleFileSelect"
+    />
   </el-dialog>
 </template>
 
 <script setup>
 import { ref, reactive, watch, computed } from 'vue'
 import { ElMessage } from 'element-plus'
+import { Folder } from '@element-plus/icons-vue'
 import ImageUpload from '@/components/ImageUpload.vue'
+import FileSelector from '@/components/FileSelector.vue'
 import { createCategory, updateCategory } from '@/api/categories'
 
 const props = defineProps({
@@ -97,6 +117,7 @@ const emit = defineEmits(['update:modelValue', 'success'])
 
 const formRef = ref(null)
 const submitting = ref(false)
+const fileSelectorVisible = ref(false)
 
 const dialogVisible = computed({
   get: () => props.modelValue,
@@ -207,6 +228,24 @@ const handleSubmit = async () => {
       }
     }
   })
+}
+
+// 打开文件选择器选择图片
+const handleSelectImageFromFileList = () => {
+  fileSelectorVisible.value = true
+}
+
+// 处理文件选择
+const handleFileSelect = (files) => {
+  if (files && files.length > 0) {
+    const file = files[0]
+    const url = file.fileUrl || file.url
+    if (url) {
+      form.icon = url
+      ElMessage.success('已选择图片')
+    }
+  }
+  fileSelectorVisible.value = false
 }
 
 // 关闭对话框

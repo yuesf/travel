@@ -62,7 +62,7 @@ public class ProductCreateRequest {
     private Integer status;
     
     /**
-     * H5链接（H5类型商品使用）
+     * 外部链接（H5类型商品使用）
      */
     private String h5Link;
 }

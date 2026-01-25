@@ -3,6 +3,7 @@ package com.travel.service;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.travel.common.ResultCode;
+import com.travel.dto.HomeResponse;
 import com.travel.dto.MiniProgramConfigCreateRequest;
 import com.travel.dto.MiniProgramConfigUpdateRequest;
 import com.travel.entity.MiniProgramConfig;
@@ -32,6 +33,10 @@ public class MiniProgramConfigService {
     @Autowired
     @Qualifier("miniprogramConfigCache")
     private Cache<String, MiniProgramConfig> configCache;
+    
+    @Autowired
+    @Qualifier("homeCache")
+    private Cache<String, HomeResponse> homeCache;
     
     private static final ObjectMapper objectMapper = new ObjectMapper();
     
@@ -232,8 +237,10 @@ public class MiniProgramConfigService {
     private void clearCache(String configKey) {
         if (configKey != null) {
             configCache.invalidate(configKey);
+            log.debug("已清除小程序配置缓存: {}", configKey);
         }
-        // 清除首页数据缓存
-        configCache.invalidate("miniprogram:home");
+        // 清除首页数据缓存（修复：使用正确的 homeCache）
+        homeCache.invalidateAll();
+        log.info("已清除首页数据缓存（因小程序配置变更）");
     }
 }

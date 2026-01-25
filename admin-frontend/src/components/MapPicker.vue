@@ -44,9 +44,15 @@
                 v-model="formData.address"
                 type="textarea"
                 :rows="3"
-                placeholder="详细地址（可手动编辑）"
+                placeholder="详细地址（可手动编辑，点击地图或搜索地址后自动填充）"
                 @blur="handleAddressChange"
               />
+              <div v-if="formData.address" style="font-size: 12px; color: #67C23A; margin-top: 4px;">
+                ✓ 地址已获取
+              </div>
+              <div v-else-if="formData.longitude && formData.latitude" style="font-size: 12px; color: #E6A23C; margin-top: 4px;">
+                ⏳ 正在获取地址...
+              </div>
             </el-form-item>
             <el-form-item>
               <el-button type="primary" @click="handleSearch">搜索地址</el-button>
@@ -97,6 +103,7 @@ const formData = ref({
 let map = null
 let marker = null
 let geocoder = null
+const geocoderReady = ref(false) // geocoder插件加载状态标志位
 
 // 加载高德地图脚本
 const loadAMapScript = () => {
@@ -192,14 +199,16 @@ const initMap = async () => {
     map.on('complete', () => {
       console.log('地图加载完成')
       
-      // 加载Geocoder插件
-      AMap.plugin('AMap.Geocoder', () => {
+      // 加载Geocoder插件（同时支持地理编码和逆地理编码）
+      AMap.plugin(['AMap.Geocoder', 'AMap.AutoComplete'], () => {
         // 创建地理编码实例
         geocoder = new AMap.Geocoder({
-          city: '全国',
+          city: '全国', // 全国范围搜索
         })
         
-        console.log('Geocoder插件加载完成')
+        // 设置geocoder加载完成标志位
+        geocoderReady.value = true
+        console.log('Geocoder插件加载完成', geocoder)
         
         // 创建标记
         if (props.modelValue?.longitude && props.modelValue?.latitude) {
@@ -211,6 +220,10 @@ const initMap = async () => {
             }, 200)
           }
         }
+      }, (error) => {
+        console.error('Geocoder插件加载失败:', error)
+        geocoderReady.value = false
+        ElMessage.error('地图服务加载失败，请刷新页面重试')
       })
     })
 
@@ -289,48 +302,115 @@ const addMarker = (position) => {
 }
 
 // 逆地理编码（根据经纬度获取地址）
-const reverseGeocode = (lng, lat) => {
-  if (!geocoder || !window.AMap) {
-    console.warn('Geocoder插件未加载，无法获取地址')
-    // 即使 geocoder 未加载，也要更新值（地址为空）
-    updateValue()
-    return
+const reverseGeocode = (lng, lat, retryCount = 0) => {
+  const maxRetries = 3
+  const retryDelay = 500
+  
+  // 检查geocoder是否就绪
+  if (!geocoderReady.value || !geocoder || !window.AMap) {
+    if (retryCount < maxRetries) {
+      console.log(`Geocoder未就绪，${retryDelay}ms后重试 (${retryCount + 1}/${maxRetries})`)
+      setTimeout(() => {
+        reverseGeocode(lng, lat, retryCount + 1)
+      }, retryDelay)
+      return
+    } else {
+      console.warn('Geocoder插件未加载，无法获取地址', { geocoder, AMap: window.AMap, geocoderReady: geocoderReady.value })
+      // 即使 geocoder 未加载，也要更新值（地址为空）
+      updateValue()
+      ElMessage.warning('地址获取失败，地图服务正在加载中，请稍候再试')
+      return
+    }
   }
 
+  console.log('开始逆地理编码:', { lng, lat })
+  
   geocoder.getAddress([lng, lat], (status, result) => {
-    if (status === 'complete' && result.info === 'OK') {
+    console.log('逆地理编码结果:', { status, result })
+    
+    if (status === 'complete' && result && result.info === 'OK' && result.regeocode) {
       // 优先使用完整地址，如果没有则使用格式化地址，最后使用区县
-      const address = result.regeocode.formattedAddress || 
-                     (result.regeocode.addressComponent ? 
-                       `${result.regeocode.addressComponent.province || ''}${result.regeocode.addressComponent.city || ''}${result.regeocode.addressComponent.district || ''}${result.regeocode.addressComponent.street || ''}${result.regeocode.addressComponent.streetNumber || ''}` : '') ||
-                     result.regeocode.addressComponent?.district || ''
-      formData.value.address = address.trim()
-      // 地址获取成功后，再次更新值，触发 change 事件
-      updateValue()
-      console.log('地址获取成功:', address)
+      let address = ''
+      
+      if (result.regeocode.formattedAddress) {
+        address = result.regeocode.formattedAddress
+      } else if (result.regeocode.addressComponent) {
+        const component = result.regeocode.addressComponent
+        address = `${component.province || ''}${component.city || ''}${component.district || ''}${component.street || ''}${component.streetNumber || ''}`.trim()
+      } else if (result.regeocode.addressComponent?.district) {
+        address = result.regeocode.addressComponent.district
+      }
+      
+      if (address) {
+        formData.value.address = address.trim()
+        // 地址获取成功后，再次更新值，触发 change 事件
+        updateValue()
+        console.log('地址获取成功:', address)
+      } else {
+        console.warn('地址解析失败，结果中没有地址信息')
+        formData.value.address = ''
+        updateValue()
+      }
     } else {
       // 地址获取失败，也要更新值（地址为空）
-      console.warn('地址获取失败:', status, result)
+      console.warn('地址获取失败:', { status, result })
       formData.value.address = ''
       updateValue()
+      // 根据不同的错误类型显示不同的提示
+      if (status === 'complete' && result && result.info) {
+        if (result.info === 'INVALID_USER_SCODE' || result.infocode === '10008') {
+          ElMessage.warning('高德地图API安全密钥配置错误，请检查安全密钥配置。地址功能可能受限，但经纬度已保存。')
+        } else if (result.info === 'DAILY_QUERY_OVER_LIMIT') {
+          ElMessage.warning('今日API调用次数已达上限，请明天再试。经纬度已保存。')
+        } else if (result.info === 'INVALID_USER_KEY') {
+          ElMessage.warning('高德地图API Key无效，请检查API Key配置。经纬度已保存。')
+        } else {
+          ElMessage.warning(`地址获取失败：${result.info || '未知错误'}。经纬度已保存，可手动输入地址。`)
+        }
+      } else if (status !== 'complete') {
+        ElMessage.warning('地址获取失败，请稍后重试。经纬度已保存。')
+      }
     }
   })
 }
 
 // 地理编码（根据地址获取经纬度）
-const geocode = (address) => {
-  if (!geocoder || !address || !window.AMap) {
-    if (!geocoder) {
-      ElMessage.warning('地理编码插件未加载，请稍候再试')
-    }
+const geocode = (address, retryCount = 0) => {
+  const maxRetries = 3
+  const retryDelay = 500
+  
+  // 检查输入参数
+  if (!address || address.trim() === '') {
+    ElMessage.warning('请输入地址')
     return
   }
+  
+  // 检查geocoder是否就绪
+  if (!geocoderReady.value || !geocoder || !window.AMap) {
+    if (retryCount < maxRetries) {
+      console.log(`Geocoder未就绪，${retryDelay}ms后重试 (${retryCount + 1}/${maxRetries})`)
+      setTimeout(() => {
+        geocode(address, retryCount + 1)
+      }, retryDelay)
+      return
+    } else {
+      ElMessage.warning('地图服务正在加载中，请稍候再试')
+      console.error('geocoder未加载:', { geocoder, address, AMap: window.AMap, geocoderReady: geocoderReady.value })
+      return
+    }
+  }
 
+  console.log('开始地理编码搜索:', address)
+  
   geocoder.getLocation(address, (status, result) => {
-    if (status === 'complete' && result.geocodes && result.geocodes.length > 0) {
+    console.log('地理编码结果:', { status, result })
+    
+    if (status === 'complete' && result && result.geocodes && result.geocodes.length > 0) {
       const location = result.geocodes[0].location
       const longitude = parseFloat(location.lng.toFixed(7))
       const latitude = parseFloat(location.lat.toFixed(7))
+      
+      console.log('找到地址，经纬度:', { longitude, latitude })
       
       // 更新数据
       formData.value.longitude = longitude
@@ -341,7 +421,12 @@ const geocode = (address) => {
       latitudeInput.value = latitude.toString()
       
       // 优先使用格式化地址，如果没有则使用搜索的地址
-      formData.value.address = result.geocodes[0].formattedAddress || address
+      const formattedAddress = result.geocodes[0].formattedAddress || 
+                               result.geocodes[0].address || 
+                               address
+      formData.value.address = formattedAddress
+      
+      console.log('更新详细地址:', formattedAddress)
       
       // 添加标记并定位地图
       addMarker([location.lng, location.lat])
@@ -354,7 +439,27 @@ const geocode = (address) => {
       
       ElMessage.success('搜索成功，已定位到该地址')
     } else {
-      ElMessage.error('未找到该地址，请尝试更详细的地址信息')
+      // 区分不同的错误情况
+      if (status === 'complete' && result && result.info) {
+        if (result.info === 'INVALID_USER_SCODE' || result.infocode === '10008') {
+          ElMessage.error('高德地图API安全密钥配置错误，请检查安全密钥配置')
+        } else if (result.info === 'DAILY_QUERY_OVER_LIMIT') {
+          ElMessage.error('今日API调用次数已达上限，请明天再试')
+        } else if (result.info === 'INVALID_USER_KEY') {
+          ElMessage.error('高德地图API Key无效，请检查API Key配置')
+        } else if (result.info === 'NO_DATA' || status === 'no_data') {
+          ElMessage.error('未找到该地址，请尝试更详细的地址信息')
+        } else {
+          ElMessage.error(`地址搜索失败：${result.info || '未知错误'}`)
+        }
+      } else if (status === 'no_data') {
+        ElMessage.error('未找到该地址，请尝试更详细的地址信息')
+      } else if (status === 'error') {
+        ElMessage.error('地址搜索失败，请检查网络连接后重试')
+      } else {
+        ElMessage.error('未找到该地址，请尝试更详细的地址信息')
+      }
+      console.error('地址搜索失败:', { status, result })
     }
   })
 }
@@ -362,23 +467,16 @@ const geocode = (address) => {
 // 搜索地址
 const handleSearch = () => {
   const address = searchAddress.value?.trim()
+  
+  // 输入验证
   if (!address) {
     ElMessage.warning('请输入地址')
     return
   }
   
-  // 检查 geocoder 是否已加载
-  if (!geocoder || !window.AMap) {
-    ElMessage.warning('地图服务正在加载中，请稍候再试')
-    // 如果地图还在加载，等待一下再重试
-    if (map) {
-      setTimeout(() => {
-        handleSearch()
-      }, 500)
-    }
-    return
-  }
+  console.log('搜索地址:', address, { geocoder, AMap: window.AMap, map, geocoderReady: geocoderReady.value })
   
+  // 调用geocode函数，它会内部处理重试逻辑
   geocode(address)
 }
 

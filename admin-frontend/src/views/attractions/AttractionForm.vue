@@ -44,15 +44,6 @@
               />
             </el-form-item>
 
-            <el-form-item label="详细地址" prop="address">
-              <el-input
-                v-model="formData.address"
-                type="textarea"
-                :rows="2"
-                placeholder="请输入详细地址"
-              />
-            </el-form-item>
-
             <el-form-item label="地图位置" prop="location">
               <MapPicker
                 v-model="formData.mapLocation"

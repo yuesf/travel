@@ -1,0 +1,149 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.travel.mapper.FileRecordMapper">
+
+    <resultMap id="BaseResultMap" type="com.travel.entity.FileRecord">
+        <id column="id" property="id"/>
+        <result column="file_name" property="fileName"/>
+        <result column="original_name" property="originalName"/>
+        <result column="file_path" property="filePath"/>
+        <result column="file_url" property="fileUrl"/>
+        <result column="file_size" property="fileSize"/>
+        <result column="file_type" property="fileType"/>
+        <result column="file_extension" property="fileExtension"/>
+        <result column="module" property="module"/>
+        <result column="storage_type" property="storageType"/>
+        <result column="created_at" property="createdAt"/>
+        <result column="created_by" property="createdBy"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id, file_name, original_name, file_path, file_url, file_size, file_type,
+        file_extension, module, storage_type, created_at, created_by
+    </sql>
+
+    <!-- 插入文件记录 -->
+    <insert id="insert" parameterType="com.travel.entity.FileRecord" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO file_record (
+            file_name,
+            original_name,
+            file_path,
+            file_url,
+            file_size,
+            file_type,
+            file_extension,
+            module,
+            storage_type,
+            created_at,
+            created_by
+        ) VALUES (
+            #{fileName},
+            #{originalName},
+            #{filePath},
+            #{fileUrl},
+            #{fileSize},
+            #{fileType},
+            #{fileExtension},
+            #{module},
+            #{storageType},
+            #{createdAt},
+            #{createdBy}
+        )
+    </insert>
+
+    <!-- 根据ID查询 -->
+    <select id="selectById" resultMap="BaseResultMap">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM file_record
+        WHERE id = #{id}
+    </select>
+
+    <!-- 条件查询（支持动态查询） -->
+    <select id="selectByCondition" resultMap="BaseResultMap">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM file_record
+        <where>
+            <if test="fileType != null and fileType != '' and fileType != 'all'">
+                AND file_type = #{fileType}
+            </if>
+            <if test="module != null and module != ''">
+                AND module = #{module}
+            </if>
+            <if test="storageType != null and storageType != '' and storageType != 'all'">
+                AND storage_type = #{storageType}
+            </if>
+            <if test="keyword != null and keyword != ''">
+                AND (original_name LIKE CONCAT('%', #{keyword}, '%')
+                OR file_name LIKE CONCAT('%', #{keyword}, '%'))
+            </if>
+            <if test="startDate != null">
+                AND created_at &gt;= #{startDate}
+            </if>
+            <if test="endDate != null">
+                AND created_at &lt;= #{endDate}
+            </if>
+        </where>
+        ORDER BY created_at DESC
+        <if test="offset != null and limit != null">
+            LIMIT #{offset}, #{limit}
+        </if>
+    </select>
+
+    <!-- 统计符合条件的记录数 -->
+    <select id="selectCount" resultType="int">
+        SELECT COUNT(*)
+        FROM file_record
+        <where>
+            <if test="fileType != null and fileType != '' and fileType != 'all'">
+                AND file_type = #{fileType}
+            </if>
+            <if test="module != null and module != ''">
+                AND module = #{module}
+            </if>
+            <if test="storageType != null and storageType != '' and storageType != 'all'">
+                AND storage_type = #{storageType}
+            </if>
+            <if test="keyword != null and keyword != ''">
+                AND (original_name LIKE CONCAT('%', #{keyword}, '%')
+                OR file_name LIKE CONCAT('%', #{keyword}, '%'))
+            </if>
+            <if test="startDate != null">
+                AND created_at &gt;= #{startDate}
+            </if>
+            <if test="endDate != null">
+                AND created_at &lt;= #{endDate}
+            </if>
+        </where>
+    </select>
+
+    <!-- 删除文件记录 -->
+    <delete id="delete">
+        DELETE FROM file_record
+        WHERE id = #{id}
+    </delete>
+
+    <!-- 查询所有文件的总大小 -->
+    <select id="selectTotalSize" resultType="long">
+        SELECT COALESCE(SUM(file_size), 0)
+        FROM file_record
+    </select>
+
+    <!-- 按存储类型查询文件总大小 -->
+    <select id="selectSizeByStorageType" resultType="long">
+        SELECT COALESCE(SUM(file_size), 0)
+        FROM file_record
+        WHERE storage_type = #{storageType}
+    </select>
+
+    <!-- 按存储类型统计文件数量 -->
+    <select id="selectCountByStorageType" resultType="int">
+        SELECT COUNT(*)
+        FROM file_record
+        WHERE storage_type = #{storageType}
+    </select>
+
+</mapper>

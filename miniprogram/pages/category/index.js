@@ -13,6 +13,7 @@ Page({
    * 页面的初始数据
    */
   data: {
+    navBarTotalHeight: 0, // 导航栏总高度
     // 页面类型：固定为商品
     type: 'product',
     // 页面标题
@@ -361,7 +362,7 @@ Page({
           starLevel: item.starLevel || 0,
           productType: 'PRODUCT',
           categoryType: item.categoryType || null, // 保存分类类型
-          h5Link: item.h5Link || null, // 保存H5链接
+          h5Link: item.h5Link || null, // 保存外部链接
           description: description, // 保存商品描述（H5类型已格式化）
         };
       });
@@ -586,7 +587,7 @@ Page({
     const { h5Link } = e.currentTarget.dataset;
     if (!h5Link) {
       wx.showToast({
-        title: 'H5链接不存在',
+        title: '外部链接不存在',
         icon: 'none',
       });
       return;

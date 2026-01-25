@@ -4,6 +4,7 @@ import com.github.benmanes.caffeine.cache.Cache;
 import com.travel.entity.Attraction;
 import com.travel.entity.Product;
 import com.travel.mapper.AttractionMapper;
+import com.travel.util.OssUrlUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -34,8 +35,12 @@ public class DetailService {
     @Autowired
     private ProductCategoryService productCategoryService;
     
+    @Autowired
+    private OssUrlUtil ossUrlUtil;
+    
     /**
      * 获取景点详情
+     * 注意：返回的图片URL（images字段）都是签名URL（OSS文件），可直接使用
      */
     public Attraction getAttractionDetail(Long id) {
         if (id == null) {
@@ -45,6 +50,9 @@ public class DetailService {
         // 先从缓存中获取
         Attraction cached = attractionDetailCache.getIfPresent(id);
         if (cached != null) {
+            log.info("从缓存获取景点详情，ID: {}", id);
+            // 处理OSS URL签名（缓存中的数据也需要处理，因为签名URL有过期时间）
+            processOssUrlsInAttraction(cached);
             return cached;
         }
         
@@ -58,6 +66,9 @@ public class DetailService {
         if (attraction.getStatus() == null || attraction.getStatus() != 1) {
             throw new com.travel.exception.BusinessException(com.travel.common.ResultCode.NOT_FOUND);
         }
+        
+        // 处理OSS URL签名
+        processOssUrlsInAttraction(attraction);
         
         // 存入缓存
         attractionDetailCache.put(id, attraction);
@@ -77,6 +88,7 @@ public class DetailService {
     
     /**
      * 获取商品详情
+     * 注意：返回的图片URL（image、coverImage、images字段）都是签名URL（OSS文件），可直接使用
      */
     public Map<String, Object> getProductDetail(Long id) {
         log.info("查询商品详情，商品ID: {}", id);
@@ -99,9 +111,73 @@ public class DetailService {
         // 转换为Map格式
         Map<String, Object> result = convertProductToMap(product);
         
+        // 处理OSS URL签名
+        processOssUrlsInProductMap(result);
+        
         log.info("商品详情查询成功，商品名称: {}", product.getName());
         
         return result;
+    }
+    
+    /**
+     * 处理景点中的OSS URL，生成签名URL
+     * 使用OssUrlUtil统一处理，返回的URL都是签名URL
+     */
+    private void processOssUrlsInAttraction(Attraction attraction) {
+        if (attraction == null) {
+            return;
+        }
+        // 处理图片列表（images字段是List<String>，需要特殊处理）
+        if (attraction.getImages() != null && !attraction.getImages().isEmpty()) {
+            java.util.List<String> signedImages = new java.util.ArrayList<>();
+            for (String imageUrl : attraction.getImages()) {
+                if (imageUrl != null && !imageUrl.isEmpty()) {
+                    signedImages.add(ossUrlUtil.processUrl(imageUrl));
+                } else {
+                    signedImages.add(imageUrl);
+                }
+            }
+            attraction.setImages(signedImages);
+        }
+    }
+    
+    /**
+     * 处理商品Map中的OSS URL，生成签名URL
+     * 使用OssUrlUtil统一处理，返回的URL都是签名URL
+     */
+    private void processOssUrlsInProductMap(Map<String, Object> productMap) {
+        if (productMap == null) {
+            return;
+        }
+        // 处理封面图片
+        if (productMap.get("image") != null) {
+            String imageUrl = (String) productMap.get("image");
+            if (imageUrl != null && !imageUrl.isEmpty()) {
+                productMap.put("image", ossUrlUtil.processUrl(imageUrl));
+            }
+        }
+        if (productMap.get("coverImage") != null) {
+            String coverImageUrl = (String) productMap.get("coverImage");
+            if (coverImageUrl != null && !coverImageUrl.isEmpty()) {
+                productMap.put("coverImage", ossUrlUtil.processUrl(coverImageUrl));
+            }
+        }
+        // 处理图片列表
+        if (productMap.get("images") != null) {
+            @SuppressWarnings("unchecked")
+            java.util.List<String> images = (java.util.List<String>) productMap.get("images");
+            if (images != null && !images.isEmpty()) {
+                java.util.List<String> signedImages = new java.util.ArrayList<>();
+                for (String imageUrl : images) {
+                    if (imageUrl != null && !imageUrl.isEmpty()) {
+                        signedImages.add(ossUrlUtil.processUrl(imageUrl));
+                    } else {
+                        signedImages.add(imageUrl);
+                    }
+                }
+                productMap.put("images", signedImages);
+            }
+        }
     }
     
     /**
@@ -134,7 +210,7 @@ public class DetailService {
         map.put("createTime", product.getCreateTime());
         map.put("updateTime", product.getUpdateTime());
         map.put("categoryName", product.getCategoryName());
-        map.put("h5Link", product.getH5Link()); // H5链接
+        map.put("h5Link", product.getH5Link()); // 外部链接
         
         // 获取分类类型（如果分类ID存在）
         String categoryType = null;

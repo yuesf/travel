@@ -3,8 +3,8 @@
  */
 
 // API配置
-// const API_BASE_URL = 'http://localhost:8080/api/v1';
-const API_BASE_URL = 'https://yuesf.cn/travel/api/v1';
+const API_BASE_URL = 'http://localhost:8080/api/v1';
+// const API_BASE_URL = 'https://yuesf.cn/travel/api/v1';
 const API_TIMEOUT = 10000; // 10秒
 
 // 存储Key

@@ -60,13 +60,41 @@
             </el-form-item>
 
             <el-form-item label="封面图" prop="coverImage">
-              <ImageUpload
-                v-model="formData.coverImage"
-                :limit="1"
-                :max-size="5"
-                @change="handleCoverImageChange"
-              />
+              <div style="display: flex; align-items: flex-start; gap: 12px; flex-wrap: wrap;">
+                <ImageUpload
+                  v-model="formData.coverImage"
+                  :limit="1"
+                  :max-size="5"
+                  @change="handleCoverImageChange"
+                />
+                <el-button 
+                  type="info" 
+                  :icon="Folder"
+                  @click="handleSelectCoverImageFromFileList"
+                >
+                  从文件库选择
+                </el-button>
+              </div>
               <div class="form-tip">建议尺寸：750x400px，单张图片不超过5MB</div>
+            </el-form-item>
+
+            <el-form-item label="文章图片" prop="images">
+              <div style="display: flex; align-items: flex-start; gap: 12px; flex-wrap: wrap;">
+                <ImageUpload
+                  v-model="formData.images"
+                  :limit="10"
+                  :max-size="5"
+                  @change="handleImagesChange"
+                />
+                <el-button 
+                  type="info" 
+                  :icon="Folder"
+                  @click="handleSelectImagesFromFileList"
+                >
+                  从文件库选择
+                </el-button>
+              </div>
+              <div class="form-tip">最多上传10张图片，支持拖拽排序，单张图片不超过5MB</div>
             </el-form-item>
 
             <el-row :gutter="20">
@@ -174,6 +202,15 @@
         </el-tabs>
       </el-form>
     </el-card>
+
+    <!-- 文件选择器对话框 -->
+    <FileSelector
+      v-model="fileSelectorVisible"
+      file-type="image"
+      :multiple="fileSelectorMode === 'images'"
+      :max-select="fileSelectorMode === 'images' ? 10 : 1"
+      @select="handleFileSelect"
+    />
   </div>
 </template>
 
@@ -181,8 +218,10 @@
 import { ref, reactive, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { Folder } from '@element-plus/icons-vue'
 import ImageUpload from '@/components/ImageUpload.vue'
 import RichTextEditor from '@/components/RichTextEditor.vue'
+import FileSelector from '@/components/FileSelector.vue'
 import {
   getArticleById,
   createArticle,
@@ -192,6 +231,8 @@ import {
   createArticleTag,
   addTagToArticle,
   removeTagFromArticle,
+  getArticleImages,
+  saveArticleImages,
 } from '@/api/articles'
 
 const router = useRouter()
@@ -200,6 +241,7 @@ const route = useRoute()
 const formRef = ref(null)
 const activeTab = ref('basic')
 const submitting = ref(false)
+const fileSelectorVisible = ref(false)
 
 const isEdit = computed(() => !!route.params.id)
 
@@ -215,6 +257,7 @@ const formData = reactive({
   categoryId: null,
   summary: '',
   coverImage: '',
+  images: [], // 文章图片列表
   author: '',
   status: 0, // 默认草稿
   publishTime: null,
@@ -290,6 +333,19 @@ const loadDetail = async () => {
       } else {
         formData.tagIds = []
       }
+      
+      // 加载文章图片列表
+      try {
+        const imagesRes = await getArticleImages(route.params.id)
+        if (imagesRes.data && Array.isArray(imagesRes.data)) {
+          formData.images = imagesRes.data.map((img) => img.imageUrl).filter(Boolean)
+        } else {
+          formData.images = []
+        }
+      } catch (error) {
+        console.error('加载文章图片失败:', error)
+        formData.images = []
+      }
     }
   } catch (error) {
     console.error('加载文章详情失败:', error)
@@ -300,6 +356,61 @@ const loadDetail = async () => {
 // 封面图变化
 const handleCoverImageChange = (url) => {
   formData.coverImage = url
+}
+
+// 文章图片变化
+const handleImagesChange = (urls) => {
+  formData.images = Array.isArray(urls) ? urls : []
+}
+
+// 打开文件选择器选择封面图
+const handleSelectCoverImageFromFileList = () => {
+  fileSelectorVisible.value = true
+  fileSelectorMode.value = 'cover' // 标记为选择封面图模式
+}
+
+// 打开文件选择器选择文章图片
+const handleSelectImagesFromFileList = () => {
+  fileSelectorVisible.value = true
+  fileSelectorMode.value = 'images' // 标记为选择文章图片模式
+}
+
+// 文件选择器模式：'cover' 或 'images'
+const fileSelectorMode = ref('cover')
+
+// 处理文件选择
+const handleFileSelect = (files) => {
+  if (files && files.length > 0) {
+    if (fileSelectorMode.value === 'cover') {
+      // 选择封面图
+      const file = files[0]
+      const url = file.fileUrl || file.url
+      if (url) {
+        formData.coverImage = url
+        ElMessage.success('已选择封面图')
+      }
+    } else if (fileSelectorMode.value === 'images') {
+      // 选择文章图片
+      const urls = files.map((file) => file.fileUrl || file.url).filter(Boolean)
+      if (urls.length > 0) {
+        // 合并到现有图片列表，去重
+        const existingUrls = formData.images || []
+        const newUrls = [...existingUrls, ...urls]
+        // 去重
+        const uniqueUrls = [...new Set(newUrls)]
+        // 限制最多10张
+        if (uniqueUrls.length > 10) {
+          formData.images = uniqueUrls.slice(0, 10)
+          ElMessage.warning('最多只能添加10张图片，已自动截取前10张')
+        } else {
+          formData.images = uniqueUrls
+        }
+        ElMessage.success(`已添加 ${urls.length} 张图片`)
+      }
+    }
+  }
+  fileSelectorVisible.value = false
+  fileSelectorMode.value = 'cover' // 重置模式
 }
 
 // 内容变化
@@ -368,12 +479,28 @@ const handleSubmit = async () => {
           tagIds: formData.tagIds,
         }
 
+        let articleId
         if (isEdit.value) {
-          await updateArticle(route.params.id, submitData)
+          articleId = route.params.id
+          await updateArticle(articleId, submitData)
           ElMessage.success('更新成功')
         } else {
-          await createArticle(submitData)
+          const createRes = await createArticle(submitData)
+          articleId = createRes.data?.id
           ElMessage.success('创建成功')
+        }
+
+        // 保存文章图片
+        if (articleId) {
+          try {
+            const imageUrls = Array.isArray(formData.images) ? formData.images : []
+            await saveArticleImages(articleId, imageUrls)
+            console.log('文章图片保存成功')
+          } catch (error) {
+            console.error('保存文章图片失败:', error)
+            // 图片保存失败不影响文章保存，只记录错误
+            ElMessage.warning('文章保存成功，但图片保存失败，请稍后重新上传图片')
+          }
         }
 
         router.push('/articles')

@@ -15,10 +15,18 @@
         <template #title>首页</template>
       </el-menu-item>
 
-      <el-menu-item index="/miniprogram">
-        <el-icon><Grid /></el-icon>
-        <template #title>小程序管理</template>
-      </el-menu-item>
+      <el-sub-menu index="miniprogram">
+        <template #title>
+          <el-icon><Grid /></el-icon>
+          <span>小程序管理</span>
+        </template>
+        <el-menu-item index="/miniprogram/banner">轮播图管理</el-menu-item>
+        <el-menu-item index="/miniprogram/icon">Icon图片配置</el-menu-item>
+        <el-menu-item index="/miniprogram/recommend">热门推荐</el-menu-item>
+        <el-menu-item index="/miniprogram/ads">广告位配置</el-menu-item>
+        <el-menu-item index="/miniprogram/logo">Logo配置</el-menu-item>
+        <el-menu-item index="/miniprogram/statistics">数据统计</el-menu-item>
+      </el-sub-menu>
 
       <el-sub-menu index="products">
         <template #title>
@@ -92,6 +100,8 @@
         </template>
         <el-menu-item index="/system/payment-config">支付配置</el-menu-item>
         <el-menu-item index="/system/merchant-config">商家配置</el-menu-item>
+        <el-menu-item index="/system/oss-config">OSS配置</el-menu-item>
+        <el-menu-item index="/system/file-manage">文件管理</el-menu-item>
         <!-- 系统管理 - 待实现 -->
         <!-- <el-menu-item index="/system/admins">管理员管理</el-menu-item> -->
         <!-- <el-menu-item index="/system/roles">角色权限</el-menu-item> -->
@@ -184,6 +194,9 @@ const activeMenu = computed(() => {
   if (path.startsWith('/maps')) {
     return '/maps'
   }
+  if (path.startsWith('/miniprogram')) {
+    return path
+  }
   if (path.startsWith('/system')) {
     return path
   }
@@ -195,16 +208,41 @@ const activeMenu = computed(() => {
 .sidebar-container {
   background-color: #304156;
   transition: width 0.28s;
-  overflow: hidden;
+  height: calc(100vh - 60px);
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
 .sidebar-menu {
   border-right: none;
   height: 100%;
   overflow-y: auto;
+  overflow-x: hidden;
 }
 
 .sidebar-menu:not(.el-menu--collapse) {
   width: 240px;
+}
+
+/* 自定义滚动条样式 */
+.sidebar-container::-webkit-scrollbar,
+.sidebar-menu::-webkit-scrollbar {
+  width: 6px;
+}
+
+.sidebar-container::-webkit-scrollbar-track,
+.sidebar-menu::-webkit-scrollbar-track {
+  background: #304156;
+}
+
+.sidebar-container::-webkit-scrollbar-thumb,
+.sidebar-menu::-webkit-scrollbar-thumb {
+  background: #5a6a7a;
+  border-radius: 3px;
+}
+
+.sidebar-container::-webkit-scrollbar-thumb:hover,
+.sidebar-menu::-webkit-scrollbar-thumb:hover {
+  background: #6a7a8a;
 }
 </style>

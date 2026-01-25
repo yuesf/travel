@@ -3,6 +3,8 @@
  * 支持图片和视频轮播，自动播放，手动滑动，点击事件
  */
 
+const NavigationHelper = require('../../utils/navigation-helper.js')
+
 Component({
   /**
    * 组件的属性列表
@@ -61,6 +63,9 @@ Component({
     this.setData({
       shouldAutoplay: this.properties.autoplay,
     });
+    
+    // 数据兼容性处理
+    this.processBannersData();
   },
 
   /**
@@ -83,6 +88,39 @@ Component({
    * 组件的方法列表
    */
   methods: {
+    /**
+     * 处理轮播图数据兼容性
+     */
+    processBannersData() {
+      const banners = this.properties.banners || [];
+      const processedBanners = banners.map((banner) => {
+        // 如果没有 linkType 但有 link，视为外部链接
+        if (!banner.linkType && banner.link) {
+          return {
+            ...banner,
+            linkType: 'EXTERNAL',
+            linkValue: banner.link,
+          };
+        }
+        // 如果都没有，视为无跳转
+        if (!banner.linkType) {
+          return {
+            ...banner,
+            linkType: 'NONE',
+            linkValue: '',
+          };
+        }
+        return banner;
+      });
+      
+      // 更新数据
+      if (JSON.stringify(banners) !== JSON.stringify(processedBanners)) {
+        this.setData({
+          banners: processedBanners,
+        });
+      }
+    },
+
     /**
      * 轮播图切换事件
      */
@@ -108,32 +146,20 @@ Component({
         return;
       }
 
-      // 触发点击事件
+      // 触发点击事件（保留，供父组件使用）
       this.triggerEvent('tap', {
         index,
         banner,
       });
 
-      // 如果是图片，支持全屏预览
-      if (banner.type === 'image' && banner.image) {
-        const urls = this.data.banners
-          .filter(item => item.type === 'image' && item.image)
-          .map(item => item.image);
-        const currentUrl = banner.image;
-        
-        wx.previewImage({
-          urls,
-          current: currentUrl,
-        });
-      }
-
-      // 如果是视频，支持全屏播放
-      if (banner.type === 'video' && banner.video) {
-        // 视频播放由video组件自身处理
-        // 这里可以触发自定义事件，由父组件处理
-        this.triggerEvent('videoTap', {
-          index,
-          banner,
+      // 使用新的跳转逻辑
+      try {
+        NavigationHelper.handleBannerNavigation(banner);
+      } catch (error) {
+        console.error('轮播图跳转失败:', error);
+        wx.showToast({
+          title: '跳转失败',
+          icon: 'none',
         });
       }
     },
@@ -171,6 +197,26 @@ Component({
       }
       
       this.triggerEvent('videoEnded', {
+        index,
+        banner,
+      });
+    },
+
+    /**
+     * 图片加载失败事件
+     */
+    onImageError(e) {
+      const index = e.currentTarget.dataset.index;
+      const banner = this.data.banners[index];
+      
+      console.error('轮播图图片加载失败:', {
+        index,
+        image: banner?.image,
+        banner,
+      });
+      
+      // 触发图片错误事件（供父组件使用）
+      this.triggerEvent('imageerror', {
         index,
         banner,
       });

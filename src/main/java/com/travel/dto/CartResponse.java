@@ -11,6 +11,7 @@ import java.math.BigDecimal;
 
 /**
  * 购物车响应DTO（包含商品详情）
+ * 注意：itemImage字段是签名URL（OSS文件），可直接使用
  * 
  * @author travel-platform
  */
@@ -71,6 +72,7 @@ public class CartResponse implements Serializable {
     
     /**
      * 商品图片（第一张）
+     * 注意：OSS文件返回的是签名URL，可直接使用
      */
     private String itemImage;
     
