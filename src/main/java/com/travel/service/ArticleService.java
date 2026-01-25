@@ -26,6 +26,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -136,6 +137,23 @@ public class ArticleService {
                 .map(ArticleImage::getImageUrl)
                 .collect(Collectors.toList());
             article.setImages(imageUrls);
+            
+            // 如果封面图为空，尝试从文章图片列表的第一张获取
+            if (article.getCoverImage() == null || article.getCoverImage().trim().isEmpty()) {
+                images.sort(Comparator.comparing(ArticleImage::getSort));
+                String firstImageUrl = images.get(0).getImageUrl();
+                article.setCoverImage(firstImageUrl);
+                // 异步更新数据库中的封面图（不阻塞查询）
+                try {
+                    Article updateArticle = new Article();
+                    updateArticle.setId(id);
+                    updateArticle.setCoverImage(firstImageUrl);
+                    articleMapper.updateById(updateArticle);
+                    log.info("自动修复封面图: articleId={}, coverImage={}", id, firstImageUrl);
+                } catch (Exception e) {
+                    log.warn("自动修复封面图失败，但不影响查询: articleId={}", id, e);
+                }
+            }
         }
         
         // 处理OSS URL签名（用于管理后台预览）
@@ -762,10 +780,58 @@ public class ArticleService {
             }
         }
         
+        // 自动同步封面图
+        try {
+            syncCoverImageFromImages(articleId);
+        } catch (Exception e) {
+            log.error("保存文章图片后同步封面图失败，但不影响图片保存: articleId={}", articleId, e);
+        }
+        
         // 清除文章详情缓存
         articleDetailCache.invalidate(articleId);
         log.info("保存文章图片成功: articleId={}, imageCount={}", articleId, 
                 imageUrls != null ? imageUrls.size() : 0);
+    }
+    
+    /**
+     * 从文章图片列表同步封面图
+     * @param articleId 文章ID
+     */
+    private void syncCoverImageFromImages(Long articleId) {
+        if (articleId == null) {
+            return;
+        }
+        
+        try {
+            // 获取文章图片列表
+            List<ArticleImage> images = articleImageMapper.selectByArticleId(articleId);
+            
+            // 获取文章实体
+            Article article = articleMapper.selectById(articleId);
+            if (article == null) {
+                log.warn("同步封面图时文章不存在: articleId={}", articleId);
+                return;
+            }
+            
+            String coverImage = null;
+            if (images != null && !images.isEmpty()) {
+                // 按 sort 排序，取第一张
+                images.sort(Comparator.comparing(ArticleImage::getSort));
+                coverImage = images.get(0).getImageUrl();
+            }
+            
+            // 更新封面图
+            article.setCoverImage(coverImage);
+            int result = articleMapper.updateById(article);
+            if (result > 0) {
+                log.info("同步封面图成功: articleId={}, coverImage={}", articleId, coverImage);
+            } else {
+                log.warn("同步封面图失败，更新数据库返回0: articleId={}", articleId);
+            }
+        } catch (Exception e) {
+            log.error("同步封面图时发生异常: articleId={}", articleId, e);
+            throw e;
+        }
     }
     
     /**
@@ -789,6 +855,13 @@ public class ArticleService {
         int result = articleImageMapper.deleteById(imageId);
         if (result <= 0) {
             throw new BusinessException(ResultCode.OPERATION_FAILED);
+        }
+        
+        // 自动同步封面图（删除后可能第一张图片变了）
+        try {
+            syncCoverImageFromImages(articleId);
+        } catch (Exception e) {
+            log.error("删除文章图片后同步封面图失败，但不影响删除操作: articleId={}, imageId={}", articleId, imageId, e);
         }
         
         // 清除文章详情缓存
@@ -817,6 +890,13 @@ public class ArticleService {
         int result = articleImageMapper.updateSort(imageId, sort);
         if (result <= 0) {
             throw new BusinessException(ResultCode.OPERATION_FAILED);
+        }
+        
+        // 自动同步封面图（排序后第一张图片可能变了）
+        try {
+            syncCoverImageFromImages(articleId);
+        } catch (Exception e) {
+            log.error("更新图片排序后同步封面图失败，但不影响排序操作: articleId={}, imageId={}", articleId, imageId, e);
         }
         
         // 清除文章详情缓存

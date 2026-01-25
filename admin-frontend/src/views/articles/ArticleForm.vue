@@ -59,25 +59,6 @@
               />
             </el-form-item>
 
-            <el-form-item label="封面图" prop="coverImage">
-              <div style="display: flex; align-items: flex-start; gap: 12px; flex-wrap: wrap;">
-                <ImageUpload
-                  v-model="formData.coverImage"
-                  :limit="1"
-                  :max-size="5"
-                  @change="handleCoverImageChange"
-                />
-                <el-button 
-                  type="info" 
-                  :icon="Folder"
-                  @click="handleSelectCoverImageFromFileList"
-                >
-                  从文件库选择
-                </el-button>
-              </div>
-              <div class="form-tip">建议尺寸：750x400px，单张图片不超过5MB</div>
-            </el-form-item>
-
             <el-form-item label="文章图片" prop="images">
               <div style="display: flex; align-items: flex-start; gap: 12px; flex-wrap: wrap;">
                 <ImageUpload
@@ -94,7 +75,7 @@
                   从文件库选择
                 </el-button>
               </div>
-              <div class="form-tip">最多上传10张图片，支持拖拽排序，单张图片不超过5MB</div>
+              <div class="form-tip">最多上传10张图片，支持拖拽排序，单张图片不超过5MB。第一张图片将自动作为封面图</div>
             </el-form-item>
 
             <el-row :gutter="20">
@@ -207,8 +188,8 @@
     <FileSelector
       v-model="fileSelectorVisible"
       file-type="image"
-      :multiple="fileSelectorMode === 'images'"
-      :max-select="fileSelectorMode === 'images' ? 10 : 1"
+      :multiple="true"
+      :max-select="10"
       @select="handleFileSelect"
     />
   </div>
@@ -341,12 +322,27 @@ const loadDetail = async () => {
         const imagesRes = await getArticleImages(route.params.id)
         if (imagesRes.data && Array.isArray(imagesRes.data)) {
           formData.images = imagesRes.data.map((img) => img.imageUrl).filter(Boolean)
+          // 如果文章图片列表有数据，优先使用第一张作为封面图
+          if (formData.images.length > 0) {
+            formData.coverImage = formData.images[0]
+          } else if (!formData.coverImage) {
+            // 如果没有文章图片且封面图也为空，保持为空
+            formData.coverImage = ''
+          }
         } else {
           formData.images = []
+          // 如果没有文章图片，但原有封面图存在，保持封面图（向后兼容）
+          if (!formData.coverImage) {
+            formData.coverImage = ''
+          }
         }
       } catch (error) {
         console.error('加载文章图片失败:', error)
         formData.images = []
+        // 加载失败时，如果封面图存在则保持，否则为空
+        if (!formData.coverImage) {
+          formData.coverImage = ''
+        }
       }
     }
   } catch (error) {
@@ -355,64 +351,51 @@ const loadDetail = async () => {
   }
 }
 
-// 封面图变化
-const handleCoverImageChange = (url) => {
-  formData.coverImage = url
+// 从文章图片列表同步封面图
+const syncCoverImageFromImages = () => {
+  if (formData.images && formData.images.length > 0) {
+    formData.coverImage = formData.images[0]
+  } else {
+    formData.coverImage = ''
+  }
 }
 
 // 文章图片变化
 const handleImagesChange = (urls) => {
   formData.images = Array.isArray(urls) ? urls : []
-}
-
-// 打开文件选择器选择封面图
-const handleSelectCoverImageFromFileList = () => {
-  fileSelectorVisible.value = true
-  fileSelectorMode.value = 'cover' // 标记为选择封面图模式
+  // 自动同步封面图
+  syncCoverImageFromImages()
 }
 
 // 打开文件选择器选择文章图片
 const handleSelectImagesFromFileList = () => {
   fileSelectorVisible.value = true
-  fileSelectorMode.value = 'images' // 标记为选择文章图片模式
 }
-
-// 文件选择器模式：'cover' 或 'images'
-const fileSelectorMode = ref('cover')
 
 // 处理文件选择
 const handleFileSelect = (files) => {
   if (files && files.length > 0) {
-    if (fileSelectorMode.value === 'cover') {
-      // 选择封面图
-      const file = files[0]
-      const url = file.fileUrl || file.url
-      if (url) {
-        formData.coverImage = url
-        ElMessage.success('已选择封面图')
+    // 选择文章图片
+    const urls = files.map((file) => file.fileUrl || file.url).filter(Boolean)
+    if (urls.length > 0) {
+      // 合并到现有图片列表，去重
+      const existingUrls = formData.images || []
+      const newUrls = [...existingUrls, ...urls]
+      // 去重
+      const uniqueUrls = [...new Set(newUrls)]
+      // 限制最多10张
+      if (uniqueUrls.length > 10) {
+        formData.images = uniqueUrls.slice(0, 10)
+        ElMessage.warning('最多只能添加10张图片，已自动截取前10张')
+      } else {
+        formData.images = uniqueUrls
       }
-    } else if (fileSelectorMode.value === 'images') {
-      // 选择文章图片
-      const urls = files.map((file) => file.fileUrl || file.url).filter(Boolean)
-      if (urls.length > 0) {
-        // 合并到现有图片列表，去重
-        const existingUrls = formData.images || []
-        const newUrls = [...existingUrls, ...urls]
-        // 去重
-        const uniqueUrls = [...new Set(newUrls)]
-        // 限制最多10张
-        if (uniqueUrls.length > 10) {
-          formData.images = uniqueUrls.slice(0, 10)
-          ElMessage.warning('最多只能添加10张图片，已自动截取前10张')
-        } else {
-          formData.images = uniqueUrls
-        }
-        ElMessage.success(`已添加 ${urls.length} 张图片`)
-      }
+      // 自动同步封面图
+      syncCoverImageFromImages()
+      ElMessage.success(`已添加 ${urls.length} 张图片`)
     }
   }
   fileSelectorVisible.value = false
-  fileSelectorMode.value = 'cover' // 重置模式
 }
 
 // 处理文章内容中的图片URL，为OSS URL获取签名URL
@@ -533,6 +516,9 @@ const handleSubmit = async () => {
     if (valid) {
       submitting.value = true
       try {
+        // 提交前确保封面图已同步
+        syncCoverImageFromImages()
+        
         const submitData = {
           title: formData.title,
           categoryId: formData.categoryId,
