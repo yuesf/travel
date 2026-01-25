@@ -878,14 +878,43 @@ public class ArticleService {
         
         while (matcher.find()) {
             String prefix = matcher.group(1); // <img ... src="
-            String imageUrl = matcher.group(2); // 图片URL
+            String imageUrl = matcher.group(2); // 图片URL（可能是URL编码的）
             String suffix = matcher.group(3); // " ...>
             
-            // 处理图片URL，如果是OSS URL则生成签名URL
-            String signedUrl = ossUrlUtil.processUrl(imageUrl);
-            
-            // 替换为签名URL
-            matcher.appendReplacement(result, prefix + signedUrl + suffix);
+            try {
+                // 先URL解码，处理HTML实体编码和URL编码
+                String decodedUrl = java.net.URLDecoder.decode(imageUrl, "UTF-8");
+                
+                // 如果URL已经包含查询参数（签名参数），先提取基础URL
+                String baseUrl = decodedUrl;
+                int queryIndex = decodedUrl.indexOf('?');
+                if (queryIndex > 0) {
+                    // 去掉查询参数，只保留基础URL
+                    baseUrl = decodedUrl.substring(0, queryIndex);
+                    log.debug("检测到URL已包含查询参数，提取基础URL: {} -> {}", 
+                        decodedUrl.length() > 80 ? decodedUrl.substring(0, 80) + "..." : decodedUrl,
+                        baseUrl);
+                }
+                
+                // 处理基础URL，如果是OSS URL则生成新的签名URL
+                String signedUrl = ossUrlUtil.processUrl(baseUrl);
+                
+                // 如果生成了新的签名URL，使用新URL；否则使用解码后的原URL
+                String finalUrl = signedUrl != null && !signedUrl.equals(baseUrl) ? signedUrl : decodedUrl;
+                
+                // 替换为签名URL（需要对特殊字符进行HTML转义）
+                String escapedUrl = finalUrl.replace("&", "&amp;");
+                matcher.appendReplacement(result, prefix + escapedUrl + suffix);
+                
+            } catch (java.io.UnsupportedEncodingException e) {
+                log.warn("URL解码失败，使用原URL: {}", imageUrl, e);
+                // 解码失败，使用原URL
+                matcher.appendReplacement(result, matcher.group(0));
+            } catch (Exception e) {
+                log.warn("处理图片URL失败，使用原URL: {}", imageUrl, e);
+                // 处理失败，使用原URL
+                matcher.appendReplacement(result, matcher.group(0));
+            }
         }
         matcher.appendTail(result);
         
