@@ -22,14 +22,36 @@ Page({
     fromIcon: false, // 是否从Icon配置跳转过来
   },
 
+  // 保存页面参数，供 onReady 使用
+  options: {},
+
   /**
    * 生命周期函数--监听页面加载
    */
   onLoad(options) {
     console.log('文章列表页加载', options);
     
+    // 保存页面参数
+    this.options = options;
+    
+    // 优先设置页面标题，避免显示默认的"文章"标题
     // 判断是否从Icon配置跳转过来
     const fromIcon = options.fromIcon === 'true';
+    
+    // 设置页面标题：优先使用传递的页面标题，其次使用iconName（无论是否标记fromIcon）
+    let titleToSet = null;
+    if (options.pageTitle) {
+      titleToSet = decodeURIComponent(options.pageTitle);
+    } else if (options.iconName) {
+      titleToSet = decodeURIComponent(options.iconName);
+    }
+    
+    // 立即设置标题，避免显示默认的"文章"
+    if (titleToSet) {
+      wx.setNavigationBarTitle({
+        title: titleToSet,
+      });
+    }
     
     // 从页面参数获取筛选条件
     const categoryId = options.categoryId;
@@ -52,15 +74,30 @@ Page({
       fromIcon: fromIcon,
     });
     
-    // 如果从Icon跳转，设置页面标题
-    if (fromIcon && options.iconName) {
-      wx.setNavigationBarTitle({
-        title: decodeURIComponent(options.iconName),
-      });
-    }
-    
     // 加载文章列表
     this.loadArticleList(true);
+  },
+
+  /**
+   * 生命周期函数--监听页面初次渲染完成
+   */
+  onReady() {
+    // 确保标题正确显示（防止JSON默认标题覆盖）
+    const options = this.options || {};
+    
+    // 重新设置标题，确保正确显示
+    let titleToSet = null;
+    if (options.pageTitle) {
+      titleToSet = decodeURIComponent(options.pageTitle);
+    } else if (options.iconName) {
+      titleToSet = decodeURIComponent(options.iconName);
+    }
+    
+    if (titleToSet) {
+      wx.setNavigationBarTitle({
+        title: titleToSet,
+      });
+    }
   },
 
   /**

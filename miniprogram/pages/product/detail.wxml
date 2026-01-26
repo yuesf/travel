@@ -8,7 +8,9 @@
       indicator-dots="{{true}}"
       indicator-color="rgba(255, 255, 255, 0.5)"
       indicator-active-color="#409EFF"
-      autoplay="{{false}}"
+      autoplay="{{product.images.length > 1}}"
+      interval="{{3000}}"
+      duration="{{500}}"
       circular="{{true}}"
     >
       <swiper-item wx:for="{{product.images}}" wx:key="index">

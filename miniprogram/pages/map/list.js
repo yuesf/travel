@@ -2,7 +2,7 @@
  * 地图列表页
  */
 
-const mapApi = require('../api/map');
+const mapApi = require('../../api/map');
 
 Page({
   /**

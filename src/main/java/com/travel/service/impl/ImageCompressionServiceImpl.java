@@ -35,16 +35,17 @@ public class ImageCompressionServiceImpl implements ImageCompressionService {
     private long minFileSize;
     
     @Override
-    public MultipartFile compressToWebP(MultipartFile file) {
+    public MultipartFile compressToWebP(MultipartFile file) throws IOException {
         if (!webpEnabled) {
-            log.debug("WebP 压缩已禁用，跳过压缩");
-            return file;
+            log.error("WebP 压缩已禁用，但系统要求必须使用 WebP 压缩，请检查配置");
+            throw new IOException("WebP 压缩已禁用，无法上传图片。请启用 WebP 压缩功能（travel.file.webp.enabled=true）");
         }
         
-        if (shouldSkipCompression(file)) {
-            log.debug("文件过小，跳过压缩: {} bytes", file.getSize());
-            return file;
-        }
+        // 不再跳过小文件，所有图片都必须压缩
+        // if (shouldSkipCompression(file)) {
+        //     log.debug("文件过小，跳过压缩: {} bytes", file.getSize());
+        //     return file;
+        // }
         
         try {
             // 读取原始图片
@@ -77,16 +78,16 @@ public class ImageCompressionServiceImpl implements ImageCompressionService {
             );
             
         } catch (Exception e) {
-            log.warn("图片压缩失败，使用原始文件: {}", e.getMessage());
-            return file; // 压缩失败时返回原始文件
+            log.error("图片压缩失败: {}", e.getMessage(), e);
+            throw new IOException("图片压缩失败，无法上传图片: " + e.getMessage(), e);
         }
     }
     
     @Override
-    public InputStream compressToWebP(InputStream inputStream, String originalFilename) {
+    public InputStream compressToWebP(InputStream inputStream, String originalFilename) throws IOException {
         if (!webpEnabled) {
-            log.debug("WebP 压缩已禁用，跳过压缩");
-            return inputStream;
+            log.error("WebP 压缩已禁用，但系统要求必须使用 WebP 压缩，请检查配置");
+            throw new IOException("WebP 压缩已禁用，无法上传图片。请启用 WebP 压缩功能（travel.file.webp.enabled=true）");
         }
         
         try {
@@ -108,8 +109,8 @@ public class ImageCompressionServiceImpl implements ImageCompressionService {
             return new ByteArrayInputStream(compressedBytes);
             
         } catch (Exception e) {
-            log.warn("图片压缩失败，使用原始输入流: {}", e.getMessage());
-            return inputStream; // 压缩失败时返回原始输入流
+            log.error("图片压缩失败: {}", e.getMessage(), e);
+            throw new IOException("图片压缩失败，无法上传图片: " + e.getMessage(), e);
         }
     }
     

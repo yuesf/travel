@@ -14,7 +14,9 @@
         indicator-dots="{{mediaList.length > 1}}"
         indicator-color="rgba(255, 255, 255, 0.5)"
         indicator-active-color="#ffffff"
-        autoplay="{{false}}"
+        autoplay="{{mediaList.length > 1}}"
+        interval="{{3000}}"
+        duration="{{500}}"
         circular="{{true}}"
         bindchange="onSwiperChange"
       >

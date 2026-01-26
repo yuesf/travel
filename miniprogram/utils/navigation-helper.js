@@ -222,8 +222,10 @@ function navigateToProductDetail(productId) {
 
 /**
  * 跳转到文章列表页（按分类筛选）
+ * @param {Number} categoryId - 分类ID
+ * @param {String} pageTitle - 页面标题（可选，如果不传则尝试从当前页面获取）
  */
-function navigateToArticleList(categoryId) {
+function navigateToArticleList(categoryId, pageTitle) {
   if (!categoryId) {
     wx.showToast({
       title: '分类ID为空',
@@ -232,8 +234,42 @@ function navigateToArticleList(categoryId) {
     return
   }
 
+  // 如果没有传递页面标题，尝试从当前页面获取
+  if (!pageTitle) {
+    try {
+      const pages = getCurrentPages()
+      const currentPage = pages[pages.length - 1]
+      
+      if (currentPage) {
+        // 尝试从页面数据中获取标题
+        if (currentPage.data && currentPage.data.title) {
+          pageTitle = currentPage.data.title
+        } else if (currentPage.options && currentPage.options.title) {
+          pageTitle = currentPage.options.title
+        } else if (currentPage.route) {
+          // 从路由名称推断标题（例如：pages/home/index -> 首页）
+          const routeName = currentPage.route.split('/').pop()
+          const routeTitleMap = {
+            'index': '首页',
+            'home': '首页',
+            'category': '分类',
+            'search': '搜索',
+          }
+          pageTitle = routeTitleMap[routeName] || '文章'
+        }
+      }
+    } catch (e) {
+      console.warn('获取页面标题失败:', e)
+    }
+    
+    // 如果仍然没有获取到标题，使用默认值
+    if (!pageTitle) {
+      pageTitle = '文章'
+    }
+  }
+
   wx.navigateTo({
-    url: `/pages/article/list?categoryId=${categoryId}`,
+    url: `/pages/article/list?categoryId=${categoryId}&pageTitle=${encodeURIComponent(pageTitle)}`,
     fail: (err) => {
       console.error('跳转到文章列表失败:', err)
       wx.showToast({

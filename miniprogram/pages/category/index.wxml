@@ -4,7 +4,7 @@
   <custom-nav-bar title="商品分类" id="navBar" />
 
   <!-- 内容区域 -->
-  <view class="page-content" style="padding-top: {{navBarTotalHeight}}px;">
+  <view class="page-content" style="padding-top: {{navBarTotalHeight}}px; height: {{contentHeight}}px;">
     <!-- 左右分栏布局 -->
     <view class="category-layout">
     <!-- 左侧分类列表（浏览模式时隐藏） -->

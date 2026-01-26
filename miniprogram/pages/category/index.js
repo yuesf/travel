@@ -14,6 +14,7 @@ Page({
    */
   data: {
     navBarTotalHeight: 0, // 导航栏总高度
+    contentHeight: 0, // 内容区域高度
     // 页面类型：固定为商品
     type: 'product',
     // 页面标题
@@ -120,6 +121,13 @@ Page({
     const isBrowseMode = options.fromIcon === 'true';
     const categoryId = options.categoryId ? parseInt(options.categoryId) : null;
     
+    // 获取系统信息，设置默认高度（如果导航栏高度还未获取到）
+    const systemInfo = wx.getSystemInfoSync();
+    const statusBarHeight = systemInfo.statusBarHeight || 20;
+    const defaultNavBarHeight = statusBarHeight + 44; // 状态栏高度 + 导航栏高度
+    const windowHeight = systemInfo.windowHeight || 0;
+    const defaultContentHeight = windowHeight - defaultNavBarHeight;
+    
     // 固定为商品类型
     this.setData({
       type: 'product',
@@ -127,6 +135,8 @@ Page({
       isBrowseMode: isBrowseMode,
       showCategorySidebar: !isBrowseMode, // 浏览模式时隐藏分类侧边栏
       currentCategoryId: categoryId,
+      navBarTotalHeight: defaultNavBarHeight, // 设置默认值
+      contentHeight: defaultContentHeight > 0 ? defaultContentHeight : windowHeight, // 设置默认值
     });
     
     // 设置导航栏标题
@@ -158,6 +168,41 @@ Page({
         });
       });
     }
+  },
+
+  /**
+   * 生命周期函数--监听页面初次渲染完成
+   */
+  onReady() {
+    // 延迟执行，确保页面完全初始化，避免框架内部性能监控错误
+    setTimeout(() => {
+      try {
+        // 获取导航栏组件实例，设置页面内容区域的 padding
+        const navBar = this.selectComponent('#navBar');
+        if (navBar) {
+          const navBarHeight = navBar.getNavBarHeight();
+          // 获取系统信息，计算可用高度
+          const systemInfo = wx.getSystemInfoSync();
+          const windowHeight = systemInfo.windowHeight || 0;
+          const contentHeight = windowHeight - navBarHeight;
+          
+          this.setData({
+            navBarTotalHeight: navBarHeight,
+            contentHeight: contentHeight
+          });
+          console.log('分类页导航栏高度已设置:', navBarHeight, '内容区域高度:', contentHeight);
+        }
+      } catch (error) {
+        // 忽略框架内部性能监控错误
+        if (error && error.message && 
+            (error.message.includes('__subPageFrameEndTime__') || 
+             error.message.includes('Cannot read property'))) {
+          console.warn('获取导航栏高度时遇到框架内部错误（已忽略）:', error.message);
+        } else {
+          console.error('获取导航栏高度失败:', error);
+        }
+      }
+    }, 50); // 延迟50ms，确保页面完全初始化
   },
 
   /**

@@ -128,15 +128,19 @@ public class FileService {
         MultipartFile fileToUpload = file;
         String originalFilename = file.getOriginalFilename();
         
-        // 如果是图片，尝试压缩为 WebP 格式
+        // 如果是图片，必须压缩为 WebP 格式
         if ("image".equals(type)) {
             try {
                 fileToUpload = imageCompressionService.compressToWebP(file);
                 log.debug("图片压缩处理完成");
+            } catch (IOException e) {
+                log.error("图片压缩失败，不允许上传原始文件: {}", e.getMessage());
+                // 压缩失败时抛出异常，不允许上传原始文件
+                throw new IOException("图片必须通过 WebP 压缩后才能上传，压缩失败: " + e.getMessage(), e);
             } catch (Exception e) {
-                log.warn("图片压缩失败，使用原始文件: {}", e.getMessage());
-                // 压缩失败时使用原始文件
-                fileToUpload = file;
+                log.error("图片压缩异常，不允许上传原始文件: {}", e.getMessage(), e);
+                // 压缩异常时抛出异常，不允许上传原始文件
+                throw new IOException("图片必须通过 WebP 压缩后才能上传，压缩异常: " + e.getMessage(), e);
             }
         }
         

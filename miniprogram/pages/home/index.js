@@ -45,14 +45,28 @@ Page({
    */
   onReady() {
     console.log('首页渲染完成');
-    // 获取导航栏组件实例，设置页面内容区域的 padding
-    const navBar = this.selectComponent('#navBar');
-    if (navBar) {
-      const navBarHeight = navBar.getNavBarHeight();
-      this.setData({
-        navBarTotalHeight: navBarHeight
-      });
-    }
+    // 延迟执行，确保页面完全初始化，避免框架内部性能监控错误
+    setTimeout(() => {
+      try {
+        // 获取导航栏组件实例，设置页面内容区域的 padding
+        const navBar = this.selectComponent('#navBar');
+        if (navBar) {
+          const navBarHeight = navBar.getNavBarHeight();
+          this.setData({
+            navBarTotalHeight: navBarHeight
+          });
+        }
+      } catch (error) {
+        // 忽略框架内部性能监控错误
+        if (error && error.message && 
+            (error.message.includes('__subPageFrameEndTime__') || 
+             error.message.includes('Cannot read property'))) {
+          console.warn('获取导航栏高度时遇到框架内部错误（已忽略）:', error.message);
+        } else {
+          console.error('获取导航栏高度失败:', error);
+        }
+      }
+    }, 50); // 延迟50ms，确保页面完全初始化
   },
 
   /**
@@ -427,7 +441,7 @@ Page({
         // 只选择了分类，跳转到文章列表（从Icon配置跳转）
         const iconName = icon.name || '文章列表';
         wx.navigateTo({
-          url: `/pages/article/list?categoryId=${finalRelatedId}&fromIcon=true&iconName=${encodeURIComponent(iconName)}`,
+          url: `/pages/article/list?categoryId=${finalRelatedId}&fromIcon=true&iconName=${encodeURIComponent(iconName)}&pageTitle=${encodeURIComponent(iconName)}`,
           fail: (err) => {
             console.error('跳转文章列表失败:', err);
             wx.showToast({

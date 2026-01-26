@@ -85,6 +85,13 @@ Page({
       // 格式化文章数据
       const formattedArticle = this.formatArticleData(article);
 
+      // 设置导航栏标题为文章名称
+      if (formattedArticle.title) {
+        wx.setNavigationBarTitle({
+          title: formattedArticle.title,
+        });
+      }
+
       this.setData({
         article: formattedArticle,
         loading: false,
