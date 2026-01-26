@@ -67,8 +67,7 @@ public class HomeService {
         if (cached != null) {
             log.info("从缓存获取首页数据 - 轮播图数量: {}", 
                 cached.getBanners() != null ? cached.getBanners().size() : 0);
-            // 缓存中的数据也需要处理OSS URL签名（因为签名URL有过期时间，需要重新生成）
-            processOssUrlsInResponse(cached);
+            // 直接返回缓存数据，缓存中已存储签名后的URL（由定时任务定期更新）
             return cached;
         }
         

@@ -69,17 +69,11 @@ public class FileManageController {
                 BeanUtils.copyProperties(record, response);
                 response.setFileSizeFormatted(formatFileSize(record.getFileSize()));
                 
-                // fileUrl保持为原始URL（用于存储）
-                // 如果是OSS文件，生成签名URL用于预览
+                // OSS bucket已改为"私有写公有读"模式，直接使用公开URL
+                // 如果是OSS文件，直接使用fileUrl作为previewUrl
                 if ("OSS".equals(record.getStorageType()) && ossService.isOssEnabled()) {
-                    try {
-                        // 生成签名URL（1小时有效期）用于预览
-                        String signedUrl = ossService.generateSignedUrl(record.getFilePath());
-                        response.setPreviewUrl(signedUrl);
-                    } catch (Exception e) {
-                        log.warn("为文件 {} 生成签名URL失败: {}", record.getId(), e.getMessage());
-                        // 如果生成签名URL失败，previewUrl为null，前端将使用原始URL
-                    }
+                    // 直接使用fileUrl（公开URL），无需生成签名URL
+                    response.setPreviewUrl(record.getFileUrl());
                 }
                 
                 responses.add(response);
@@ -117,16 +111,11 @@ public class FileManageController {
             BeanUtils.copyProperties(record, response);
             response.setFileSizeFormatted(formatFileSize(record.getFileSize()));
             
-            // 如果是OSS文件，生成签名URL用于预览
+            // OSS bucket已改为"私有写公有读"模式，直接使用公开URL
+            // 如果是OSS文件，直接使用fileUrl作为previewUrl
             if ("OSS".equals(record.getStorageType()) && ossService.isOssEnabled()) {
-                try {
-                    // 生成签名URL（1小时有效期）用于预览
-                    String signedUrl = ossService.generateSignedUrl(record.getFilePath());
-                    response.setPreviewUrl(signedUrl);
-                } catch (Exception e) {
-                    log.warn("为文件 {} 生成签名URL失败: {}", record.getId(), e.getMessage());
-                    // 如果生成签名URL失败，previewUrl为null，前端将使用原始URL
-                }
+                // 直接使用fileUrl（公开URL），无需生成签名URL
+                response.setPreviewUrl(record.getFileUrl());
             }
             
             return Result.success(response);
@@ -258,10 +247,11 @@ public class FileManageController {
     }
     
     /**
-     * 获取文件的签名URL（用于私有Bucket访问）
+     * 获取文件的公开URL（已废弃：OSS bucket已改为"私有写公有读"模式，不再需要签名URL）
+     * 保留此接口用于向后兼容，直接返回公开URL
      * 
      * @param id 文件ID
-     * @return 签名URL
+     * @return 公开URL
      */
     @GetMapping("/{id}/signed-url")
     public Result<String> getSignedUrl(@PathVariable Long id) {
@@ -272,31 +262,31 @@ public class FileManageController {
                 return Result.error("文件不存在");
             }
             
-            // 只有OSS存储的文件才需要签名URL
-            if (!"OSS".equals(record.getStorageType())) {
-                return Result.success(record.getFileUrl());
+            // OSS bucket已改为"私有写公有读"模式，直接返回公开URL
+            // 如果是签名URL，提取基础URL部分（兼容历史数据）
+            String fileUrl = record.getFileUrl();
+            int queryIndex = fileUrl.indexOf('?');
+            if (queryIndex > 0) {
+                String queryString = fileUrl.substring(queryIndex + 1);
+                if (queryString.contains("Expires=") || queryString.contains("Signature=")) {
+                    // 从签名URL提取公开URL
+                    fileUrl = fileUrl.substring(0, queryIndex);
+                }
             }
             
-            // 检查OSS是否启用
-            if (!ossService.isOssEnabled()) {
-                return Result.error("OSS未启用");
-            }
-            
-            // 生成签名URL（1小时有效期）
-            String signedUrl = ossService.generateSignedUrl(record.getFilePath());
-            
-            return Result.success(signedUrl);
+            return Result.success(fileUrl);
         } catch (Exception e) {
-            log.error("获取签名URL失败", e);
-            return Result.error("获取签名URL失败：" + e.getMessage());
+            log.error("获取文件URL失败", e);
+            return Result.error("获取文件URL失败：" + e.getMessage());
         }
     }
     
     /**
-     * 批量获取文件的签名URL
+     * 批量获取文件的公开URL（已废弃：OSS bucket已改为"私有写公有读"模式，不再需要签名URL）
+     * 保留此接口用于向后兼容，直接返回公开URL列表
      * 
      * @param ids 文件ID列表（逗号分隔）
-     * @return 签名URL映射（文件ID -> 签名URL）
+     * @return 公开URL映射（文件ID -> 公开URL）
      */
     @GetMapping("/signed-urls")
     public Result<Map<Long, String>> getSignedUrls(@RequestParam String ids) {
@@ -315,15 +305,19 @@ public class FileManageController {
                         continue;
                     }
                     
-                    // 根据存储类型决定URL
-                    if ("OSS".equals(record.getStorageType()) && ossService.isOssEnabled()) {
-                        // OSS文件：生成签名URL
-                        String signedUrl = ossService.generateSignedUrl(record.getFilePath());
-                        urlMap.put(id, signedUrl);
-                    } else {
-                        // 本地文件：使用原始URL
-                        urlMap.put(id, record.getFileUrl());
+                    // OSS bucket已改为"私有写公有读"模式，直接返回公开URL
+                    // 如果是签名URL，提取基础URL部分（兼容历史数据）
+                    String fileUrl = record.getFileUrl();
+                    int queryIndex = fileUrl.indexOf('?');
+                    if (queryIndex > 0) {
+                        String queryString = fileUrl.substring(queryIndex + 1);
+                        if (queryString.contains("Expires=") || queryString.contains("Signature=")) {
+                            // 从签名URL提取公开URL
+                            fileUrl = fileUrl.substring(0, queryIndex);
+                        }
                     }
+                    
+                    urlMap.put(id, fileUrl);
                 } catch (NumberFormatException e) {
                     log.warn("无效的文件ID：{}", idStr);
                 }
@@ -331,8 +325,8 @@ public class FileManageController {
             
             return Result.success(urlMap);
         } catch (Exception e) {
-            log.error("批量获取签名URL失败", e);
-            return Result.error("批量获取签名URL失败：" + e.getMessage());
+            log.error("批量获取文件URL失败", e);
+            return Result.error("批量获取文件URL失败：" + e.getMessage());
         }
     }
     

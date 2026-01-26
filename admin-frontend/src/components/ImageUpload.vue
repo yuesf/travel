@@ -38,7 +38,7 @@ import { Plus } from '@element-plus/icons-vue'
 import Sortable from 'sortablejs'
 import { getToken } from '@/utils/auth'
 import { API_BASE_URL } from '@/config/api'
-import { getSignedUrlByUrl } from '@/api/file'
+// OSS bucket已改为"私有写公有读"模式，不再需要获取签名URL
 
 const props = defineProps({
   modelValue: {
@@ -95,91 +95,7 @@ const previewVisible = ref(false)
 const previewImageUrl = ref('')
 let sortableInstance = null
 const isRemoving = ref(false) // 标记是否正在删除，防止 watch 重新同步
-// 注意：后端统一返回签名URL，前端不再需要OSS URL判断和处理逻辑
-
-/**
- * 判断是否为OSS URL（未签名的）
- */
-const isUnsignedOssUrl = (url) => {
-  if (!url || typeof url !== 'string') {
-    return false
-  }
-  // 检查是否是OSS URL（包含oss-*.aliyuncs.com等）
-  const ossPatterns = [
-    /oss-.*\.aliyuncs\.com/i,
-    /\.oss\./i,
-    /\.qcloud\.com/i,
-    /\.amazonaws\.com/i,
-    /\.cos\./i
-  ]
-  
-  // 如果是签名URL（包含查询参数），则不是未签名的
-  if (url.includes('?') && (url.includes('Expires=') || url.includes('Signature='))) {
-    return false
-  }
-  
-  // 检查是否匹配OSS URL模式
-  return ossPatterns.some(pattern => pattern.test(url))
-}
-
-/**
- * 为OSS URL获取签名URL（用于预览）
- */
-const updateOssImageUrl = async (url, uid) => {
-  if (!isUnsignedOssUrl(url)) {
-    return // 不是未签名的OSS URL，不需要处理
-  }
-  
-  // 先更新文件项，标记为加载中
-  const index = fileList.value.findIndex(item => item.uid === uid)
-  if (index > -1) {
-    fileList.value[index] = {
-      ...fileList.value[index],
-      url: url, // 暂时使用原始URL
-      originalUrl: url, // 保存原始URL
-      loading: true, // 标记为加载中
-    }
-    fileList.value = [...fileList.value]
-  }
-  
-  try {
-    const response = await getSignedUrlByUrl(url)
-    if (response && response.code === 200 && response.data) {
-      // 更新文件项的URL为签名URL
-      const updateIndex = fileList.value.findIndex(item => item.uid === uid)
-      if (updateIndex > -1) {
-        fileList.value[updateIndex] = {
-          ...fileList.value[updateIndex],
-          url: response.data, // 使用签名URL用于预览
-          originalUrl: url, // 保存原始URL
-          loading: false, // 标记为加载完成
-        }
-        fileList.value = [...fileList.value]
-      }
-    } else {
-      // 如果获取失败，移除加载标记
-      const failIndex = fileList.value.findIndex(item => item.uid === uid)
-      if (failIndex > -1) {
-        fileList.value[failIndex] = {
-          ...fileList.value[failIndex],
-          loading: false,
-        }
-        fileList.value = [...fileList.value]
-      }
-    }
-  } catch (error) {
-    console.warn('获取签名URL失败:', error)
-    // 如果获取失败，移除加载标记，保持原URL（可能会403，但至少不会报错）
-    const errorIndex = fileList.value.findIndex(item => item.uid === uid)
-    if (errorIndex > -1) {
-      fileList.value[errorIndex] = {
-        ...fileList.value[errorIndex],
-        loading: false,
-      }
-      fileList.value = [...fileList.value]
-    }
-  }
-}
+// 注意：OSS bucket已改为"私有写公有读"模式，后端直接返回公开URL，前端直接使用即可
 
 // 同步外部值到内部列表
 watch(
@@ -200,10 +116,6 @@ watch(
           status: 'success',
         }
         fileList.value = [fileItem]
-        // 如果是未签名的OSS URL，异步获取签名URL用于预览
-        if (isUnsignedOssUrl(newVal)) {
-          updateOssImageUrl(newVal, fileItem.uid)
-        }
       } else if (Array.isArray(newVal) && newVal.length > 0) {
         // 兼容数组格式
         const fileItem = {
@@ -213,10 +125,6 @@ watch(
           status: 'success',
         }
         fileList.value = [fileItem]
-        // 如果是未签名的OSS URL，异步获取签名URL用于预览
-        if (isUnsignedOssUrl(newVal[0])) {
-          updateOssImageUrl(newVal[0], fileItem.uid)
-        }
       } else {
         fileList.value = []
       }
@@ -231,10 +139,6 @@ watch(
             url: url,
             status: 'success',
           }
-          // 如果是未签名的OSS URL，异步获取签名URL用于预览
-          if (isUnsignedOssUrl(url)) {
-            updateOssImageUrl(url, fileItem.uid)
-          }
           return fileItem
         })
       } else if (typeof newVal === 'string' && newVal.trim() !== '') {
@@ -246,10 +150,6 @@ watch(
           status: 'success',
         }
         fileList.value = [fileItem]
-        // 如果是未签名的OSS URL，异步获取签名URL用于预览
-        if (isUnsignedOssUrl(newVal)) {
-          updateOssImageUrl(newVal, fileItem.uid)
-        }
       } else {
         fileList.value = []
       }
@@ -391,46 +291,20 @@ const beforeUpload = async (file) => {
   return true
 }
 
-/**
- * 从签名URL中提取原始URL（去掉查询参数）
- * 签名URL格式：https://{bucket}.{endpoint}/{path}?Expires=xxx&OSSAccessKeyId=xxx&Signature=xxx
- * 原始URL格式：https://{bucket}.{endpoint}/{path}
- */
-const extractOriginalUrl = (signedUrl) => {
-  if (!signedUrl || typeof signedUrl !== 'string') {
-    return signedUrl
-  }
-  
-  // 检查是否是OSS签名URL（包含查询参数）
-  const questionMarkIndex = signedUrl.indexOf('?')
-  if (questionMarkIndex > 0) {
-    // 提取查询参数前的部分作为原始URL
-    return signedUrl.substring(0, questionMarkIndex)
-  }
-  
-  // 如果不是签名URL，直接返回
-  return signedUrl
-}
-
 // 上传成功
 const handleSuccess = (response, file) => {
   console.log('上传成功响应:', response)
   if (response && response.code === 200) {
     const url = response.data?.url || response.data
-    // 确保URL是字符串
-    const signedUrl = typeof url === 'string' ? url : ''
+    // 确保URL是字符串，后端直接返回公开URL
+    const fileUrl = typeof url === 'string' ? url : ''
     
-    // 从签名URL中提取原始URL（用于保存到数据库，避免签名URL过期）
-    // 预览时使用签名URL，保存到数据库时使用原始URL
-    const originalUrl = extractOriginalUrl(signedUrl)
-    
-    // 创建新的文件对象，避免修改只读属性
-    // fileItem.url 用于预览，使用签名URL
+    // OSS bucket已改为"私有写公有读"模式，后端直接返回公开URL
+    // 直接使用返回的URL，无需提取原始URL
     const fileItem = {
       uid: file.uid,
       name: file.name,
-      url: signedUrl, // 预览使用签名URL
-      originalUrl: originalUrl, // 保存原始URL，用于保存到数据库
+      url: fileUrl, // 直接使用公开URL
       status: 'success',
       response: response,
     }
@@ -450,14 +324,13 @@ const handleSuccess = (response, file) => {
     }
     
     // 更新值并触发验证
-    // 注意：保存到数据库时使用原始URL，避免签名URL过期
     updateValue()
     
     // 延迟触发验证，确保值已更新
     nextTick(() => {
       // 触发 change 事件以触发表单验证
-      // 使用原始URL保存到数据库
-      emit('change', props.limit === 1 ? originalUrl : [originalUrl])
+      // 直接使用公开URL保存到数据库
+      emit('change', props.limit === 1 ? fileUrl : [fileUrl])
     })
     
     ElMessage.success('上传成功')

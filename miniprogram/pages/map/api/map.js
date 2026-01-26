@@ -2,7 +2,7 @@
  * 地图相关 API
  */
 
-const request = require('../utils/request');
+const request = require('../../../utils/request');
 
 /**
  * 获取地图列表

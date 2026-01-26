@@ -155,8 +155,8 @@ Page({
         // 确保规格值是数组格式，并转换为数组格式便于模板遍历
         const processedSpecs = {};
         const specList = []; // 用于模板遍历的数组格式
-        Object.keys(processedDetail.specifications).forEach(key => {
-          const value = processedDetail.specifications[key];
+        Object.keys(detail.specifications).forEach(key => {
+          const value = detail.specifications[key];
           let options = [];
           // 如果是数组，直接使用；如果是字符串，转换为数组
           if (Array.isArray(value)) {

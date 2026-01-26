@@ -11,7 +11,14 @@ import java.util.regex.Pattern;
 
 /**
  * OSS URL处理工具类
- * 提供统一的OSS URL签名处理功能，支持单个URL、对象、列表的处理
+ * 提供统一的OSS URL处理功能，支持单个URL、对象、列表的处理
+ * 
+ * 注意：OSS bucket已改为"私有写公有读"模式
+ * - 写入操作（上传、删除）需要认证（私有写）
+ * - 读取操作可以直接通过公开URL访问，无需签名（公有读）
+ * 
+ * 此工具类会将签名URL转换为公开URL（提取基础URL部分），
+ * 对于已经是公开URL的情况，直接返回原URL。
  * 
  * @author travel-platform
  */
@@ -23,7 +30,8 @@ public class OssUrlUtil {
     private OssService ossService;
     
     /**
-     * 默认签名URL有效期（秒）：1小时
+     * 默认签名URL有效期（秒）：1小时（已废弃，保留用于向后兼容）
+     * 注意：OSS bucket已改为"私有写公有读"模式，不再需要生成签名URL
      */
     private static final int DEFAULT_EXPIRE_SECONDS = 3600;
     
@@ -43,21 +51,27 @@ public class OssUrlUtil {
     };
     
     /**
-     * 处理单个URL，生成签名URL（使用默认有效期）
+     * 处理单个URL，返回公开URL（使用默认有效期参数，已废弃但保留用于向后兼容）
      * 
-     * @param url 原始URL
-     * @return 签名URL，如果不是OSS URL或处理失败则返回原URL
+     * 注意：OSS bucket已改为"私有写公有读"模式，此方法直接返回公开URL
+     * 如果是签名URL，会提取基础URL部分（去掉查询参数）
+     * 
+     * @param url 原始URL（可能是签名URL或公开URL）
+     * @return 公开URL，如果不是OSS URL或处理失败则返回原URL
      */
     public String processUrl(String url) {
         return processUrl(url, DEFAULT_EXPIRE_SECONDS);
     }
     
     /**
-     * 处理单个URL，生成签名URL（自定义有效期）
+     * 处理单个URL，返回公开URL（expireSeconds参数已废弃，保留用于向后兼容）
      * 
-     * @param url 原始URL
-     * @param expireSeconds 过期时间（秒）
-     * @return 签名URL，如果不是OSS URL或处理失败则返回原URL
+     * 注意：OSS bucket已改为"私有写公有读"模式，此方法直接返回公开URL
+     * 如果是签名URL，会提取基础URL部分（去掉查询参数）
+     * 
+     * @param url 原始URL（可能是签名URL或公开URL）
+     * @param expireSeconds 过期时间（秒，已废弃，保留用于向后兼容）
+     * @return 公开URL，如果不是OSS URL或处理失败则返回原URL
      */
     public String processUrl(String url, int expireSeconds) {
         if (url == null || url.isEmpty()) {
@@ -76,23 +90,31 @@ public class OssUrlUtil {
             return url;
         }
         
-        try {
-            // 使用OssService生成签名URL
-            String signedUrl = ossService.generateSignedUrlFromUrl(url, expireSeconds);
-            if (signedUrl != null && !signedUrl.equals(url)) {
-                log.debug("URL已签名: {} -> {}", 
+        // OSS bucket已改为"私有写公有读"模式，直接返回公开URL
+        // 如果是签名URL，提取基础URL部分（去掉查询参数）
+        // 签名URL格式：https://bucket.endpoint/path?Expires=xxx&OSSAccessKeyId=xxx&Signature=xxx
+        int queryIndex = url.indexOf('?');
+        if (queryIndex > 0) {
+            // 检查是否包含签名参数（Expires= 或 Signature=）
+            String queryString = url.substring(queryIndex + 1);
+            if (queryString.contains("Expires=") || queryString.contains("Signature=")) {
+                String publicUrl = url.substring(0, queryIndex);
+                log.debug("从签名URL提取公开URL: {} -> {}", 
                     url.length() > 50 ? url.substring(0, 50) + "..." : url,
-                    signedUrl.length() > 50 ? signedUrl.substring(0, 50) + "..." : signedUrl);
+                    publicUrl.length() > 50 ? publicUrl.substring(0, 50) + "..." : publicUrl);
+                return publicUrl;
             }
-            return signedUrl;
-        } catch (Exception e) {
-            log.warn("生成签名URL失败，返回原URL: {}", url.length() > 50 ? url.substring(0, 50) + "..." : url, e);
-            return url;
         }
+        
+        // 已经是公开URL，直接返回
+        log.debug("URL已是公开URL，直接返回: {}", url.length() > 50 ? url.substring(0, 50) + "..." : url);
+        return url;
     }
     
     /**
-     * 处理对象中的URL字段（使用默认有效期）
+     * 处理对象中的URL字段（使用默认有效期参数，已废弃但保留用于向后兼容）
+     * 
+     * 注意：OSS bucket已改为"私有写公有读"模式，此方法会将签名URL转换为公开URL
      * 
      * @param obj 对象
      * @param urlFields URL字段名数组
@@ -103,11 +125,13 @@ public class OssUrlUtil {
     }
     
     /**
-     * 处理对象中的URL字段（自定义有效期）
+     * 处理对象中的URL字段（expireSeconds参数已废弃，保留用于向后兼容）
+     * 
+     * 注意：OSS bucket已改为"私有写公有读"模式，此方法会将签名URL转换为公开URL
      * 
      * @param obj 对象
      * @param urlFields URL字段名数组
-     * @param expireSeconds 过期时间（秒）
+     * @param expireSeconds 过期时间（秒，已废弃，保留用于向后兼容）
      * @return 处理后的对象
      */
     public <T> T processObject(T obj, String[] urlFields, int expireSeconds) {
@@ -139,12 +163,12 @@ public class OssUrlUtil {
                     if (fieldValue instanceof String) {
                         String url = (String) fieldValue;
                         if (!url.isEmpty()) {
-                            String signedUrl = processUrl(url, expireSeconds);
-                            if (!signedUrl.equals(url)) {
-                                // 通过setter方法设置签名URL
+                            String publicUrl = processUrl(url, expireSeconds);
+                            if (!publicUrl.equals(url)) {
+                                // 通过setter方法设置公开URL（从签名URL转换而来）
                                 String setterName = "set" + capitalize(fieldName);
                                 Method setter = clazz.getMethod(setterName, String.class);
-                                setter.invoke(obj, signedUrl);
+                                setter.invoke(obj, publicUrl);
                             }
                         }
                     }
@@ -173,7 +197,9 @@ public class OssUrlUtil {
     }
     
     /**
-     * 处理列表中的URL字段（使用默认有效期）
+     * 处理列表中的URL字段（使用默认有效期参数，已废弃但保留用于向后兼容）
+     * 
+     * 注意：OSS bucket已改为"私有写公有读"模式，此方法会将签名URL转换为公开URL
      * 
      * @param list 对象列表
      * @param urlFields URL字段名数组
@@ -184,11 +210,13 @@ public class OssUrlUtil {
     }
     
     /**
-     * 处理列表中的URL字段（自定义有效期）
+     * 处理列表中的URL字段（expireSeconds参数已废弃，保留用于向后兼容）
+     * 
+     * 注意：OSS bucket已改为"私有写公有读"模式，此方法会将签名URL转换为公开URL
      * 
      * @param list 对象列表
      * @param urlFields URL字段名数组
-     * @param expireSeconds 过期时间（秒）
+     * @param expireSeconds 过期时间（秒，已废弃，保留用于向后兼容）
      * @return 处理后的列表
      */
     public <T> List<T> processList(List<T> list, String[] urlFields, int expireSeconds) {

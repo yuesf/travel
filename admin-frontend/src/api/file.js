@@ -89,7 +89,9 @@ export function uploadVideo(file, module = 'common') {
 }
 
 /**
- * 获取文件的签名URL（用于私有Bucket访问）
+ * 获取文件的公开URL（已废弃：OSS bucket已改为"私有写公有读"模式，不再需要签名URL）
+ * 保留此函数用于向后兼容，直接返回公开URL
+ * @deprecated 请直接使用fileUrl，不再需要获取签名URL
  */
 export function getSignedUrl(id) {
   return request({
@@ -99,7 +101,9 @@ export function getSignedUrl(id) {
 }
 
 /**
- * 批量获取文件的签名URL
+ * 批量获取文件的公开URL（已废弃：OSS bucket已改为"私有写公有读"模式，不再需要签名URL）
+ * 保留此函数用于向后兼容，直接返回公开URL列表
+ * @deprecated 请直接使用fileUrl，不再需要获取签名URL
  */
 export function getSignedUrls(ids) {
   return request({
@@ -112,7 +116,9 @@ export function getSignedUrls(ids) {
 }
 
 /**
- * 根据URL获取签名URL（用于私有Bucket访问）
+ * 根据URL获取公开URL（已废弃：OSS bucket已改为"私有写公有读"模式，不再需要签名URL）
+ * 保留此函数用于向后兼容，如果是签名URL则提取基础URL部分
+ * @deprecated 请直接使用URL，不再需要获取签名URL
  */
 export function getSignedUrlByUrl(url) {
   return request({

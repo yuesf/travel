@@ -312,27 +312,10 @@ const getImageUrl = (file) => {
   return file.previewUrl || file.fileUrl || ''
 }
 
-// 处理图片加载错误（作为后备方案，如果后台返回的签名URL失效）
+// 处理图片加载错误
 const handleImageError = async (file, event) => {
-  // 如果图片加载失败，可能是签名URL已过期，尝试重新获取
-  if (file.storageType === 'OSS' && file.id) {
-    try {
-      const response = await getSignedUrl(file.id)
-      if (response && response.code === 200 && response.data) {
-        // 更新文件的URL为新的签名URL
-        const index = fileList.value.findIndex(item => item.id === file.id)
-        if (index > -1) {
-          fileList.value[index] = {
-            ...fileList.value[index],
-            fileUrl: response.data,
-          }
-          fileList.value = [...fileList.value]
-        }
-      }
-    } catch (error) {
-      console.warn('重新获取签名URL失败:', error)
-    }
-  }
+  // OSS bucket已改为"私有写公有读"模式，直接使用公开URL，无需重新获取
+  console.warn('图片加载失败:', file.fileUrl || file.previewUrl)
 }
 
 // 触发上传按钮点击

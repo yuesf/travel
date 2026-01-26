@@ -359,7 +359,7 @@ import {
   Document, CollectionTag, FolderOpened, DataLine, Box, 
   DocumentCopy, Edit, Location, Link, View, Clock, Calendar, Delete
 } from '@element-plus/icons-vue'
-import { getFileList, deleteFile, deleteFilesBatch, getFileStatistics, getSignedUrl, uploadImage, uploadVideo } from '@/api/file'
+import { getFileList, deleteFile, deleteFilesBatch, getFileStatistics, uploadImage, uploadVideo } from '@/api/file'
 import { useClipboard } from '@vueuse/core'
 
 const loading = ref(false)
@@ -505,20 +505,11 @@ const handleView = async (row) => {
   }
   viewDialogVisible.value = true
   
-  // 如果是OSS存储的文件但没有 previewUrl，尝试获取签名URL
+  // OSS bucket已改为"私有写公有读"模式，直接使用fileUrl作为previewUrl
   if (row.storageType === 'OSS' && !row.previewUrl) {
-    try {
-      const res = await getSignedUrl(row.id)
-      if (res.data) {
-        // 更新预览URL
-        currentFile.value = {
-          ...row,
-          previewUrl: res.data,
-        }
-      }
-    } catch (error) {
-      console.error('获取签名URL失败:', error)
-      ElMessage.warning('获取预览链接失败，可能无法预览私有文件')
+    currentFile.value = {
+      ...row,
+      previewUrl: row.fileUrl,
     }
   }
 }
@@ -537,26 +528,10 @@ const handleCopyText = async (text) => {
 // 复制URL
 const handleCopyUrl = async (row) => {
   try {
-    let urlToCopy = row.fileUrl
-    
-    // 如果是OSS存储的文件，获取签名URL
-    if (row.storageType === 'OSS') {
-      try {
-        const res = await getSignedUrl(row.id)
-        if (res.data) {
-          urlToCopy = res.data
-          ElMessage.success('已复制签名URL（1小时有效）到剪贴板')
-        }
-      } catch (error) {
-        console.error('获取签名URL失败:', error)
-        ElMessage.warning('获取签名URL失败，已复制原始URL')
-      }
-    }
-    
+    // OSS bucket已改为"私有写公有读"模式，直接使用fileUrl
+    const urlToCopy = row.fileUrl || row.previewUrl
     await copy(urlToCopy)
-    if (row.storageType !== 'OSS') {
-      ElMessage.success('URL已复制到剪贴板')
-    }
+    ElMessage.success('URL已复制到剪贴板')
   } catch (error) {
     console.error('复制失败:', error)
     ElMessage.error('复制失败')

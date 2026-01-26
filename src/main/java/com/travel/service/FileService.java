@@ -183,17 +183,10 @@ public class FileService {
             // 不影响文件上传结果
         }
         
-        // 生成签名URL并返回（用于立即预览，避免403错误）
-        // 注意：数据库保存的是原始URL，返回给前端的是签名URL
-        try {
-            String signedUrl = ossService.generateSignedUrlFromUrl(fileUrl);
-            log.debug("生成签名URL成功，用于返回给前端");
-            return signedUrl;
-        } catch (Exception e) {
-            log.warn("生成签名URL失败，返回原始URL: {}", e.getMessage());
-            // 如果生成签名URL失败，返回原始URL（降级方案）
-            return fileUrl;
-        }
+        // OSS bucket已改为"私有写公有读"模式，直接返回公开URL
+        // 注意：数据库保存的是公开URL，返回给前端的也是公开URL
+        log.debug("文件上传成功，返回公开URL");
+        return fileUrl;
     }
     
     /**

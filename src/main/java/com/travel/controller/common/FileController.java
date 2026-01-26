@@ -2,7 +2,6 @@ package com.travel.controller.common;
 
 import com.travel.common.Result;
 import com.travel.service.FileService;
-import com.travel.service.OssService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
@@ -20,9 +19,6 @@ public class FileController {
     
     @Autowired
     private FileService fileService;
-    
-    @Autowired
-    private OssService ossService;
     
     /**
      * 上传图片
@@ -71,19 +67,32 @@ public class FileController {
     }
     
     /**
-     * 根据URL获取签名URL（用于私有Bucket访问）
+     * 根据URL获取公开URL（已废弃：OSS bucket已改为"私有写公有读"模式，不再需要签名URL）
+     * 保留此接口用于向后兼容，如果是签名URL则提取基础URL部分，否则直接返回原URL
      * 
-     * @param url 文件访问URL
-     * @return 签名URL，如果不是OSS URL则返回原URL
+     * @param url 文件访问URL（可能是签名URL或公开URL）
+     * @return 公开URL，如果不是OSS URL则返回原URL
      */
     @GetMapping("/signed-url")
     public Result<String> getSignedUrl(@RequestParam String url) {
         try {
-            String signedUrl = ossService.generateSignedUrlFromUrl(url);
-            return Result.success(signedUrl);
+            // OSS bucket已改为"私有写公有读"模式，直接返回公开URL
+            // 如果是签名URL，提取基础URL部分（兼容历史数据）
+            int queryIndex = url.indexOf('?');
+            if (queryIndex > 0) {
+                String queryString = url.substring(queryIndex + 1);
+                if (queryString.contains("Expires=") || queryString.contains("Signature=")) {
+                    // 从签名URL提取公开URL
+                    String publicUrl = url.substring(0, queryIndex);
+                    return Result.success(publicUrl);
+                }
+            }
+            
+            // 已经是公开URL，直接返回
+            return Result.success(url);
         } catch (Exception e) {
-            log.error("获取签名URL失败: {}", url, e);
-            // 如果获取失败，返回原URL
+            log.error("获取文件URL失败: {}", url, e);
+            // 如果处理失败，返回原URL
             return Result.success(url);
         }
     }
