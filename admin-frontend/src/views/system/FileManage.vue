@@ -141,10 +141,13 @@
             <el-image
               v-if="row.fileType === 'image'"
               :src="getImageUrl(row)"
-              :preview-src-list="[getImageUrl(row)]"
+              :preview-src-list="allImageUrls"
+              :initial-index="getImageIndex(row)"
               fit="cover"
-              style="width: 80px; height: 80px; border-radius: 4px"
+              style="width: 80px; height: 80px; border-radius: 4px; cursor: pointer; transition: transform 0.2s;"
+              class="preview-thumbnail"
               lazy
+              preview-teleported
               @error="() => handleImageError(row)"
             />
             <el-icon v-else style="font-size: 40px; color: #409EFF"><VideoPlay /></el-icon>
@@ -429,6 +432,17 @@ const videoCount = computed(() => {
   return tableData.value.filter(f => f.fileType === 'video').length
 })
 
+// 获取预览列表（包含所有图片，用于切换浏览）
+const allImageUrls = ref([])
+
+// 获取图片在预览列表中的索引
+const getImageIndex = (row) => {
+  if (row.fileType !== 'image') return 0
+  const currentUrl = getImageUrl(row)
+  const index = allImageUrls.value.findIndex(url => url === currentUrl)
+  return index >= 0 ? index : 0
+}
+
 // 加载统计信息
 const loadStatistics = async () => {
   try {
@@ -451,6 +465,11 @@ const loadData = async () => {
     const res = await getFileList(params)
     tableData.value = res.data.records || []
     pagination.total = res.data.total || 0
+    
+    // 更新预览列表（只包含图片）
+    allImageUrls.value = tableData.value
+      .filter(f => f.fileType === 'image')
+      .map(f => getImageUrl(f))
     
     // 清空选择状态（因为数据已刷新）
     selectedFiles.value = []
@@ -1376,6 +1395,111 @@ onMounted(() => {
   border-top: 1px solid #e4e7ed;
 }
 
+/* 图片预览样式优化 */
+.preview-thumbnail {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.preview-thumbnail:hover {
+  transform: scale(1.05);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+/* Element Plus 图片预览组件样式优化 */
+:deep(.el-image-viewer__wrapper) {
+  background-color: rgba(0, 0, 0, 0.85);
+  backdrop-filter: blur(10px);
+}
+
+:deep(.el-image-viewer__mask) {
+  background-color: rgba(0, 0, 0, 0.85);
+}
+
+:deep(.el-image-viewer__canvas) {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+:deep(.el-image-viewer__img) {
+  max-width: 90vw;
+  max-height: 90vh;
+  border-radius: 8px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  transition: transform 0.3s ease;
+}
+
+:deep(.el-image-viewer__actions) {
+  background-color: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+  border-radius: 24px;
+  padding: 8px 16px;
+}
+
+:deep(.el-image-viewer__actions__inner) {
+  color: #fff;
+}
+
+:deep(.el-image-viewer__actions__inner .el-icon) {
+  color: #fff;
+  font-size: 20px;
+  transition: all 0.2s ease;
+}
+
+:deep(.el-image-viewer__actions__inner .el-icon:hover) {
+  color: #409eff;
+  transform: scale(1.1);
+}
+
+:deep(.el-image-viewer__close) {
+  color: #fff;
+  font-size: 28px;
+  transition: all 0.2s ease;
+  background-color: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+  border-radius: 50%;
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+:deep(.el-image-viewer__close:hover) {
+  color: #409eff;
+  background-color: rgba(64, 158, 255, 0.2);
+  transform: scale(1.1);
+}
+
+:deep(.el-image-viewer__prev),
+:deep(.el-image-viewer__next) {
+  background-color: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+  border-radius: 50%;
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: 24px;
+  transition: all 0.2s ease;
+  border: 2px solid rgba(255, 255, 255, 0.2);
+}
+
+:deep(.el-image-viewer__prev:hover),
+:deep(.el-image-viewer__next:hover) {
+  background-color: rgba(64, 158, 255, 0.3);
+  border-color: rgba(64, 158, 255, 0.5);
+  transform: scale(1.1);
+  color: #409eff;
+}
+
+:deep(.el-image-viewer__prev:active),
+:deep(.el-image-viewer__next:active) {
+  transform: scale(0.95);
+}
+
 /* 响应式设计 */
 @media (max-width: 768px) {
   .info-grid {
@@ -1388,6 +1512,24 @@ onMounted(() => {
   
   .preview-body {
     min-height: 200px;
+  }
+  
+  :deep(.el-image-viewer__img) {
+    max-width: 95vw;
+    max-height: 85vh;
+  }
+  
+  :deep(.el-image-viewer__prev),
+  :deep(.el-image-viewer__next) {
+    width: 40px;
+    height: 40px;
+    font-size: 20px;
+  }
+  
+  :deep(.el-image-viewer__close) {
+    width: 40px;
+    height: 40px;
+    font-size: 24px;
   }
 }
 </style>

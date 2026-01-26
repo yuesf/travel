@@ -96,6 +96,13 @@
             <version>0.4.20</version>
         </dependency>
 
+        <!-- WebP 图片格式支持 -->
+        <dependency>
+            <groupId>org.sejda.imageio</groupId>
+            <artifactId>webp-imageio</artifactId>
+            <version>0.1.6</version>
+        </dependency>
+
         <!-- JWT -->
         <dependency>
             <groupId>io.jsonwebtoken</groupId>

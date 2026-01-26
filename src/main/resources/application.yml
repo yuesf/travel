@@ -91,9 +91,10 @@ travel:
     # WebP 压缩配置
     webp:
       enabled: true # 是否启用 WebP 压缩（默认：true）
+      force-compress: false # 是否强制压缩所有图片（默认：false）。true=所有图片都压缩，false=根据大小和分辨率阈值决定是否压缩
       quality: 80 # 压缩质量（0-100，默认：80）
-      max-width: 1920 # 最大宽度（像素，0表示不限制，默认：1920）
-      min-file-size: 51200 # 最小文件大小（字节，小于此大小的文件不压缩，默认：50KB）
+      max-width: 1080 # 最大宽度（像素，当force-compress=false时，只有大于此宽度的图片才会进行WebP压缩和缩放，默认：1080，适配手机分辨率）
+      min-file-size: 51200 # 最小文件大小（字节，当force-compress=false时，只有大于此大小的文件才会压缩，默认：50KB）
   
   # RocketMQ配置（可选）
   rocketmq:
