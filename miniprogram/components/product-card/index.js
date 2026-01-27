@@ -51,6 +51,28 @@ Component({
     // 规格选择提示信息
     showSpecTip: false,
     specTipText: '',
+    // 格式化后的描述（富文本）
+    formattedDescription: '',
+  },
+
+  /**
+   * 组件生命周期
+   */
+  lifetimes: {
+    attached() {
+      // 组件挂载时格式化描述
+      this.formatDescription();
+    },
+  },
+
+  /**
+   * 数据监听器
+   */
+  observers: {
+    'product.description, product.summary, productType': function(description, summary, productType) {
+      // 当描述、摘要或商品类型变化时，重新格式化
+      this.formatDescription();
+    },
   },
 
   /**
@@ -92,6 +114,48 @@ Component({
       if (url) {
         wx.navigateTo({
           url,
+        });
+      }
+    },
+
+    /**
+     * 立即预订（景点和酒店）
+     */
+    onBookNow(e) {
+      // 阻止事件冒泡
+      if (e && typeof e.stopPropagation === 'function') {
+        e.stopPropagation();
+      }
+      
+      const { product, productType } = this.properties;
+      
+      if (!product || !product.id) {
+        return;
+      }
+
+      // 根据商品类型跳转到对应的详情页
+      let url = '';
+      switch (productType) {
+        case 'ATTRACTION':
+          url = `/pages/detail/index?type=attraction&id=${product.id}`;
+          break;
+        case 'HOTEL':
+          url = `/pages/detail/index?type=hotel&id=${product.id}`;
+          break;
+        default:
+          return;
+      }
+
+      if (url) {
+        wx.navigateTo({
+          url,
+          fail: (err) => {
+            console.error('跳转详情页失败:', err);
+            wx.showToast({
+              title: '跳转失败，请重试',
+              icon: 'none',
+            });
+          },
         });
       }
     },
@@ -384,6 +448,74 @@ Component({
         showSpecTip: false,
         specTipText: '',
       });
+    },
+
+    /**
+     * 格式化描述内容（富文本）
+     * 仅商品类型需要格式化描述，酒店和景点在列表页不显示描述
+     */
+    formatDescription() {
+      const { product, productType } = this.properties;
+      
+      // 仅商品类型需要格式化描述
+      if (productType !== 'PRODUCT') {
+        this.setData({
+          formattedDescription: '',
+        });
+        return;
+      }
+      
+      const description = product?.description || product?.summary || '';
+      
+      if (!description) {
+        this.setData({
+          formattedDescription: '',
+        });
+        return;
+      }
+
+      // 格式化富文本，为图片添加适配样式
+      const formatted = this.formatRichText(description);
+      
+      this.setData({
+        formattedDescription: formatted,
+      });
+    },
+
+    /**
+     * 格式化富文本内容，为图片添加适配样式
+     * @param {string} html HTML字符串
+     * @returns {string} 格式化后的HTML
+     */
+    formatRichText(html) {
+      if (!html || typeof html !== 'string') {
+        return '';
+      }
+      
+      // 为所有 img 标签添加样式，确保图片适配屏幕
+      let content = html.replace(/<img([^>]*)>/gi, (match, attrs) => {
+        // 检查是否已有 style 属性（支持单引号和双引号）
+        const hasStyle = /style\s*=\s*["']/i.test(attrs);
+        
+        if (hasStyle) {
+          // 如果已有 style，添加或更新 max-width
+          return match.replace(/style\s*=\s*["']([^"']*)["']/i, (styleMatch, styleValue) => {
+            // 检查是否已有 max-width
+            if (!/max-width\s*:/i.test(styleValue)) {
+              // 移除末尾的分号（如果有），然后添加样式
+              const cleanStyle = styleValue.trim().replace(/;?\s*$/, '');
+              const quote = styleMatch.includes("'") ? "'" : '"';
+              return `style=${quote}${cleanStyle}; max-width: 100%; height: auto; display: block;${quote}`;
+            }
+            return styleMatch;
+          });
+        } else {
+          // 如果没有 style，添加 style 属性
+          return `<img${attrs} style="max-width: 100%; height: auto; display: block;">`;
+        }
+      });
+      
+      return content;
     },
   },
 });

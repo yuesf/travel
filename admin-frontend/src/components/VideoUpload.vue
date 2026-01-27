@@ -109,16 +109,13 @@ const handleFileSelect = (files) => {
   
   if (fileUrl) {
     videoUrl.value = fileUrl
-    fileList.value = [{
-      uid: 'video-1',
-      name: selectedFile.originalName || 'video.mp4',
-      url: fileUrl,
-      status: 'success',
-    }]
-    
     emit('update:modelValue', fileUrl)
     emit('change', fileUrl)
+    // 关闭文件选择器对话框
+    fileSelectorVisible.value = false
     ElMessage.success('已选择视频')
+  } else {
+    ElMessage.warning('选择的文件无效')
   }
 }
 </script>

@@ -217,6 +217,47 @@
     </view>
   </view>
 
+  <!-- 景点预订弹窗 -->
+  <view wx:if="{{showAttractionModal && type === 'attraction'}}" class="room-modal-mask" bindtap="onCloseAttractionModal">
+    <view class="room-modal" catchtap="true">
+      <view class="room-modal-header">
+        <text class="room-modal-title">选择使用日期</text>
+        <text class="room-modal-close" bindtap="onCloseAttractionModal">✕</text>
+      </view>
+      
+      <scroll-view class="room-modal-content" scroll-y="true">
+        <!-- 日期选择 -->
+        <view class="room-modal-dates">
+          <view class="date-item">
+            <text class="date-label">使用日期</text>
+            <picker mode="date" value="{{useDate}}" start="{{minDate}}" bindchange="onUseDateChange">
+              <view class="date-picker">
+                <text class="date-text">{{useDate || '请选择'}}</text>
+                <text class="date-arrow">›</text>
+              </view>
+            </picker>
+          </view>
+        </view>
+      </scroll-view>
+
+      <!-- 数量选择 -->
+      <view class="room-modal-footer">
+        <view class="quantity-selector">
+          <text class="quantity-label">数量：</text>
+          <view class="quantity-controls">
+            <view class="quantity-btn minus" bindtap="onDecreaseQuantity">-</view>
+            <text class="quantity-value">{{quantity}}</text>
+            <view class="quantity-btn plus" bindtap="onIncreaseQuantity">+</view>
+          </view>
+        </view>
+        <view class="room-modal-actions">
+          <view class="room-modal-btn cancel" bindtap="onCloseAttractionModal">取消</view>
+          <view class="room-modal-btn confirm" bindtap="onBuyNow">确定</view>
+        </view>
+      </view>
+    </view>
+  </view>
+
   <!-- 房型选择弹窗（酒店） -->
   <view wx:if="{{showRoomModal && type === 'hotel'}}" class="room-modal-mask" bindtap="onCloseRoomModal">
     <view class="room-modal" catchtap="true">
@@ -282,7 +323,7 @@
           </view>
         <view class="room-modal-actions">
           <view class="room-modal-btn cancel" bindtap="onCloseRoomModal">取消</view>
-          <view class="room-modal-btn confirm" bindtap="onAddToCart">确定</view>
+          <view class="room-modal-btn confirm" bindtap="onBookNow">确定</view>
         </view>
       </view>
     </view>

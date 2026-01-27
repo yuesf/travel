@@ -130,30 +130,52 @@
                   </div>
                 </el-form-item>
                 
-                <!-- 推荐景点（后期待实现） -->
+                <!-- 推荐景点 -->
                 <el-form-item label="推荐景点">
-                  <el-alert
-                    type="warning"
-                    :closable="false"
-                    show-icon
-                  >
-                    <template #default>
-                      <span>功能后期待实现</span>
-                    </template>
-                  </el-alert>
+                  <div style="width: 100%;">
+                    <el-select
+                      v-model="recommendForm.attractions"
+                      multiple
+                      filterable
+                      placeholder="请选择推荐景点（可选）"
+                      style="width: 100%"
+                      :max-collapse-tags="3"
+                    >
+                      <el-option
+                        v-for="item in attractionOptions"
+                        :key="item.id"
+                        :label="item.name"
+                        :value="item.id"
+                      />
+                    </el-select>
+                    <div style="margin-top: 8px; color: #909399; font-size: 12px;">
+                      已选择 {{ recommendForm.attractions.length }} 个景点
+                    </div>
+                  </div>
                 </el-form-item>
                 
-                <!-- 推荐酒店（后期待实现） -->
+                <!-- 推荐酒店 -->
                 <el-form-item label="推荐酒店">
-                  <el-alert
-                    type="warning"
-                    :closable="false"
-                    show-icon
-                  >
-                    <template #default>
-                      <span>功能后期待实现</span>
-                    </template>
-                  </el-alert>
+                  <div style="width: 100%;">
+                    <el-select
+                      v-model="recommendForm.hotels"
+                      multiple
+                      filterable
+                      placeholder="请选择推荐酒店（可选）"
+                      style="width: 100%"
+                      :max-collapse-tags="3"
+                    >
+                      <el-option
+                        v-for="item in hotelOptions"
+                        :key="item.id"
+                        :label="item.name"
+                        :value="item.id"
+                      />
+                    </el-select>
+                    <div style="margin-top: 8px; color: #909399; font-size: 12px;">
+                      已选择 {{ recommendForm.hotels.length }} 个酒店
+                    </div>
+                  </div>
                 </el-form-item>
                 
                 <el-form-item>
@@ -469,6 +491,7 @@ import {
   getStatistics,
 } from '@/api/miniprogram'
 import { getAttractionList } from '@/api/attractions'
+import { getHotelList } from '@/api/hotels'
 import { getCategoryList } from '@/api/categories'
 
 const activeTab = ref('home')
@@ -480,6 +503,7 @@ const banners = ref([])
 const icons = ref([])
 const adList = ref([])
 const attractionOptions = ref([])
+const hotelOptions = ref([])
 const productCategoryOptions = ref([])
 const bannerManagerRef = ref(null)
 const iconManagerRef = ref(null)
@@ -562,6 +586,8 @@ const handleRefreshHome = async () => {
     await loadRecommendConfig()
     // 刷新景点选项
     await loadAttractionOptions()
+    // 刷新酒店选项
+    await loadHotelOptions()
     // 刷新商品分类选项
     await loadProductCategoryOptions()
     
@@ -583,6 +609,18 @@ const loadAttractionOptions = async () => {
     }
   } catch (error) {
     console.error('加载景点选项失败:', error)
+  }
+}
+
+// 加载推荐酒店选项
+const loadHotelOptions = async () => {
+  try {
+    const res = await getHotelList({ page: 1, pageSize: 100, status: 1 })
+    if (res.data && res.data.list) {
+      hotelOptions.value = res.data.list
+    }
+  } catch (error) {
+    console.error('加载酒店选项失败:', error)
   }
 }
 
@@ -654,10 +692,10 @@ const loadRecommendConfig = async () => {
             // 推荐商品分类（最多4个）
             recommendForm.productCategories = configValue?.ids || []
           } else if (config.configKey === 'RECOMMEND_ATTRACTION') {
-            // 推荐景点（后期待实现）
+            // 推荐景点
             recommendForm.attractions = configValue?.ids || []
           } else if (config.configKey === 'RECOMMEND_HOTEL') {
-            // 推荐酒店（后期待实现）
+            // 推荐酒店
             recommendForm.hotels = configValue?.ids || []
           }
         } catch (e) {
@@ -692,19 +730,18 @@ const handleSaveRecommend = async () => {
         configValue: JSON.stringify({ ids: recommendForm.productCategories }),
         description: '推荐商品分类',
       },
-      // 推荐景点和推荐酒店后期待实现，暂时不保存
-      // {
-      //   configKey: 'RECOMMEND_ATTRACTION',
-      //   configType: 'RECOMMEND',
-      //   configValue: JSON.stringify({ ids: recommendForm.attractions }),
-      //   description: '推荐景点',
-      // },
-      // {
-      //   configKey: 'RECOMMEND_HOTEL',
-      //   configType: 'RECOMMEND',
-      //   configValue: JSON.stringify({ ids: recommendForm.hotels }),
-      //   description: '推荐酒店',
-      // },
+      {
+        configKey: 'RECOMMEND_ATTRACTION',
+        configType: 'RECOMMEND',
+        configValue: JSON.stringify({ ids: recommendForm.attractions }),
+        description: '推荐景点',
+      },
+      {
+        configKey: 'RECOMMEND_HOTEL',
+        configType: 'RECOMMEND',
+        configValue: JSON.stringify({ ids: recommendForm.hotels }),
+        description: '推荐酒店',
+      },
     ]
 
     for (const config of configs) {
@@ -1175,6 +1212,7 @@ const handleDeleteLogo = async () => {
 
 onMounted(() => {
   loadAttractionOptions()
+  loadHotelOptions()
   loadProductCategoryOptions()
   loadRecommendConfig()
   loadStatistics()

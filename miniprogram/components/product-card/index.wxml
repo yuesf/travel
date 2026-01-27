@@ -18,15 +18,27 @@
     <!-- 标题 -->
     <view class="product-title">{{product.name || product.title}}</view>
 
-    <!-- 描述 -->
-    <view wx:if="{{product.description || product.summary}}" class="product-desc">
-      {{product.description || product.summary}}
+    <!-- 描述（富文本）- 仅商品类型显示 -->
+    <view wx:if="{{productType === 'PRODUCT' && formattedDescription}}" class="product-desc">
+      <rich-text nodes="{{formattedDescription}}"></rich-text>
     </view>
 
-    <!-- 位置信息（景点/酒店） -->
-    <view wx:if="{{product.location || product.address}}" class="product-location">
+    <!-- 酒店设施（仅酒店类型显示） -->
+    <view wx:if="{{productType === 'HOTEL' && product.facilities && product.facilities.length > 0}}" class="product-facilities">
+      <text class="facilities-label">设施：</text>
+      <text class="facilities-text">{{product.facilities.join('、')}}</text>
+    </view>
+
+    <!-- 景点评级（仅景点类型显示） -->
+    <view wx:if="{{productType === 'ATTRACTION' && product.rating}}" class="product-rating-info">
+      <text class="rating-label">评级：</text>
+      <text class="rating-value-text">{{product.rating}}</text>
+    </view>
+
+    <!-- 地址信息（景点/酒店） -->
+    <view wx:if="{{(productType === 'ATTRACTION' || productType === 'HOTEL') && product.address}}" class="product-location">
       <text class="location-icon">📍</text>
-      <text class="location-text">{{product.location || product.address}}</text>
+      <text class="location-text">{{product.address}}</text>
     </view>
 
     <!-- 底部信息栏 -->
@@ -40,7 +52,7 @@
         </text>
       </view>
 
-      <!-- 评分和购物车按钮 -->
+      <!-- 评分和操作按钮 -->
       <view class="product-footer-right">
         <!-- 评分 -->
         <view wx:if="{{showRating && product.rating}}" class="product-rating">
@@ -54,6 +66,11 @@
         <!-- 购物车按钮（仅商品类型显示） -->
         <view wx:if="{{productType === 'PRODUCT'}}" class="product-cart-icon" catchtap="onAddToCart">
           <text class="cart-icon">🛒</text>
+        </view>
+        
+        <!-- 立即预订按钮（景点和酒店类型显示） -->
+        <view wx:if="{{productType === 'ATTRACTION' || productType === 'HOTEL'}}" class="product-book-btn" catchtap="onBookNow">
+          <text class="book-btn-text">立即预订</text>
         </view>
       </view>
     </view>

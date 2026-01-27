@@ -8,6 +8,7 @@ import com.travel.dto.PageResult;
 import com.travel.dto.SearchRequest;
 import com.travel.entity.Attraction;
 import com.travel.entity.MiniProgramConfig;
+import com.travel.entity.Hotel;
 import com.travel.entity.Product;
 import com.travel.entity.ProductCategory;
 import com.travel.mapper.AttractionMapper;
@@ -43,6 +44,9 @@ public class HomeService {
     
     @Autowired
     private ProductMapper productMapper;
+    
+    @Autowired
+    private com.travel.mapper.HotelMapper hotelMapper;
     
     @Autowired
     private ProductCategoryMapper productCategoryMapper;
@@ -96,15 +100,18 @@ public class HomeService {
         processOssUrlsInIcons(icons);
         response.setIcons(icons);
         
-        // 获取推荐景点配置
-        List<MiniProgramConfig> recommendAttractionConfigs = miniProgramConfigMapper.selectByConfigType("RECOMMEND", 1);
-        List<HomeResponse.AttractionItem> recommendAttractions = buildRecommendAttractions(recommendAttractionConfigs);
+        // 获取推荐配置（景点/酒店等）
+        List<MiniProgramConfig> recommendConfigs = miniProgramConfigMapper.selectByConfigType("RECOMMEND", 1);
+        // 构建推荐景点
+        List<HomeResponse.AttractionItem> recommendAttractions = buildRecommendAttractions(recommendConfigs);
         // 处理OSS URL签名
         processOssUrlsInAttractions(recommendAttractions);
         response.setRecommendAttractions(recommendAttractions);
         
-        // 获取推荐酒店配置（暂时使用空列表，等酒店模块实现后补充）
-        response.setRecommendHotels(new ArrayList<>());
+        // 构建推荐酒店
+        List<HomeResponse.HotelItem> recommendHotels = buildRecommendHotels(recommendConfigs);
+        processOssUrlsInHotels(recommendHotels);
+        response.setRecommendHotels(recommendHotels);
         
         // 获取推荐商品配置（从推荐商品分类配置中获取）
         MiniProgramConfig recommendProductCategoryConfig = miniProgramConfigMapper.selectByConfigKey("RECOMMEND_PRODUCT_CATEGORY");
@@ -328,21 +335,27 @@ public class HomeService {
     private List<HomeResponse.AttractionItem> buildRecommendAttractions(List<MiniProgramConfig> configs) {
         List<HomeResponse.AttractionItem> attractions = new ArrayList<>();
         
+        if (configs == null || configs.isEmpty()) {
+            // 无任何 RECOMMEND 配置时直接返回空列表
+            return attractions;
+        }
+        
         for (MiniProgramConfig config : configs) {
             try {
                 if (config.getConfigValue() != null && !config.getConfigValue().trim().isEmpty()) {
-                    Map<String, Object> configData = objectMapper.readValue(
-                        config.getConfigValue(), 
-                        new TypeReference<Map<String, Object>>() {}
-                    );
-                    
                     String configKey = config.getConfigKey();
                     if (configKey != null && configKey.contains("ATTRACTION")) {
+                        Map<String, Object> configData = objectMapper.readValue(
+                            config.getConfigValue(),
+                            new TypeReference<Map<String, Object>>() {}
+                        );
+                        
                         @SuppressWarnings("unchecked")
-                        List<Long> attractionIds = (List<Long>) configData.get("ids");
+                        List<Number> attractionIds = (List<Number>) configData.get("ids");
                         
                         if (attractionIds != null && !attractionIds.isEmpty()) {
-                            for (Long id : attractionIds) {
+                            for (Number idNum : attractionIds) {
+                                Long id = idNum.longValue();
                                 Attraction attraction = attractionMapper.selectById(id);
                                 if (attraction != null && attraction.getStatus() == 1) {
                                     HomeResponse.AttractionItem item = new HomeResponse.AttractionItem();
@@ -362,21 +375,61 @@ public class HomeService {
             }
         }
         
-        // 如果没有配置推荐景点，返回热门景点（按创建时间倒序）
-        if (attractions.isEmpty()) {
-            List<Attraction> hotAttractions = attractionMapper.selectList(null, null, 1, 0, 10);
-            attractions = hotAttractions.stream().map(attraction -> {
-                HomeResponse.AttractionItem item = new HomeResponse.AttractionItem();
-                BeanUtils.copyProperties(attraction, item);
-                if (attraction.getImages() != null && !attraction.getImages().isEmpty()) {
-                    item.setImage(attraction.getImages().get(0));
-                }
-                item.setPrice(attraction.getTicketPrice());
-                return item;
-            }).collect(Collectors.toList());
+        // 无配置或配置为空时返回空列表，由小程序端控制是否展示
+        return attractions;
+    }
+    
+    /**
+     * 构建推荐酒店列表
+     */
+    private List<HomeResponse.HotelItem> buildRecommendHotels(List<MiniProgramConfig> configs) {
+        List<HomeResponse.HotelItem> hotels = new ArrayList<>();
+        
+        if (configs == null || configs.isEmpty()) {
+            return hotels;
         }
         
-        return attractions;
+        for (MiniProgramConfig config : configs) {
+            try {
+                if (config.getConfigValue() != null && !config.getConfigValue().trim().isEmpty()) {
+                    String configKey = config.getConfigKey();
+                    if (configKey != null && configKey.contains("HOTEL")) {
+                        Map<String, Object> configData = objectMapper.readValue(
+                            config.getConfigValue(),
+                            new TypeReference<Map<String, Object>>() {}
+                        );
+                        
+                        @SuppressWarnings("unchecked")
+                        List<Number> hotelIds = (List<Number>) configData.get("ids");
+                        
+                        if (hotelIds != null && !hotelIds.isEmpty()) {
+                            for (Number idNum : hotelIds) {
+                                Long id = idNum.longValue();
+                                Hotel hotel = hotelMapper.selectById(id);
+                                if (hotel != null && hotel.getStatus() != null && hotel.getStatus() == 1) {
+                                    HomeResponse.HotelItem item = new HomeResponse.HotelItem();
+                                    item.setId(hotel.getId());
+                                    item.setName(hotel.getName());
+                                    if (hotel.getImages() != null && !hotel.getImages().isEmpty()) {
+                                        item.setImage(hotel.getImages().get(0));
+                                    }
+                                    item.setCity(hotel.getCity());
+                                    // 暂无独立价格字段时可根据房型/其他逻辑扩展，这里先置为 null
+                                    item.setPrice(null);
+                                    item.setStarLevel(hotel.getStarLevel());
+                                    item.setStatus(hotel.getStatus());
+                                    hotels.add(item);
+                                }
+                            }
+                        }
+                    }
+                }
+            } catch (Exception e) {
+                log.warn("解析推荐酒店配置失败，configKey: {}", config.getConfigKey(), e);
+            }
+        }
+        
+        return hotels;
     }
     
     /**
@@ -558,6 +611,17 @@ public class HomeService {
             return;
         }
         ossUrlUtil.processList(attractions, new String[]{"image"});
+    }
+    
+    /**
+     * 处理推荐酒店中的OSS URL，生成签名URL
+     * 使用OssUrlUtil统一处理，返回的URL都是签名URL
+     */
+    private void processOssUrlsInHotels(List<HomeResponse.HotelItem> hotels) {
+        if (hotels == null || hotels.isEmpty()) {
+            return;
+        }
+        ossUrlUtil.processList(hotels, new String[]{"image"});
     }
     
     /**

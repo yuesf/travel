@@ -233,9 +233,9 @@ const handleCreate = () => {
   router.push('/hotels/create')
 }
 
-// 查看（跳转到编辑页面查看详情）
+// 查看（跳转到详情页面）
 const handleView = (row) => {
-  router.push(`/hotels/edit/${row.id}`)
+  router.push(`/hotels/${row.id}`)
 }
 
 // 编辑

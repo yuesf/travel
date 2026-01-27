@@ -39,6 +39,18 @@
       "pages": [
         "list"
       ]
+    },
+    {
+      "root": "pages/attraction",
+      "pages": [
+        "list"
+      ]
+    },
+    {
+      "root": "pages/hotel",
+      "pages": [
+        "list"
+      ]
     }
   ],
   "preloadRule": {

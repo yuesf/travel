@@ -206,12 +206,18 @@
         >
           <el-select
             v-model="formData.relatedId"
-            :placeholder="`请选择${getTypeLabel(formData.type)}`"
+            :placeholder="formData.type === 'attraction' || formData.type === 'hotel' ? `请选择${getTypeLabel(formData.type)}（可选，不选择则展示全部）` : `请选择${getTypeLabel(formData.type)}`"
             filterable
+            clearable
             style="width: 100%"
             :loading="optionsLoading"
             @change="handleRelatedIdChange"
           >
+            <el-option
+              v-if="formData.type === 'attraction' || formData.type === 'hotel'"
+              label="不选择具体项（展示全部）"
+              :value="null"
+            />
             <el-option
               v-for="item in typeOptions"
               :key="item.id"
@@ -219,6 +225,9 @@
               :value="item.id"
             />
           </el-select>
+          <div v-if="(formData.type === 'attraction' || formData.type === 'hotel') && !formData.relatedId" style="color: #909399; font-size: 12px; margin-top: 4px;">
+            不选择具体项时，点击Icon将跳转到{{ getTypeLabel(formData.type) }}列表页面
+          </div>
         </el-form-item>
         <el-form-item label="图标名称" prop="name">
           <el-input 
@@ -301,6 +310,7 @@ import {
 import { getCategoryList } from '@/api/categories'
 import { getArticleCategoryList, getArticleList } from '@/api/articles'
 import { getAttractionList } from '@/api/attractions'
+import { getHotelList } from '@/api/hotels'
 import { getProductList } from '@/api/products'
 import { getMapList } from '@/api/maps'
 import { getSignedUrlByUrl } from '@/api/file'
@@ -379,6 +389,16 @@ const formRules = {
         }
         // 文章分类类型时，relatedId 可以为空（只选择分类）
         if (formData.type === 'article_category') {
+          callback()
+          return
+        }
+        // 景点类型时，relatedId 可以为空（跳转到景点列表）
+        if (formData.type === 'attraction') {
+          callback()
+          return
+        }
+        // 酒店类型时，relatedId 可以为空（跳转到酒店列表）
+        if (formData.type === 'hotel') {
           callback()
           return
         }
@@ -664,9 +684,13 @@ const loadTypeOptions = async (type) => {
         }))
       }
     } else if (type === 'hotel') {
-      // 酒店功能待实现
-      typeOptions.value = []
-      ElMessage.warning('酒店功能待实现')
+      const res = await getHotelList({ page: 1, pageSize: 100, status: 1 })
+      if (res.data && res.data.list) {
+        typeOptions.value = res.data.list.map(item => ({
+          id: item.id,
+          name: item.name,
+        }))
+      }
     } else if (type === 'map') {
       // 地图类型，加载地图列表
       const res = await getMapList({ status: 1 })
@@ -838,8 +862,8 @@ const handleRelatedIdChange = (newId) => {
     }
   } else {
     // 清空选择时，清空名称和图标
-    // 地图类型允许不选择具体地图，所以不清空名称
-    if (formData.type !== 'map') {
+    // 地图类型、景点类型、酒店类型允许不选择具体项，所以不清空名称
+    if (formData.type !== 'map' && formData.type !== 'attraction' && formData.type !== 'hotel') {
       formData.name = ''
     }
     if (formData.type === 'product_category') {
@@ -1089,8 +1113,18 @@ const handleSubmit = async () => {
       }
     } else {
       // 其他类型
-      const relatedOption = typeOptions.value.find(item => item.id === formData.relatedId)
-      relatedName = relatedOption ? relatedOption.name : ''
+      if (formData.relatedId) {
+        const relatedOption = typeOptions.value.find(item => item.id === formData.relatedId)
+        relatedName = relatedOption ? relatedOption.name : ''
+      } else {
+        // 景点或酒店类型，未选择具体项时，使用图标名称
+        if (formData.type === 'attraction' || formData.type === 'hotel') {
+          relatedName = formData.name
+        } else {
+          const relatedOption = typeOptions.value.find(item => item.id === formData.relatedId)
+          relatedName = relatedOption ? relatedOption.name : ''
+        }
+      }
     }
 
     const configValue = {

@@ -361,8 +361,15 @@ Page({
    * 查看更多景点
    */
   onViewMoreAttractions() {
-    wx.switchTab({
-      url: '/pages/category/index?type=attraction',
+    wx.navigateTo({
+      url: '/pages/attraction/list',
+      fail: (err) => {
+        console.error('跳转景点列表失败:', err);
+        wx.showToast({
+          title: '跳转失败，请重试',
+          icon: 'none',
+        });
+      },
     });
   },
 
@@ -370,8 +377,15 @@ Page({
    * 查看更多酒店
    */
   onViewMoreHotels() {
-    wx.switchTab({
-      url: '/pages/category/index?type=hotel',
+    wx.navigateTo({
+      url: '/pages/hotel/list',
+      fail: (err) => {
+        console.error('跳转酒店列表失败:', err);
+        wx.showToast({
+          title: '跳转失败，请重试',
+          icon: 'none',
+        });
+      },
     });
   },
 
@@ -518,15 +532,43 @@ Page({
         });
       }
     } else if (type === 'attraction') {
-      // 跳转到景点详情
-      wx.navigateTo({
-        url: `/pages/detail/index?id=${relatedId}&type=attraction`,
-      });
+      // 跳转到景点详情或列表
+      if (relatedId) {
+        wx.navigateTo({
+          url: `/pages/detail/index?id=${relatedId}&type=attraction`,
+        });
+      } else {
+        // 未选择具体景点，跳转到景点列表页面
+        wx.navigateTo({
+          url: '/pages/attraction/list',
+          fail: (err) => {
+            console.error('跳转景点列表失败:', err);
+            wx.showToast({
+              title: '跳转失败，请重试',
+              icon: 'none',
+            });
+          },
+        });
+      }
     } else if (type === 'hotel') {
-      // 跳转到酒店详情
-      wx.navigateTo({
-        url: `/pages/detail/index?id=${relatedId}&type=hotel`,
-      });
+      // 跳转到酒店详情或列表
+      if (relatedId) {
+        wx.navigateTo({
+          url: `/pages/detail/index?id=${relatedId}&type=hotel`,
+        });
+      } else {
+        // 未选择具体酒店，跳转到酒店列表页面
+        wx.navigateTo({
+          url: '/pages/hotel/list',
+          fail: (err) => {
+            console.error('跳转酒店列表失败:', err);
+            wx.showToast({
+              title: '跳转失败，请重试',
+              icon: 'none',
+            });
+          },
+        });
+      }
     } else if (type === 'product') {
       // 跳转到商品详情
       wx.navigateTo({

@@ -1,0 +1,45 @@
+/* 酒店列表页样式 */
+
+.page-container {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  background-color: #f5f5f5;
+}
+
+/* 酒店列表滚动区域 */
+.hotel-scroll {
+  flex: 1;
+}
+
+/* 酒店列表 */
+.hotel-list {
+  display: flex;
+  flex-direction: column;
+  padding: 20rpx;
+}
+
+/* 酒店项 */
+.hotel-item {
+  margin-bottom: 20rpx;
+}
+
+/* 空状态 */
+.empty-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 120rpx 0;
+}
+
+/* 加载更多提示 */
+.loading-more,
+.no-more {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40rpx 0;
+  font-size: 26rpx;
+  color: #909399;
+}

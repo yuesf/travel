@@ -55,6 +55,15 @@ const routes = [
           requiresAuth: true,
         },
       },
+      {
+        path: 'attractions/:id',
+        name: 'AttractionDetail',
+        component: () => import('@/views/attractions/AttractionDetail.vue'),
+        meta: {
+          title: '景点详情',
+          requiresAuth: true,
+        },
+      },
       // 酒店管理
       {
         path: 'hotels',
@@ -80,6 +89,15 @@ const routes = [
         component: () => import('@/views/hotels/HotelForm.vue'),
         meta: {
           title: '编辑酒店',
+          requiresAuth: true,
+        },
+      },
+      {
+        path: 'hotels/:id',
+        name: 'HotelDetail',
+        component: () => import('@/views/hotels/HotelDetail.vue'),
+        meta: {
+          title: '酒店详情',
           requiresAuth: true,
         },
       },

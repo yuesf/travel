@@ -3,9 +3,12 @@ package com.travel.service;
 import com.travel.dto.CategoryListRequest;
 import com.travel.dto.PageResult;
 import com.travel.entity.Attraction;
+import com.travel.entity.Hotel;
 import com.travel.entity.Product;
 import com.travel.entity.ProductCategory;
 import com.travel.mapper.AttractionMapper;
+import com.travel.mapper.HotelMapper;
+import com.travel.mapper.HotelRoomMapper;
 import com.travel.mapper.ProductMapper;
 import com.travel.util.OssUrlUtil;
 import lombok.extern.slf4j.Slf4j;
@@ -31,6 +34,12 @@ public class CategoryService {
     
     @Autowired
     private AttractionMapper attractionMapper;
+    
+    @Autowired
+    private HotelMapper hotelMapper;
+    
+    @Autowired
+    private HotelRoomMapper hotelRoomMapper;
     
     @Autowired
     private ProductCategoryService productCategoryService;
@@ -118,14 +127,128 @@ public class CategoryService {
      * 获取酒店列表（支持分类筛选）
      */
     public PageResult<Map<String, Object>> getHotelList(CategoryListRequest request) {
-        // 酒店功能还未实现，返回空结果
+        // 参数校验
+        if (request.getPage() == null || request.getPage() < 1) {
+            request.setPage(1);
+        }
+        if (request.getPageSize() == null || request.getPageSize() < 1) {
+            request.setPageSize(10);
+        }
+        
+        // 计算偏移量
+        int offset = (request.getPage() - 1) * request.getPageSize();
+        
+        // 查询列表（只查询上架的酒店）
+        List<Hotel> list = hotelMapper.selectList(
+            null, // name
+            request.getCity(),
+            null, // starLevel
+            1, // status: 只查询上架的
+            offset,
+            request.getPageSize()
+        );
+        
+        // 查询总数
+        long total = hotelMapper.count(
+            null,
+            request.getCity(),
+            null, // starLevel
+            1 // status: 只查询上架的
+        );
+        
+        // 转换为Map格式，并处理图片URL签名
+        List<Map<String, Object>> resultList = list.stream()
+            .map(this::convertHotelToMap)
+            .collect(Collectors.toList());
+        
+        // 构建分页结果
         PageResult<Map<String, Object>> result = new PageResult<>();
-        result.setList(new ArrayList<>());
-        result.setTotal(0L);
-        result.setPage(request.getPage() != null ? request.getPage() : 1);
-        result.setPageSize(request.getPageSize() != null ? request.getPageSize() : 10);
-        result.setTotalPages(0);
+        result.setList(resultList);
+        result.setTotal(total);
+        result.setPage(request.getPage());
+        result.setPageSize(request.getPageSize());
+        result.setTotalPages((int) Math.ceil((double) total / request.getPageSize()));
+        
         return result;
+    }
+    
+    /**
+     * 将Hotel实体转换为Map格式
+     */
+    private Map<String, Object> convertHotelToMap(Hotel hotel) {
+        Map<String, Object> map = new HashMap<>();
+        map.put("id", hotel.getId());
+        map.put("name", hotel.getName());
+        map.put("city", hotel.getCity());
+        map.put("address", hotel.getAddress());
+        map.put("starLevel", hotel.getStarLevel());
+        map.put("description", hotel.getDescription());
+        
+        // 处理图片：取第一张图片作为封面图
+        if (hotel.getImages() != null && !hotel.getImages().isEmpty()) {
+            String firstImage = hotel.getImages().get(0);
+            // 处理OSS URL签名（返回的URL都是签名URL）
+            map.put("image", ossUrlUtil.processUrl(firstImage));
+            map.put("coverImage", ossUrlUtil.processUrl(firstImage));
+        } else {
+            map.put("image", "");
+            map.put("coverImage", "");
+        }
+        
+        // 处理图片列表（images字段是List<String>，需要特殊处理）
+        if (hotel.getImages() != null && !hotel.getImages().isEmpty()) {
+            List<String> signedImages = new ArrayList<>();
+            for (String imageUrl : hotel.getImages()) {
+                if (imageUrl != null && !imageUrl.isEmpty()) {
+                    signedImages.add(ossUrlUtil.processUrl(imageUrl));
+                } else {
+                    signedImages.add(imageUrl);
+                }
+            }
+            map.put("images", signedImages);
+        } else {
+            map.put("images", hotel.getImages());
+        }
+        
+        // 获取酒店最低价格（从房型中查询）
+        BigDecimal minPrice = getHotelMinPrice(hotel.getId());
+        map.put("price", minPrice != null ? minPrice : BigDecimal.ZERO);
+        map.put("minPrice", minPrice != null ? minPrice : BigDecimal.ZERO);
+        
+        map.put("status", hotel.getStatus());
+        map.put("facilities", hotel.getFacilities());
+        map.put("createTime", hotel.getCreateTime());
+        map.put("updateTime", hotel.getUpdateTime());
+        
+        return map;
+    }
+    
+    /**
+     * 获取酒店最低价格（从房型中查询）
+     */
+    private BigDecimal getHotelMinPrice(Long hotelId) {
+        if (hotelId == null) {
+            return BigDecimal.ZERO;
+        }
+        
+        try {
+            // 查询该酒店的所有上架房型
+            List<com.travel.entity.HotelRoom> rooms = hotelRoomMapper.selectByHotelId(hotelId);
+            if (rooms == null || rooms.isEmpty()) {
+                return BigDecimal.ZERO;
+            }
+            
+            // 过滤出上架的房型，并找出最低价格
+            return rooms.stream()
+                .filter(room -> room.getStatus() != null && room.getStatus() == 1)
+                .map(com.travel.entity.HotelRoom::getPrice)
+                .filter(price -> price != null)
+                .min(BigDecimal::compareTo)
+                .orElse(BigDecimal.ZERO);
+        } catch (Exception e) {
+            log.warn("获取酒店最低价格失败，hotelId: {}", hotelId, e);
+            return BigDecimal.ZERO;
+        }
     }
     
     /**
