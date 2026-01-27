@@ -477,6 +477,27 @@ CREATE TABLE IF NOT EXISTS `cache_refresh_task` (
     KEY `idx_created_at` (`created_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='缓存刷新任务表';
 
+-- 文件目录表
+CREATE TABLE IF NOT EXISTS `directory` (
+  `id` BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '主键ID',
+  `name` VARCHAR(100) NOT NULL COMMENT '目录名称',
+  `path` VARCHAR(500) NOT NULL COMMENT '目录路径（如 "common/subfolder"）',
+  `parent_id` BIGINT COMMENT '父目录ID（NULL表示根目录）',
+  `level` INT DEFAULT 1 COMMENT '目录层级（1-根目录，2-子目录等）',
+  `sort` INT DEFAULT 0 COMMENT '排序',
+  `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `created_by` BIGINT COMMENT '创建人ID',
+  INDEX `idx_parent_id` (`parent_id`) COMMENT '父目录索引',
+  INDEX `idx_path` (`path`) COMMENT '路径索引',
+  INDEX `idx_level` (`level`) COMMENT '层级索引',
+  UNIQUE KEY `uk_path` (`path`) COMMENT '路径唯一索引'
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='文件目录表';
+
+-- 插入默认根目录
+INSERT INTO `directory` (`name`, `path`, `parent_id`, `level`, `sort`, `created_at`) 
+VALUES ('默认目录', 'common', NULL, 1, 0, NOW())
+ON DUPLICATE KEY UPDATE `name` = `name`;
+
 -- ============================================
 -- 文章相关表
 -- ============================================
@@ -561,3 +582,15 @@ CREATE TABLE IF NOT EXISTS `user_article_like` (
   INDEX `idx_article_id` (`article_id`),
   UNIQUE KEY `uk_user_article` (`user_id`, `article_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户文章点赞表';
+
+-- 文章图片表
+CREATE TABLE IF NOT EXISTS `article_image` (
+  `id` BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '主键ID',
+  `article_id` BIGINT NOT NULL COMMENT '文章ID',
+  `image_url` VARCHAR(500) NOT NULL COMMENT '图片URL',
+  `sort` INT DEFAULT 0 COMMENT '排序（数字越小越靠前）',
+  `create_time` DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `update_time` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  INDEX `idx_article_id` (`article_id`) COMMENT '文章ID索引',
+  INDEX `idx_sort` (`article_id`, `sort`) COMMENT '文章ID和排序联合索引'
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='文章图片表';
