@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.travel.mapper.AttractionTicketMapper">
+
+    <resultMap id="BaseResultMap" type="com.travel.entity.AttractionTicket">
+        <id column="id" property="id"/>
+        <result column="attraction_id" property="attractionId"/>
+        <result column="category_id" property="categoryId"/>
+        <result column="name" property="name"/>
+        <result column="price" property="price"/>
+        <result column="included_attractions" property="includedAttractions" typeHandler="com.travel.mapper.typehandler.JsonListTypeHandler"/>
+        <result column="verification_method" property="verificationMethod"/>
+        <result column="refund_rule" property="refundRule"/>
+        <result column="booking_notice_url" property="bookingNoticeUrl"/>
+        <result column="sort" property="sort"/>
+        <result column="status" property="status"/>
+        <result column="create_time" property="createTime"/>
+        <result column="update_time" property="updateTime"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id, attraction_id, category_id, name, price, included_attractions,
+        verification_method, refund_rule, booking_notice_url, sort, status, create_time, update_time
+    </sql>
+
+    <!-- 根据ID查询 -->
+    <select id="selectById" resultMap="BaseResultMap">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM attraction_ticket
+        WHERE id = #{id}
+    </select>
+
+    <!-- 查询票种列表 -->
+    <select id="selectList" resultMap="BaseResultMap">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM attraction_ticket
+        <where>
+            <if test="attractionId != null">
+                AND attraction_id = #{attractionId}
+            </if>
+            <if test="categoryId != null">
+                AND category_id = #{categoryId}
+            </if>
+        </where>
+        ORDER BY sort ASC, create_time ASC
+    </select>
+
+    <!-- 插入票种 -->
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO attraction_ticket (
+            attraction_id, category_id, name, price, included_attractions,
+            verification_method, refund_rule, booking_notice_url, sort, status
+        ) VALUES (
+            #{attractionId}, #{categoryId}, #{name}, #{price},
+            #{includedAttractions, typeHandler=com.travel.mapper.typehandler.JsonListTypeHandler},
+            #{verificationMethod}, #{refundRule}, #{bookingNoticeUrl}, #{sort}, #{status}
+        )
+    </insert>
+
+    <!-- 更新票种信息 -->
+    <update id="updateById">
+        UPDATE attraction_ticket
+        <set>
+            <if test="name != null">name = #{name},</if>
+            <if test="price != null">price = #{price},</if>
+            <if test="includedAttractions != null">included_attractions = #{includedAttractions, typeHandler=com.travel.mapper.typehandler.JsonListTypeHandler},</if>
+            <if test="verificationMethod != null">verification_method = #{verificationMethod},</if>
+            <if test="refundRule != null">refund_rule = #{refundRule},</if>
+            <if test="bookingNoticeUrl != null">booking_notice_url = #{bookingNoticeUrl},</if>
+            <if test="sort != null">sort = #{sort},</if>
+            <if test="status != null">status = #{status},</if>
+        </set>
+        WHERE id = #{id}
+    </update>
+
+    <!-- 删除票种（物理删除） -->
+    <delete id="deleteById">
+        DELETE FROM attraction_ticket WHERE id = #{id}
+    </delete>
+
+    <!-- 根据景点ID删除票种 -->
+    <delete id="deleteByAttractionId">
+        DELETE FROM attraction_ticket WHERE attraction_id = #{attractionId}
+    </delete>
+
+    <!-- 根据分类ID删除票种 -->
+    <delete id="deleteByCategoryId">
+        DELETE FROM attraction_ticket WHERE category_id = #{categoryId}
+    </delete>
+
+</mapper>

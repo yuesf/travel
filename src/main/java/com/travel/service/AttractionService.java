@@ -175,6 +175,21 @@ public class AttractionService {
         if (request.getStatus() != null) {
             attraction.setStatus(request.getStatus());
         }
+        if (request.getRating() != null) {
+            attraction.setRating(request.getRating());
+        }
+        if (request.getTags() != null) {
+            attraction.setTags(request.getTags());
+        }
+        if (request.getAdmissionNotice() != null) {
+            attraction.setAdmissionNotice(request.getAdmissionNotice());
+        }
+        if (request.getAdmissionNoticeUrl() != null) {
+            attraction.setAdmissionNoticeUrl(request.getAdmissionNoticeUrl());
+        }
+        if (request.getGoldenSummitEnabled() != null) {
+            attraction.setGoldenSummitEnabled(request.getGoldenSummitEnabled());
+        }
         
         // 更新数据库
         int result = attractionMapper.updateById(attraction);

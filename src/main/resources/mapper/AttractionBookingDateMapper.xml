@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.travel.mapper.AttractionBookingDateMapper">
+
+    <resultMap id="BaseResultMap" type="com.travel.entity.AttractionBookingDate">
+        <id column="id" property="id"/>
+        <result column="attraction_id" property="attractionId"/>
+        <result column="booking_date" property="bookingDate"/>
+        <result column="price" property="price"/>
+        <result column="stock" property="stock"/>
+        <result column="available" property="available"/>
+        <result column="create_time" property="createTime"/>
+        <result column="update_time" property="updateTime"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id, attraction_id, booking_date, price, stock, available, create_time, update_time
+    </sql>
+
+    <!-- 根据ID查询 -->
+    <select id="selectById" resultMap="BaseResultMap">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM attraction_booking_date
+        WHERE id = #{id}
+    </select>
+
+    <!-- 根据景点ID和日期查询 -->
+    <select id="selectByAttractionIdAndDate" resultMap="BaseResultMap">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM attraction_booking_date
+        WHERE attraction_id = #{attractionId} AND booking_date = #{bookingDate}
+    </select>
+
+    <!-- 查询可订日期列表 -->
+    <select id="selectList" resultMap="BaseResultMap">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM attraction_booking_date
+        <where>
+            <if test="attractionId != null">
+                AND attraction_id = #{attractionId}
+            </if>
+            <if test="startDate != null">
+                AND booking_date &gt;= #{startDate}
+            </if>
+            <if test="endDate != null">
+                AND booking_date &lt;= #{endDate}
+            </if>
+        </where>
+        ORDER BY booking_date ASC
+    </select>
+
+    <!-- 插入可订日期 -->
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO attraction_booking_date (
+            attraction_id, booking_date, price, stock, available
+        ) VALUES (
+            #{attractionId}, #{bookingDate}, #{price}, #{stock}, #{available}
+        )
+    </insert>
+
+    <!-- 批量插入可订日期 -->
+    <insert id="insertBatch" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO attraction_booking_date (
+            attraction_id, booking_date, price, stock, available
+        ) VALUES
+        <foreach collection="list" item="item" separator=",">
+            (#{item.attractionId}, #{item.bookingDate}, #{item.price}, #{item.stock}, #{item.available})
+        </foreach>
+        ON DUPLICATE KEY UPDATE
+            price = VALUES(price),
+            stock = VALUES(stock),
+            available = VALUES(available)
+    </insert>
+
+    <!-- 更新可订日期信息 -->
+    <update id="updateById">
+        UPDATE attraction_booking_date
+        <set>
+            <if test="price != null">price = #{price},</if>
+            <if test="stock != null">stock = #{stock},</if>
+            <if test="available != null">available = #{available},</if>
+        </set>
+        WHERE id = #{id}
+    </update>
+
+    <!-- 删除可订日期（物理删除） -->
+    <delete id="deleteById">
+        DELETE FROM attraction_booking_date WHERE id = #{id}
+    </delete>
+
+    <!-- 根据景点ID删除可订日期 -->
+    <delete id="deleteByAttractionId">
+        DELETE FROM attraction_booking_date WHERE attraction_id = #{attractionId}
+    </delete>
+
+</mapper>

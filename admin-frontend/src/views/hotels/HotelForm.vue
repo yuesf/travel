@@ -42,23 +42,13 @@
               </el-col>
             </el-row>
 
-            <el-row :gutter="20">
-              <el-col :span="8">
-                <el-form-item label="省份">
-                  <el-input v-model="formData.province" placeholder="请输入省份" />
-                </el-form-item>
-              </el-col>
-              <el-col :span="8">
-                <el-form-item label="城市">
-                  <el-input v-model="formData.city" placeholder="请输入城市" />
-                </el-form-item>
-              </el-col>
-              <el-col :span="8">
-                <el-form-item label="区县">
-                  <el-input v-model="formData.district" placeholder="请输入区县" />
-                </el-form-item>
-              </el-col>
-            </el-row>
+            <el-form-item label="省市区">
+              <RegionPicker
+                v-model="formData.region"
+                placeholder="请选择省市区"
+                @change="handleRegionChange"
+              />
+            </el-form-item>
 
             <el-form-item label="详细地址">
               <el-input
@@ -69,14 +59,24 @@
               />
             </el-form-item>
 
-            <el-form-item label="地图位置">
-              <MapPicker
-                v-model="mapLocation"
-                :height="'400px'"
-                @change="handleMapChange"
-              />
-              <div class="form-tip">点击地图选择位置，或手动输入经纬度</div>
-            </el-form-item>
+            <el-row :gutter="20">
+              <el-col :span="12">
+                <el-form-item label="经度">
+                  <el-input
+                    v-model="formData.longitude"
+                    placeholder="请输入经度（可选，例如：116.397428）"
+                  />
+                </el-form-item>
+              </el-col>
+              <el-col :span="12">
+                <el-form-item label="纬度">
+                  <el-input
+                    v-model="formData.latitude"
+                    placeholder="请输入纬度（可选，例如：39.90923）"
+                  />
+                </el-form-item>
+              </el-col>
+            </el-row>
 
             <el-row :gutter="20">
               <el-col :span="12">
@@ -224,13 +224,13 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted, watch } from 'vue'
+import { ref, reactive, computed, onMounted, onErrorCaptured } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, Refresh } from '@element-plus/icons-vue'
 import ImageUpload from '@/components/ImageUpload.vue'
 import RichTextEditor from '@/components/RichTextEditor.vue'
-import MapPicker from '@/components/MapPicker.vue'
+import RegionPicker from '@/components/RegionPicker.vue'
 import RoomForm from './RoomForm.vue'
 import {
   getHotelById,
@@ -252,9 +252,6 @@ const submitting = ref(false)
 const isEdit = computed(() => !!route.params.id)
 const hotelId = computed(() => (isEdit.value ? parseInt(route.params.id) : null))
 
-// 地图位置
-const mapLocation = ref(null)
-
 // 设施文本（用于输入）
 const facilitiesText = ref('')
 
@@ -270,6 +267,7 @@ const formData = reactive({
   province: '',
   city: '',
   district: '',
+  region: [], // 省市区数组，用于RegionPicker
   address: '',
   starLevel: null,
   description: '',
@@ -291,15 +289,11 @@ const formRules = {
   starLevel: [{ required: true, message: '请选择星级', trigger: 'change' }],
 }
 
-// 处理地图变化
-const handleMapChange = (location) => {
-  if (location) {
-    formData.longitude = location.lng || null
-    formData.latitude = location.lat || null
-  } else {
-    formData.longitude = null
-    formData.latitude = null
-  }
+// 区域变化
+const handleRegionChange = (regionData) => {
+  formData.province = regionData.province || ''
+  formData.city = regionData.city || ''
+  formData.district = regionData.district || ''
 }
 
 // 处理设施变化
@@ -331,6 +325,14 @@ const loadDetail = async () => {
       formData.province = data.province || ''
       formData.city = data.city || ''
       formData.district = data.district || ''
+      // 设置省市区数组，确保是有效的字符串数组
+      if (data.province || data.city || data.district) {
+        formData.region = [data.province, data.city, data.district]
+          .filter(Boolean)
+          .filter(item => typeof item === 'string' && item.trim() !== '')
+      } else {
+        formData.region = []
+      }
       formData.address = data.address || ''
       formData.starLevel = data.starLevel || null
       formData.description = data.description || ''
@@ -346,14 +348,6 @@ const loadDetail = async () => {
       facilitiesText.value = Array.isArray(formData.facilities)
         ? formData.facilities.join(',')
         : ''
-
-      // 初始化地图位置
-      if (formData.longitude && formData.latitude) {
-        mapLocation.value = {
-          lng: formData.longitude,
-          lat: formData.latitude,
-        }
-      }
 
       // 同步时间
       if (data.syncTime) {
@@ -461,6 +455,14 @@ const handleSubmit = async () => {
 
       submitting.value = true
       try {
+        // 处理经纬度：如果是字符串，转换为数字；如果为空，设为 undefined
+        const longitude = formData.longitude
+          ? (typeof formData.longitude === 'string' ? parseFloat(formData.longitude) : formData.longitude)
+          : undefined
+        const latitude = formData.latitude
+          ? (typeof formData.latitude === 'string' ? parseFloat(formData.latitude) : formData.latitude)
+          : undefined
+
         const submitData = {
           name: formData.name,
           province: formData.province || undefined,
@@ -472,8 +474,8 @@ const handleSubmit = async () => {
           images: Array.isArray(formData.images) ? formData.images : [],
           facilities: formData.facilities.length > 0 ? formData.facilities : undefined,
           contactPhone: formData.contactPhone || undefined,
-          longitude: formData.longitude || undefined,
-          latitude: formData.latitude || undefined,
+          longitude: longitude,
+          latitude: latitude,
           status: formData.status,
         }
 
@@ -484,7 +486,13 @@ const handleSubmit = async () => {
           const res = await createHotel(submitData)
           ElMessage.success('创建成功')
           // 创建成功后跳转到编辑页面
-          router.push(`/hotels/edit/${res.data.id}`)
+          if (res.data && res.data.id) {
+            router.push(`/hotels/edit/${res.data.id}`)
+          } else {
+            // 如果返回数据异常，跳转到列表页
+            console.warn('创建成功但返回数据异常:', res)
+            router.push('/hotels')
+          }
           return
         }
 
@@ -513,6 +521,17 @@ const handleCancel = () => {
       // 用户取消
     })
 }
+
+// 错误捕获，防止子组件错误导致整个页面崩溃
+onErrorCaptured((err, instance, info) => {
+  console.error('组件错误:', err, info, err.stack)
+  // 只在开发环境或关键错误时显示提示
+  if (process.env.NODE_ENV === 'development' || err.message?.includes('Cannot read')) {
+    ElMessage.error(`页面组件加载失败: ${err.message || '未知错误'}`)
+  }
+  // 返回false阻止错误继续传播，但允许页面继续渲染
+  return false
+})
 
 onMounted(() => {
   loadDetail()

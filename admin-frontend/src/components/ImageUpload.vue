@@ -1,5 +1,11 @@
 <template>
   <div class="image-upload-container">
+    <div class="upload-actions" v-if="!disableUpload">
+      <el-button type="primary" @click="handleSelectFromLibrary" style="margin-bottom: 10px">
+        从文件库选择
+      </el-button>
+    </div>
+    
     <el-upload
       ref="uploadRef"
       :action="uploadUrl"
@@ -28,6 +34,15 @@
         @error="handleImageError"
       />
     </el-dialog>
+
+    <!-- 文件库选择器 -->
+    <FileSelector
+      v-model="fileSelectorVisible"
+      file-type="image"
+      :multiple="true"
+      :max-select="limit"
+      @select="handleFileSelect"
+    />
   </div>
 </template>
 
@@ -38,6 +53,7 @@ import { Plus } from '@element-plus/icons-vue'
 import Sortable from 'sortablejs'
 import { getToken } from '@/utils/auth'
 import { API_BASE_URL } from '@/config/api'
+import FileSelector from './FileSelector.vue'
 // OSS bucket已改为"私有写公有读"模式，不再需要获取签名URL
 
 const props = defineProps({
@@ -93,6 +109,7 @@ const uploadRef = ref(null)
 const fileList = ref([])
 const previewVisible = ref(false)
 const previewImageUrl = ref('')
+const fileSelectorVisible = ref(false)
 let sortableInstance = null
 const isRemoving = ref(false) // 标记是否正在删除，防止 watch 重新同步
 // 注意：OSS bucket已改为"私有写公有读"模式，后端直接返回公开URL，前端直接使用即可
@@ -399,6 +416,46 @@ const handleImageError = async (e) => {
 // 超出限制
 const handleExceed = () => {
   ElMessage.warning(`最多只能上传 ${props.limit} 张图片`)
+}
+
+// 从文件库选择
+const handleSelectFromLibrary = () => {
+  fileSelectorVisible.value = true
+}
+
+// 处理文件库选择的文件
+const handleFileSelect = (files) => {
+  if (!files || files.length === 0) {
+    return
+  }
+
+  // 获取当前已有的图片URL列表
+  const currentUrls = Array.isArray(props.modelValue) 
+    ? [...props.modelValue] 
+    : (props.modelValue ? [props.modelValue] : [])
+
+  // 添加新选择的文件URL
+  const newUrls = files.map(file => file.fileUrl || file.previewUrl || file.url).filter(Boolean)
+  
+  // 合并并去重
+  const allUrls = [...new Set([...currentUrls, ...newUrls])]
+  
+  // 检查是否超过限制
+  if (allUrls.length > props.limit) {
+    ElMessage.warning(`最多只能选择 ${props.limit} 张图片，已自动截取前 ${props.limit} 张`)
+    allUrls.splice(props.limit)
+  }
+
+  // 更新值
+  if (props.limit === 1) {
+    emit('update:modelValue', allUrls[0] || '')
+    emit('change', allUrls[0] || '')
+  } else {
+    emit('update:modelValue', allUrls)
+    emit('change', allUrls)
+  }
+
+  ElMessage.success(`已添加 ${newUrls.length} 张图片`)
 }
 
 // 初始化拖拽排序

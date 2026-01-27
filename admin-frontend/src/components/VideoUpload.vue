@@ -1,31 +1,13 @@
 <template>
   <div class="video-upload-container">
-    <el-upload
-      v-if="!disableUpload"
-      :action="uploadUrl"
-      :headers="uploadHeaders"
-      :file-list="fileList"
-      :on-success="handleSuccess"
-      :on-error="handleError"
-      :on-progress="handleProgress"
-      :before-upload="beforeUpload"
-      :limit="limit"
-      :on-exceed="handleExceed"
-      :disabled="disabled"
-      :on-remove="handleRemove"
-      accept="video/mp4"
-      :show-file-list="true"
-    >
-      <el-button type="primary" :icon="Upload">上传视频</el-button>
-      <template #tip>
-        <div class="el-upload__tip">
-          只能上传MP4格式的视频，文件大小不超过{{ maxSize }}MB
-        </div>
-      </template>
-    </el-upload>
+    <div class="upload-actions" v-if="!disableUpload">
+      <el-button type="primary" @click="handleSelectFromLibrary">
+        从文件库选择
+      </el-button>
+    </div>
     
-    <!-- 当禁用上传时，只显示已选择的视频 -->
-    <div v-else-if="videoUrl" class="video-display">
+    <!-- 视频预览 -->
+    <div v-if="videoUrl" class="video-preview">
       <div class="video-item">
         <video
           :src="videoUrl"
@@ -44,36 +26,26 @@
         </el-button>
       </div>
     </div>
-
-    <!-- 上传进度条 -->
-    <div v-if="uploadProgress > 0 && uploadProgress < 100" class="upload-progress">
-      <el-progress
-        :percentage="uploadProgress"
-        :status="uploadProgress === 100 ? 'success' : undefined"
-        :stroke-width="8"
-      />
-      <div class="progress-text">上传中... {{ uploadProgress }}%</div>
+    
+    <div v-else class="empty-state">
+      <el-empty description="请从文件库选择视频" :image-size="80" />
     </div>
 
-    <!-- 视频预览 -->
-    <div v-if="videoUrl" class="video-preview">
-      <video
-        :src="videoUrl"
-        controls
-        style="width: 100%; max-width: 500px; margin-top: 16px;"
-      >
-        您的浏览器不支持视频播放
-      </video>
-    </div>
+    <!-- 文件库选择器 -->
+    <FileSelector
+      v-model="fileSelectorVisible"
+      file-type="video"
+      :multiple="false"
+      :max-select="1"
+      @select="handleFileSelect"
+    />
   </div>
 </template>
 
 <script setup>
-import { ref, computed, watch } from 'vue'
+import { ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
-import { Upload } from '@element-plus/icons-vue'
-import { getToken } from '@/utils/auth'
-import { API_BASE_URL } from '@/config/api'
+import FileSelector from './FileSelector.vue'
 
 const props = defineProps({
   modelValue: {
@@ -101,118 +73,53 @@ const props = defineProps({
 
 const emit = defineEmits(['update:modelValue', 'change'])
 
-// 上传视频地址：基于统一的 API_BASE_URL 拼接
-// 开发环境：/api/v1/common/file/upload/video
-// 生产环境：/travel/api/v1/common/file/upload/video
-const uploadUrl = computed(() => {
-  const baseUrl = API_BASE_URL.replace(/\/$/, '')
-  return `${baseUrl}/common/file/upload/video`
-})
-
-const uploadHeaders = computed(() => {
-  const token = getToken()
-  return {
-    Authorization: `Bearer ${token}`,
-  }
-})
-
-const fileList = ref([])
 const videoUrl = ref('')
-const uploadProgress = ref(0)
+const fileSelectorVisible = ref(false)
 
 // 同步外部值到内部
 watch(
   () => props.modelValue,
   (newVal) => {
     videoUrl.value = newVal || ''
-    if (newVal) {
-      fileList.value = [{
-        uid: 'video-1',
-        name: 'video.mp4',
-        url: newVal,
-        status: 'success',
-      }]
-    } else {
-      fileList.value = []
-    }
   },
   { immediate: true }
 )
 
-// 上传前检查
-const beforeUpload = (file) => {
-  const isVideo = file.type.startsWith('video/')
-  const isValidType = file.type === 'video/mp4'
-  const isLtMaxSize = file.size / 1024 / 1024 < props.maxSize
-
-  if (!isVideo || !isValidType) {
-    ElMessage.error('只能上传MP4格式的视频文件')
-    return false
-  }
-
-  if (!isLtMaxSize) {
-    ElMessage.error(`视频大小不能超过 ${props.maxSize}MB`)
-    return false
-  }
-
-  // 重置进度
-  uploadProgress.value = 0
-  return true
-}
-
-// 上传进度
-const handleProgress = (event, file) => {
-  uploadProgress.value = Math.round((event.loaded / event.total) * 100)
-}
-
-// 上传成功
-const handleSuccess = (response, file) => {
-  uploadProgress.value = 100
-  if (response && response.code === 200) {
-    const url = response.data?.url || response.data
-    // OSS bucket已改为"私有写公有读"模式，后端直接返回公开URL
-    const fileUrl = typeof url === 'string' ? url : ''
-    
-    // 直接使用返回的公开URL
-    videoUrl.value = fileUrl
-    file.url = fileUrl
-    file.status = 'success'
-    
-    // 直接使用公开URL保存到数据库
-    emit('update:modelValue', fileUrl)
-    emit('change', fileUrl)
-    ElMessage.success('上传成功')
-    // 延迟重置进度条
-    setTimeout(() => {
-      uploadProgress.value = 0
-    }, 1000)
-  } else {
-    file.status = 'error'
-    uploadProgress.value = 0
-    ElMessage.error(response?.message || '上传失败')
-  }
-}
-
-// 上传失败
-const handleError = (error, file) => {
-  file.status = 'error'
-  uploadProgress.value = 0
-  console.error('上传失败:', error)
-  ElMessage.error('上传失败，请重试')
-}
-
 // 移除文件
 const handleRemove = () => {
   videoUrl.value = ''
-  fileList.value = []
-  uploadProgress.value = 0
   emit('update:modelValue', '')
   emit('change', '')
 }
 
-// 超出限制
-const handleExceed = () => {
-  ElMessage.warning(`最多只能上传 ${props.limit} 个视频`)
+// 从文件库选择
+const handleSelectFromLibrary = () => {
+  fileSelectorVisible.value = true
+}
+
+// 处理文件库选择的文件
+const handleFileSelect = (files) => {
+  if (!files || files.length === 0) {
+    return
+  }
+
+  // 视频只能选择一个
+  const selectedFile = files[0]
+  const fileUrl = selectedFile.fileUrl || selectedFile.previewUrl || selectedFile.url
+  
+  if (fileUrl) {
+    videoUrl.value = fileUrl
+    fileList.value = [{
+      uid: 'video-1',
+      name: selectedFile.originalName || 'video.mp4',
+      url: fileUrl,
+      status: 'success',
+    }]
+    
+    emit('update:modelValue', fileUrl)
+    emit('change', fileUrl)
+    ElMessage.success('已选择视频')
+  }
 }
 </script>
 
@@ -221,24 +128,17 @@ const handleExceed = () => {
   width: 100%;
 }
 
-.upload-progress {
-  margin-top: 16px;
-}
-
-.progress-text {
-  margin-top: 8px;
-  text-align: center;
-  color: #606266;
-  font-size: 14px;
-}
-
 .video-preview {
   margin-top: 16px;
 }
 
-:deep(.el-upload__tip) {
-  color: #909399;
-  font-size: 12px;
-  margin-top: 8px;
+.video-item {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.empty-state {
+  margin-top: 20px;
 }
 </style>

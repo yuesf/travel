@@ -107,6 +107,31 @@ public class Attraction implements Serializable {
     private Integer status;
     
     /**
+     * 景区评级：1A-5A
+     */
+    private String rating;
+    
+    /**
+     * 景区标签列表
+     */
+    private List<String> tags;
+    
+    /**
+     * 入园须知内容
+     */
+    private String admissionNotice;
+    
+    /**
+     * 入园须知链接
+     */
+    private String admissionNoticeUrl;
+    
+    /**
+     * 是否启用金顶预约：0-否，1-是
+     */
+    private Integer goldenSummitEnabled;
+    
+    /**
      * 同步来源
      */
     private String syncSource;

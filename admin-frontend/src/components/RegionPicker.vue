@@ -251,29 +251,38 @@ const findCodeByName = (name, options) => {
 watch(
   () => props.modelValue,
   (newVal) => {
-    if (Array.isArray(newVal)) {
-      if (newVal.length === 0) {
-        regionValue.value = []
-      } else if (typeof newVal[0] === 'string') {
-        // 如果是字符串数组，转换为代码数组
-        const codes = []
-        let currentOptions = regionOptions.value
-        for (const name of newVal) {
-          const code = findCodeByName(name, currentOptions)
-          if (code) {
-            codes.push(code)
-            const option = currentOptions.find((opt) => opt.code === code)
-            currentOptions = option?.children || []
-          } else {
-            break
+    try {
+      if (Array.isArray(newVal)) {
+        if (newVal.length === 0) {
+          regionValue.value = []
+        } else if (typeof newVal[0] === 'string') {
+          // 如果是字符串数组，转换为代码数组
+          const codes = []
+          let currentOptions = regionOptions.value
+          for (const name of newVal) {
+            if (!name || !currentOptions || !Array.isArray(currentOptions)) {
+              break
+            }
+            const code = findCodeByName(name, currentOptions)
+            if (code) {
+              codes.push(code)
+              const option = currentOptions.find((opt) => opt.code === code)
+              currentOptions = option?.children || []
+            } else {
+              // 如果找不到对应的代码，停止转换，使用已找到的部分
+              break
+            }
           }
+          regionValue.value = codes
+        } else {
+          // 如果是代码数组
+          regionValue.value = newVal
         }
-        regionValue.value = codes
       } else {
-        // 如果是代码数组
-        regionValue.value = newVal
+        regionValue.value = []
       }
-    } else {
+    } catch (error) {
+      console.warn('RegionPicker 同步值失败:', error)
       regionValue.value = []
     }
   },

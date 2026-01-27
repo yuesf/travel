@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.travel.mapper.AttractionGoldenSummitTimeSlotMapper">
+
+    <resultMap id="BaseResultMap" type="com.travel.entity.AttractionGoldenSummitTimeSlot">
+        <id column="id" property="id"/>
+        <result column="attraction_id" property="attractionId"/>
+        <result column="booking_date" property="bookingDate"/>
+        <result column="start_time" property="startTime"/>
+        <result column="end_time" property="endTime"/>
+        <result column="stock" property="stock"/>
+        <result column="available" property="available"/>
+        <result column="create_time" property="createTime"/>
+        <result column="update_time" property="updateTime"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id, attraction_id, booking_date, start_time, end_time, stock, available, create_time, update_time
+    </sql>
+
+    <!-- 根据ID查询 -->
+    <select id="selectById" resultMap="BaseResultMap">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM attraction_golden_summit_time_slot
+        WHERE id = #{id}
+    </select>
+
+    <!-- 查询时间段列表 -->
+    <select id="selectList" resultMap="BaseResultMap">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM attraction_golden_summit_time_slot
+        <where>
+            <if test="attractionId != null">
+                AND attraction_id = #{attractionId}
+            </if>
+            <if test="bookingDate != null">
+                AND booking_date = #{bookingDate}
+            </if>
+        </where>
+        ORDER BY start_time ASC
+    </select>
+
+    <!-- 插入时间段 -->
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO attraction_golden_summit_time_slot (
+            attraction_id, booking_date, start_time, end_time, stock, available
+        ) VALUES (
+            #{attractionId}, #{bookingDate}, #{startTime}, #{endTime}, #{stock}, #{available}
+        )
+    </insert>
+
+    <!-- 更新时间段信息 -->
+    <update id="updateById">
+        UPDATE attraction_golden_summit_time_slot
+        <set>
+            <if test="startTime != null">start_time = #{startTime},</if>
+            <if test="endTime != null">end_time = #{endTime},</if>
+            <if test="stock != null">stock = #{stock},</if>
+            <if test="available != null">available = #{available},</if>
+        </set>
+        WHERE id = #{id}
+    </update>
+
+    <!-- 删除时间段（物理删除） -->
+    <delete id="deleteById">
+        DELETE FROM attraction_golden_summit_time_slot WHERE id = #{id}
+    </delete>
+
+    <!-- 根据景点ID删除时间段 -->
+    <delete id="deleteByAttractionId">
+        DELETE FROM attraction_golden_summit_time_slot WHERE attraction_id = #{attractionId}
+    </delete>
+
+</mapper>

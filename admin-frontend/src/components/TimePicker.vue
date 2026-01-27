@@ -10,7 +10,7 @@
       :range-separator="rangeSeparator"
       :start-placeholder="startPlaceholder"
       :end-placeholder="endPlaceholder"
-      :picker-options="pickerOptions"
+      :disabled-minutes="disabledMinutes"
       style="width: 100%"
       @change="handleChange"
     />
@@ -69,8 +69,8 @@ const emit = defineEmits(['update:modelValue', 'change'])
 
 const timeValue = ref(null)
 
-// 配置时间选择器选项，设置分钟步长为30
-const pickerOptions = computed(() => {
+// 配置时间选择器选项，设置分钟步长为30（每半点一个刻度）
+const disabledMinutes = computed(() => {
   const step = props.minuteStep || 30
   // 生成允许的分钟选项：00, 30
   const allowedMinutes = []
@@ -78,18 +78,16 @@ const pickerOptions = computed(() => {
     allowedMinutes.push(i)
   }
   
-  return {
-    // 禁用不在允许列表中的分钟
-    disabledMinutes: (hour) => {
-      const minutes = []
-      for (let i = 0; i < 60; i++) {
-        if (!allowedMinutes.includes(i)) {
-          minutes.push(i)
-        }
-      }
-      return minutes
-    },
+  // 生成需要禁用的分钟列表
+  const disabledMinutesList = []
+  for (let i = 0; i < 60; i++) {
+    if (!allowedMinutes.includes(i)) {
+      disabledMinutesList.push(i)
+    }
   }
+  
+  // 返回一个函数，Element Plus 2.x 需要函数形式
+  return (hour) => disabledMinutesList
 })
 
 // 同步外部值到内部

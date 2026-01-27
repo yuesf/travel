@@ -23,6 +23,11 @@
         <result column="ticket_stock" property="ticketStock"/>
         <result column="valid_period" property="validPeriod"/>
         <result column="status" property="status"/>
+        <result column="rating" property="rating"/>
+        <result column="tags" property="tags" typeHandler="com.travel.mapper.typehandler.JsonListTypeHandler"/>
+        <result column="admission_notice" property="admissionNotice"/>
+        <result column="admission_notice_url" property="admissionNoticeUrl"/>
+        <result column="golden_summit_enabled" property="goldenSummitEnabled"/>
         <result column="sync_source" property="syncSource"/>
         <result column="sync_time" property="syncTime"/>
         <result column="create_time" property="createTime"/>
@@ -32,7 +37,8 @@
     <sql id="Base_Column_List">
         id, name, location, province, city, district, address, description, images,
         video_url, open_time, contact_phone, longitude, latitude, ticket_price,
-        ticket_stock, valid_period, status, sync_source, sync_time, create_time, update_time
+        ticket_stock, valid_period, status, rating, tags, admission_notice, admission_notice_url,
+        golden_summit_enabled, sync_source, sync_time, create_time, update_time
     </sql>
 
     <!-- 根据ID查询 -->
@@ -85,12 +91,16 @@
         INSERT INTO attraction (
             name, location, province, city, district, address, description, images,
             video_url, open_time, contact_phone, longitude, latitude, ticket_price,
-            ticket_stock, valid_period, status, sync_source, sync_time
+            ticket_stock, valid_period, status, rating, tags, admission_notice, admission_notice_url,
+            golden_summit_enabled, sync_source, sync_time
         ) VALUES (
             #{name}, #{location}, #{province}, #{city}, #{district}, #{address}, #{description},
             #{images, typeHandler=com.travel.mapper.typehandler.JsonListTypeHandler},
             #{videoUrl}, #{openTime}, #{contactPhone}, #{longitude}, #{latitude},
-            #{ticketPrice}, #{ticketStock}, #{validPeriod}, #{status}, #{syncSource}, #{syncTime}
+            #{ticketPrice}, #{ticketStock}, #{validPeriod}, #{status}, #{rating},
+            #{tags, typeHandler=com.travel.mapper.typehandler.JsonListTypeHandler},
+            #{admissionNotice}, #{admissionNoticeUrl}, #{goldenSummitEnabled},
+            #{syncSource}, #{syncTime}
         )
     </insert>
 
@@ -115,6 +125,11 @@
             <if test="ticketStock != null">ticket_stock = #{ticketStock},</if>
             <if test="validPeriod != null">valid_period = #{validPeriod},</if>
             <if test="status != null">status = #{status},</if>
+            <if test="rating != null">rating = #{rating},</if>
+            <if test="tags != null">tags = #{tags, typeHandler=com.travel.mapper.typehandler.JsonListTypeHandler},</if>
+            <if test="admissionNotice != null">admission_notice = #{admissionNotice},</if>
+            <if test="admissionNoticeUrl != null">admission_notice_url = #{admissionNoticeUrl},</if>
+            <if test="goldenSummitEnabled != null">golden_summit_enabled = #{goldenSummitEnabled},</if>
             <if test="syncSource != null">sync_source = #{syncSource},</if>
             <if test="syncTime != null">sync_time = #{syncTime},</if>
         </set>

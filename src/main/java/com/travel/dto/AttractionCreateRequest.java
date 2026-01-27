@@ -1,7 +1,6 @@
 package com.travel.dto;
 
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
 import lombok.Data;
 
 import java.math.BigDecimal;
@@ -82,15 +81,13 @@ public class AttractionCreateRequest {
     private BigDecimal latitude;
     
     /**
-     * 门票价格
+     * 门票价格（可选，现在通过可订日期和票种来管理）
      */
-    @NotNull(message = "门票价格不能为空")
     private BigDecimal ticketPrice;
     
     /**
-     * 门票库存
+     * 门票库存（可选，现在通过可订日期和票种来管理）
      */
-    @NotNull(message = "门票库存不能为空")
     private Integer ticketStock;
     
     /**
@@ -102,4 +99,29 @@ public class AttractionCreateRequest {
      * 状态：0-下架，1-上架
      */
     private Integer status;
+    
+    /**
+     * 景区评级：1A-5A
+     */
+    private String rating;
+    
+    /**
+     * 景区标签列表
+     */
+    private List<String> tags;
+    
+    /**
+     * 入园须知内容
+     */
+    private String admissionNotice;
+    
+    /**
+     * 入园须知链接
+     */
+    private String admissionNoticeUrl;
+    
+    /**
+     * 是否启用金顶预约：0-否，1-是
+     */
+    private Integer goldenSummitEnabled;
 }

@@ -166,6 +166,22 @@ const formRules = {
   stock: [{ required: true, message: '请输入库存', trigger: 'blur' }],
 }
 
+// 重置表单
+const resetForm = () => {
+  formData.roomType = ''
+  formData.price = null
+  formData.stock = null
+  formData.bedType = ''
+  formData.area = null
+  formData.facilities = []
+  formData.images = []
+  formData.status = 1
+  facilitiesText.value = ''
+  if (formRef.value) {
+    formRef.value.clearValidate()
+  }
+}
+
 // 监听roomData变化，初始化表单
 watch(
   () => props.roomData,
@@ -198,22 +214,6 @@ watch(visible, (val) => {
     resetForm()
   }
 })
-
-// 重置表单
-const resetForm = () => {
-  formData.roomType = ''
-  formData.price = null
-  formData.stock = null
-  formData.bedType = ''
-  formData.area = null
-  formData.facilities = []
-  formData.images = []
-  formData.status = 1
-  facilitiesText.value = ''
-  if (formRef.value) {
-    formRef.value.clearValidate()
-  }
-}
 
 // 处理设施变化
 const handleFacilitiesChange = () => {

@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.travel.mapper.AttractionTicketCategoryMapper">
+
+    <resultMap id="BaseResultMap" type="com.travel.entity.AttractionTicketCategory">
+        <id column="id" property="id"/>
+        <result column="attraction_id" property="attractionId"/>
+        <result column="name" property="name"/>
+        <result column="description" property="description"/>
+        <result column="sort" property="sort"/>
+        <result column="status" property="status"/>
+        <result column="create_time" property="createTime"/>
+        <result column="update_time" property="updateTime"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id, attraction_id, name, description, sort, status, create_time, update_time
+    </sql>
+
+    <!-- 根据ID查询 -->
+    <select id="selectById" resultMap="BaseResultMap">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM attraction_ticket_category
+        WHERE id = #{id}
+    </select>
+
+    <!-- 查询票种分类列表 -->
+    <select id="selectList" resultMap="BaseResultMap">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM attraction_ticket_category
+        <where>
+            <if test="attractionId != null">
+                AND attraction_id = #{attractionId}
+            </if>
+        </where>
+        ORDER BY sort ASC, create_time ASC
+    </select>
+
+    <!-- 插入票种分类 -->
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO attraction_ticket_category (
+            attraction_id, name, description, sort, status
+        ) VALUES (
+            #{attractionId}, #{name}, #{description}, #{sort}, #{status}
+        )
+    </insert>
+
+    <!-- 更新票种分类信息 -->
+    <update id="updateById">
+        UPDATE attraction_ticket_category
+        <set>
+            <if test="name != null">name = #{name},</if>
+            <if test="description != null">description = #{description},</if>
+            <if test="sort != null">sort = #{sort},</if>
+            <if test="status != null">status = #{status},</if>
+        </set>
+        WHERE id = #{id}
+    </update>
+
+    <!-- 删除票种分类（物理删除） -->
+    <delete id="deleteById">
+        DELETE FROM attraction_ticket_category WHERE id = #{id}
+    </delete>
+
+    <!-- 根据景点ID删除票种分类 -->
+    <delete id="deleteByAttractionId">
+        DELETE FROM attraction_ticket_category WHERE attraction_id = #{attractionId}
+    </delete>
+
+</mapper>
