@@ -61,7 +61,7 @@
     </el-row>
 
     <!-- 搜索筛选区域 -->
-    <el-card class="search-card" shadow="never">
+    <el-card class="search-card" shadow="never" style="margin-bottom: 20px;">
       <el-form :model="searchForm" :inline="true" class="search-form">
         <el-form-item label="文件类型">
           <el-select v-model="searchForm.fileType" placeholder="全部" clearable style="width: 120px">
@@ -76,14 +76,6 @@
             <el-option label="OSS" value="OSS" />
             <el-option label="本地" value="LOCAL" />
           </el-select>
-        </el-form-item>
-        <el-form-item label="模块">
-          <el-input
-            v-model="searchForm.module"
-            placeholder="如：banner、article"
-            clearable
-            style="width: 180px"
-          />
         </el-form-item>
         <el-form-item label="文件名">
           <el-input
@@ -101,8 +93,22 @@
       </el-form>
     </el-card>
 
-    <!-- 数据表格 -->
-    <el-card class="table-card" shadow="never">
+    <!-- 左右分栏布局 -->
+    <div class="file-manage-layout">
+      <!-- 左侧目录树 -->
+      <div class="directory-panel">
+        <el-card shadow="never" class="directory-card">
+          <DirectoryTree
+            :selected-directory-id="selectedDirectoryId"
+            @select="handleDirectorySelect"
+            @refresh="handleDirectoryRefresh"
+          />
+        </el-card>
+      </div>
+      
+      <!-- 右侧文件列表 -->
+      <div class="file-list-panel">
+        <el-card class="table-card" shadow="never">
       <div class="toolbar">
         <div class="toolbar-left">
           <span class="toolbar-title">文件列表</span>
@@ -190,19 +196,21 @@
         </el-table-column>
       </el-table>
 
-      <!-- 分页 -->
-      <div class="pagination-wrapper">
-        <el-pagination
-          v-model:current-page="pagination.page"
-          v-model:page-size="pagination.pageSize"
-          :page-sizes="[10, 20, 50, 100]"
-          :total="pagination.total"
-          layout="total, sizes, prev, pager, next, jumper"
-          @size-change="handleSizeChange"
-          @current-change="handlePageChange"
-        />
+          <!-- 分页 -->
+          <div class="pagination-wrapper">
+            <el-pagination
+              v-model:current-page="pagination.page"
+              v-model:page-size="pagination.pageSize"
+              :page-sizes="[10, 20, 50, 100]"
+              :total="pagination.total"
+              layout="total, sizes, prev, pager, next, jumper"
+              @size-change="handleSizeChange"
+              @current-change="handlePageChange"
+            />
+          </div>
+        </el-card>
       </div>
-    </el-card>
+    </div>
 
     <!-- 查看文件详情对话框 -->
     <el-dialog
@@ -267,14 +275,19 @@
             <el-radio value="video">视频</el-radio>
           </el-radio-group>
         </el-form-item>
-        <el-form-item label="模块" required>
-          <el-input
-            v-model="uploadForm.module"
-            placeholder="如：common、banner、article 等"
-            clearable
-          />
+        <el-form-item label="上传目录">
+          <div style="padding: 8px 12px; background: #f5f7fa; border-radius: 4px;">
+            <div v-if="selectedDirectory" style="color: #409eff; font-weight: 500;">
+              <el-icon style="vertical-align: middle; margin-right: 4px;"><Folder /></el-icon>
+              {{ selectedDirectory.name || selectedDirectory.path }}
+            </div>
+            <div v-else style="color: #909399;">
+              <el-icon style="vertical-align: middle; margin-right: 4px;"><FolderOpened /></el-icon>
+              未选择目录，将使用默认目录（common）
+            </div>
+          </div>
           <div style="color: #909399; font-size: 12px; margin-top: 4px;">
-            用于文件分类管理，建议使用有意义的模块名称
+            提示：请在左侧目录树中选择上传目录，或使用默认目录
           </div>
         </el-form-item>
         <el-form-item 
@@ -364,6 +377,7 @@ import {
 } from '@element-plus/icons-vue'
 import { getFileList, deleteFile, deleteFilesBatch, getFileStatistics, uploadImage, uploadVideo } from '@/api/file'
 import { useClipboard } from '@vueuse/core'
+import DirectoryTree from '@/components/DirectoryTree.vue'
 
 const loading = ref(false)
 const tableData = ref([])
@@ -373,6 +387,8 @@ const viewDialogVisible = ref(false)
 const currentFile = ref(null)
 const uploadDialogVisible = ref(false)
 const uploading = ref(false)
+const selectedDirectoryId = ref(null)
+const selectedDirectory = ref(null)
 const imageUploadRef = ref(null)
 const videoUploadRef = ref(null)
 const imageFileList = ref([])
@@ -395,13 +411,13 @@ const { copy } = useClipboard()
 // 上传表单
 const uploadForm = reactive({
   fileType: 'image',
-  module: 'common',
+  directoryId: null, // 目录ID
+  module: 'common', // 保留用于向后兼容，如果未选择目录则使用默认模块
 })
 
 const searchForm = reactive({
   fileType: 'all',
   storageType: 'all',
-  module: '',
   keyword: '',
 })
 
@@ -462,6 +478,10 @@ const loadData = async () => {
       page: pagination.page,
       pageSize: pagination.pageSize,
     }
+    // 如果选中了目录，添加目录路径到查询参数
+    if (selectedDirectory.value && selectedDirectory.value.path) {
+      params.module = selectedDirectory.value.path
+    }
     const res = await getFileList(params)
     tableData.value = res.data.records || []
     pagination.total = res.data.total || 0
@@ -484,6 +504,21 @@ const loadData = async () => {
   }
 }
 
+// 目录选择事件
+const handleDirectorySelect = (directory) => {
+  selectedDirectoryId.value = directory.id
+  selectedDirectory.value = directory
+  // 重置分页并加载文件
+  pagination.page = 1
+  loadData()
+}
+
+// 目录刷新事件
+const handleDirectoryRefresh = () => {
+  // 目录刷新后，重新加载文件列表
+  loadData()
+}
+
 // 搜索
 const handleSearch = () => {
   pagination.page = 1
@@ -495,9 +530,11 @@ const handleReset = () => {
   Object.assign(searchForm, {
     fileType: 'all',
     storageType: 'all',
-    module: '',
     keyword: '',
   })
+  // 重置目录选择
+  selectedDirectoryId.value = null
+  selectedDirectory.value = null
   pagination.page = 1
   loadData()
 }
@@ -718,6 +755,8 @@ const handleImageError = async (row) => {
 // 打开上传对话框
 const handleOpenUploadDialog = () => {
   uploadForm.fileType = 'image'
+  // 使用左侧选中的目录ID，如果没有选中则使用 null（后端会使用默认目录）
+  uploadForm.directoryId = selectedDirectoryId.value
   uploadForm.module = 'common'
   imageFileList.value = []
   videoFileList.value = []
@@ -727,6 +766,7 @@ const handleOpenUploadDialog = () => {
 // 关闭上传对话框
 const handleCloseUploadDialog = () => {
   uploadForm.fileType = 'image'
+  uploadForm.directoryId = null
   uploadForm.module = 'common'
   imageFileList.value = []
   videoFileList.value = []
@@ -860,7 +900,7 @@ const handleImageUpload = async (options) => {
   const { file } = options
   uploading.value = true
   try {
-    const response = await uploadImage(file, uploadForm.module)
+    const response = await uploadImage(file, uploadForm.module, uploadForm.directoryId)
     handleUploadSuccess(response, file)
   } catch (error) {
     handleUploadError(error, file)
@@ -872,7 +912,7 @@ const handleVideoUpload = async (options) => {
   const { file } = options
   uploading.value = true
   try {
-    const response = await uploadVideo(file, uploadForm.module)
+    const response = await uploadVideo(file, uploadForm.module, uploadForm.directoryId)
     handleUploadSuccess(response, file)
   } catch (error) {
     handleUploadError(error, file)
@@ -926,11 +966,15 @@ const getFilesToUpload = (fileType) => {
 
 // 提交上传（支持批量上传）
 const handleSubmitUpload = async () => {
-  // 验证模块名称
-  if (!uploadForm.module || !uploadForm.module.trim()) {
-    ElMessage.warning('请输入模块名称')
-      return
-    }
+  // 如果上传对话框中没有选择目录，使用左侧选中的目录
+  if (!uploadForm.directoryId && selectedDirectoryId.value) {
+    uploadForm.directoryId = selectedDirectoryId.value
+  }
+  
+  // 如果仍未选择目录，提示用户（但允许继续，使用默认目录）
+  if (!uploadForm.directoryId) {
+    ElMessage.info('未选择目录，将使用默认目录（common）上传')
+  }
     
   // 获取所有待上传的文件
   const files = getFilesToUpload(uploadForm.fileType)
@@ -956,10 +1000,11 @@ const handleSubmitUpload = async () => {
       uploadProgress.current = index + 1
       
       let response
+      // 如果选择了目录，使用目录ID上传；否则使用默认模块
       if (uploadForm.fileType === 'image') {
-        response = await uploadImage(file, uploadForm.module)
+        response = await uploadImage(file, uploadForm.module, uploadForm.directoryId)
       } else {
-        response = await uploadVideo(file, uploadForm.module)
+        response = await uploadVideo(file, uploadForm.module, uploadForm.directoryId)
       }
       
       if (response && response.code === 200) {
@@ -1500,8 +1545,46 @@ onMounted(() => {
   transform: scale(0.95);
 }
 
+/* 左右分栏布局 */
+.file-manage-layout {
+  display: flex;
+  gap: 16px;
+  min-height: 600px;
+}
+
+.directory-panel {
+  width: 30%;
+  min-width: 250px;
+}
+
+.directory-card {
+  height: 100%;
+}
+
+.directory-card :deep(.el-card__body) {
+  padding: 0;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.file-list-panel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
 /* 响应式设计 */
 @media (max-width: 768px) {
+  .file-manage-layout {
+    flex-direction: column;
+  }
+  
+  .directory-panel {
+    width: 100%;
+    min-width: auto;
+  }
+  
   .info-grid {
     grid-template-columns: 1fr;
   }

@@ -83,4 +83,11 @@ public interface FileRecordMapper {
      * @return 文件数量
      */
     int selectCountByStorageType(@Param("storageType") String storageType);
+    
+    /**
+     * 统计指定目录路径下的文件数量（支持路径前缀匹配）
+     * @param modulePath 目录路径（如 "common" 或 "common/subfolder"）
+     * @return 文件数量
+     */
+    int countByModulePath(@Param("modulePath") String modulePath);
 }

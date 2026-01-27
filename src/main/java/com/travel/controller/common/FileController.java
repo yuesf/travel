@@ -25,14 +25,16 @@ public class FileController {
      * 
      * @param file 图片文件
      * @param module 模块名称（可选，默认为common）
+     * @param directoryId 目录ID（可选，如果提供则使用目录路径作为module）
      * @return 上传结果
      */
     @PostMapping("/upload/image")
     public Result<String> uploadImage(
             @RequestParam("file") MultipartFile file,
-            @RequestParam(value = "module", required = false, defaultValue = "common") String module) {
+            @RequestParam(value = "module", required = false, defaultValue = "common") String module,
+            @RequestParam(value = "directoryId", required = false) Long directoryId) {
         try {
-            String url = fileService.uploadImage(file, module);
+            String url = fileService.uploadImage(file, module, directoryId);
             return Result.success(url);
         } catch (IllegalArgumentException e) {
             log.warn("图片上传失败: {}", e.getMessage());
@@ -48,14 +50,16 @@ public class FileController {
      * 
      * @param file 视频文件
      * @param module 模块名称（可选，默认为common）
+     * @param directoryId 目录ID（可选，如果提供则使用目录路径作为module）
      * @return 上传结果
      */
     @PostMapping("/upload/video")
     public Result<String> uploadVideo(
             @RequestParam("file") MultipartFile file,
-            @RequestParam(value = "module", required = false, defaultValue = "common") String module) {
+            @RequestParam(value = "module", required = false, defaultValue = "common") String module,
+            @RequestParam(value = "directoryId", required = false) Long directoryId) {
         try {
-            String url = fileService.uploadVideo(file, module);
+            String url = fileService.uploadVideo(file, module, directoryId);
             return Result.success(url);
         } catch (IllegalArgumentException e) {
             log.warn("视频上传失败: {}", e.getMessage());

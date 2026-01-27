@@ -35,16 +35,27 @@ public class FileService {
     @Autowired
     private ImageCompressionService imageCompressionService;
     
+    @Autowired
+    private com.travel.service.DirectoryService directoryService;
+    
     /**
      * 上传图片（仅支持OSS存储）
      * 
      * @param file 图片文件
      * @param module 模块名称（如：banner, attraction等）
+     * @param directoryId 目录ID（可选，如果提供则使用目录路径作为module）
      * @return 文件访问URL
      * @throws IOException IO异常
      * @throws IllegalStateException OSS未配置时抛出
      */
-    public String uploadImage(MultipartFile file, String module) throws IOException {
+    public String uploadImage(MultipartFile file, String module, Long directoryId) throws IOException {
+        // 如果提供了目录ID，使用目录路径作为module
+        if (directoryId != null) {
+            com.travel.entity.Directory directory = directoryService.getDirectoryById(directoryId);
+            if (directory != null) {
+                module = directory.getPath();
+            }
+        }
         // 验证文件类型
         String contentType = file.getContentType();
         if (contentType == null || !contentType.startsWith("image/")) {
@@ -72,15 +83,30 @@ public class FileService {
     }
     
     /**
+     * 上传图片（重载方法，保持向后兼容）
+     */
+    public String uploadImage(MultipartFile file, String module) throws IOException {
+        return uploadImage(file, module, null);
+    }
+    
+    /**
      * 上传视频（仅支持OSS存储）
      * 
      * @param file 视频文件
      * @param module 模块名称（如：banner, attraction等）
+     * @param directoryId 目录ID（可选，如果提供则使用目录路径作为module）
      * @return 文件访问URL
      * @throws IOException IO异常
      * @throws IllegalStateException OSS未配置时抛出
      */
-    public String uploadVideo(MultipartFile file, String module) throws IOException {
+    public String uploadVideo(MultipartFile file, String module, Long directoryId) throws IOException {
+        // 如果提供了目录ID，使用目录路径作为module
+        if (directoryId != null) {
+            com.travel.entity.Directory directory = directoryService.getDirectoryById(directoryId);
+            if (directory != null) {
+                module = directory.getPath();
+            }
+        }
         // 验证文件类型
         String contentType = file.getContentType();
         if (contentType == null || !contentType.startsWith("video/")) {
@@ -105,6 +131,13 @@ public class FileService {
         }
         
         return uploadFile(file, module, "video");
+    }
+    
+    /**
+     * 上传视频（重载方法，保持向后兼容）
+     */
+    public String uploadVideo(MultipartFile file, String module) throws IOException {
+        return uploadVideo(file, module, null);
     }
     
     /**

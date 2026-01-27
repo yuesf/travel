@@ -166,4 +166,12 @@
         WHERE storage_type = #{storageType}
     </select>
 
+    <!-- 统计指定目录路径下的文件数量（支持路径前缀匹配，包括子目录） -->
+    <select id="countByModulePath" resultType="int">
+        SELECT COUNT(*)
+        FROM file_record
+        WHERE module = #{modulePath}
+           OR module LIKE CONCAT(#{modulePath}, '/%')
+    </select>
+
 </mapper>

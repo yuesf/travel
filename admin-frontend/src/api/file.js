@@ -55,10 +55,13 @@ export function getFileStatistics() {
 /**
  * 上传图片
  */
-export function uploadImage(file, module = 'common') {
+export function uploadImage(file, module = 'common', directoryId = null) {
   const formData = new FormData()
   formData.append('file', file)
   formData.append('module', module)
+  if (directoryId) {
+    formData.append('directoryId', directoryId)
+  }
   
   return request({
     url: '/common/file/upload/image',
@@ -73,10 +76,13 @@ export function uploadImage(file, module = 'common') {
 /**
  * 上传视频
  */
-export function uploadVideo(file, module = 'common') {
+export function uploadVideo(file, module = 'common', directoryId = null) {
   const formData = new FormData()
   formData.append('file', file)
   formData.append('module', module)
+  if (directoryId) {
+    formData.append('directoryId', directoryId)
+  }
   
   return request({
     url: '/common/file/upload/video',
@@ -127,5 +133,41 @@ export function getSignedUrlByUrl(url) {
     params: {
       url,
     },
+  })
+}
+
+/**
+ * 获取目录树
+ */
+export function getDirectoryTree() {
+  return request({
+    url: '/admin/directories/tree',
+    method: 'get',
+  })
+}
+
+/**
+ * 创建目录
+ */
+export function createDirectory(name, parentId = null) {
+  const params = { name }
+  // 只有当 parentId 不为 null 时才添加到参数中
+  if (parentId !== null && parentId !== undefined) {
+    params.parentId = parentId
+  }
+  return request({
+    url: '/admin/directories',
+    method: 'post',
+    params,
+  })
+}
+
+/**
+ * 删除目录
+ */
+export function deleteDirectory(id) {
+  return request({
+    url: `/admin/directories/${id}`,
+    method: 'delete',
   })
 }

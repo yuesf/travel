@@ -36,6 +36,14 @@
         <el-button type="success" :icon="Upload" @click="handleUploadClick" :loading="uploading">
           上传
         </el-button>
+        <el-tooltip
+          content="图片将自动压缩为 WebP 格式以优化文件大小"
+          placement="top"
+        >
+          <el-icon style="margin-left: 8px; color: #909399; cursor: help;">
+            <InfoFilled />
+          </el-icon>
+        </el-tooltip>
       </el-form-item>
     </el-form>
 
@@ -46,12 +54,68 @@
       :show-file-list="false"
       :on-change="handleFileChange"
       :before-upload="beforeUpload"
+      multiple
       style="display: none;"
     >
     </el-upload>
 
-    <!-- 文件网格 -->
-    <div v-loading="loading" class="file-grid-container">
+    <!-- 上传进度提示 -->
+    <el-dialog
+      v-model="uploadProgressVisible"
+      title="上传进度"
+      width="500px"
+      :close-on-click-modal="false"
+      :close-on-press-escape="false"
+      :show-close="false"
+    >
+      <div class="upload-progress-content">
+        <div class="progress-info">
+          <span>正在上传 {{ uploadProgress.current }} / {{ uploadProgress.total }} 个文件</span>
+          <span class="progress-text">
+            成功: {{ uploadProgress.success }} | 失败: {{ uploadProgress.failed }}
+          </span>
+        </div>
+        <el-progress
+          :percentage="uploadProgress.percentage"
+          :status="uploadProgress.status"
+          :stroke-width="8"
+        />
+        <div v-if="uploadProgress.currentFile" class="current-file">
+          当前文件: {{ uploadProgress.currentFile }}
+        </div>
+      </div>
+      <template #footer>
+        <el-button
+          v-if="uploadProgress.status === 'success' || uploadProgress.status === 'exception'"
+          type="primary"
+          @click="handleCloseUploadProgress"
+        >
+          确定
+        </el-button>
+        <el-button
+          v-else
+          :disabled="true"
+        >
+          上传中...
+        </el-button>
+      </template>
+    </el-dialog>
+
+    <!-- 左右分栏布局 -->
+    <div class="file-selector-layout">
+      <!-- 左侧目录树 -->
+      <div class="directory-panel">
+        <DirectoryTree
+          :selected-directory-id="selectedDirectoryId"
+          @select="handleDirectorySelect"
+          @refresh="handleDirectoryRefresh"
+        />
+      </div>
+      
+      <!-- 右侧文件列表 -->
+      <div class="file-panel">
+        <!-- 文件网格 -->
+        <div v-loading="loading" class="file-grid-container">
       <div
         v-for="file in fileList"
         :key="file.id"
@@ -100,21 +164,23 @@
       </div>
 
       <div v-if="fileList.length === 0" class="empty-state">
-        <el-empty description="暂无文件" />
+        <el-empty description="该目录暂无文件" />
       </div>
-    </div>
+        </div>
 
-    <!-- 分页 -->
-    <div class="pagination-wrapper" style="margin-top: 20px">
-      <el-pagination
-        v-model:current-page="pagination.page"
-        v-model:page-size="pagination.pageSize"
-        :page-sizes="[12, 24, 48, 96]"
-        :total="pagination.total"
-        layout="total, sizes, prev, pager, next"
-        @size-change="handleSizeChange"
-        @current-change="handlePageChange"
-      />
+            <!-- 分页 -->
+        <div class="pagination-wrapper" style="margin-top: 20px">
+          <el-pagination
+            v-model:current-page="pagination.page"
+            v-model:page-size="pagination.pageSize"
+            :page-sizes="[12, 24, 48, 96]"
+            :total="pagination.total"
+            layout="total, sizes, prev, pager, next"
+            @size-change="handleSizeChange"
+            @current-change="handlePageChange"
+          />
+        </div>
+      </div>
     </div>
 
     <template #footer>
@@ -132,10 +198,11 @@
 </template>
 
 <script setup>
-import { ref, reactive, watch, nextTick } from 'vue'
+import { ref, reactive, watch, nextTick, onBeforeUnmount } from 'vue'
 import { ElMessage } from 'element-plus'
-import { VideoPlay, Document, Check, Picture, Upload } from '@element-plus/icons-vue'
+import { VideoPlay, Document, Check, Picture, Upload, InfoFilled } from '@element-plus/icons-vue'
 import { getFileList, getSignedUrl, uploadImage, uploadVideo } from '@/api/file'
+import DirectoryTree from './DirectoryTree.vue'
 
 const props = defineProps({
   modelValue: {
@@ -164,6 +231,20 @@ const uploading = ref(false)
 const fileList = ref([])
 const selectedFiles = ref([])
 const uploadRef = ref(null)
+const selectedDirectoryId = ref(null)
+const selectedDirectory = ref(null)
+const uploadProgressVisible = ref(false)
+const uploadProgress = reactive({
+  total: 0,
+  current: 0,
+  success: 0,
+  failed: 0,
+  percentage: 0,
+  status: 'success', // 'success' | 'exception' | 'active'
+  currentFile: '',
+})
+const pendingFiles = ref([]) // 待上传的文件列表
+let uploadTimer = null // 上传定时器，用于延迟批量上传
 
 const searchForm = reactive({
   fileType: 'all',
@@ -185,6 +266,8 @@ watch(
     if (val) {
       // 对话框打开时重置选择和加载数据
       selectedFiles.value = []
+      selectedDirectoryId.value = null
+      selectedDirectory.value = null
       searchForm.fileType = props.fileType
       loadData()
     }
@@ -206,6 +289,10 @@ const loadData = async () => {
       page: pagination.page,
       pageSize: pagination.pageSize,
     }
+    // 如果选中了目录，添加目录路径到查询参数
+    if (selectedDirectory.value && selectedDirectory.value.path) {
+      params.module = selectedDirectory.value.path
+    }
     const res = await getFileList(params)
     // 后台已经直接返回签名URL，无需额外处理
     fileList.value = res.data.records || []
@@ -216,6 +303,21 @@ const loadData = async () => {
   } finally {
     loading.value = false
   }
+}
+
+// 目录选择事件
+const handleDirectorySelect = (directory) => {
+  selectedDirectoryId.value = directory.id
+  selectedDirectory.value = directory
+  // 重置分页并加载文件
+  pagination.page = 1
+  loadData()
+}
+
+// 目录刷新事件
+const handleDirectoryRefresh = () => {
+  // 目录刷新后，重新加载文件列表
+  loadData()
 }
 
 // 搜索
@@ -324,11 +426,32 @@ const handleUploadClick = () => {
 }
 
 // 文件选择变化（el-upload 的 on-change 事件）
-const handleFileChange = (file) => {
-  // 验证通过后开始上传
-  if (beforeUpload(file.raw || file)) {
-    handleUpload(file.raw || file)
+const handleFileChange = (file, fileList) => {
+  // 收集所有选中的文件
+  const rawFile = file.raw || file
+  if (rawFile && beforeUpload(rawFile)) {
+    // 检查是否已存在（通过文件名和大小判断）
+    const exists = pendingFiles.value.find(
+      f => f.name === rawFile.name && f.size === rawFile.size && f.lastModified === rawFile.lastModified
+    )
+    if (!exists) {
+      pendingFiles.value.push(rawFile)
+    }
   }
+  
+  // 清除之前的定时器
+  if (uploadTimer) {
+    clearTimeout(uploadTimer)
+  }
+  
+  // 延迟执行批量上传，确保所有文件都已收集完成
+  // 当用户选择多个文件时，on-change 会被多次调用
+  // 我们等待 300ms 没有新的文件添加后，再开始上传
+  uploadTimer = setTimeout(() => {
+    if (pendingFiles.value.length > 0) {
+      handleBatchUpload()
+    }
+  }, 300)
 }
 
 // 上传前验证
@@ -367,110 +490,217 @@ const beforeUpload = (file) => {
   return true
 }
 
-// 执行上传
-const handleUpload = async (file) => {
-  if (!file) {
+// 批量上传文件
+const handleBatchUpload = async () => {
+  if (pendingFiles.value.length === 0) {
     return
   }
 
+  const filesToUpload = [...pendingFiles.value]
+  pendingFiles.value = []
+  
   uploading.value = true
-  try {
-    const isImage = file.type.startsWith('image/')
-    let response
+  uploadProgressVisible.value = true
+  
+  // 初始化进度
+  uploadProgress.total = filesToUpload.length
+  uploadProgress.current = 0
+  uploadProgress.success = 0
+  uploadProgress.failed = 0
+  uploadProgress.percentage = 0
+  uploadProgress.status = 'active'
+  uploadProgress.currentFile = ''
 
-    if (isImage) {
-      response = await uploadImage(file, 'common')
-    } else {
-      response = await uploadVideo(file, 'common')
-    }
+  const uploadedFileUrls = []
 
-    if (response && response.code === 200) {
-      ElMessage.success('上传成功')
-      // 上传成功后刷新列表
-      await loadData()
-      // 查找并选中新上传的文件
-      await selectUploadedFile(response.data)
-    } else {
-      ElMessage.error(response?.message || '上传失败')
+  // 逐个上传文件
+  for (let i = 0; i < filesToUpload.length; i++) {
+    const file = filesToUpload[i]
+    uploadProgress.current = i + 1
+    uploadProgress.currentFile = file.name || `文件 ${i + 1}`
+    uploadProgress.percentage = Math.round(((i + 1) / filesToUpload.length) * 100)
+
+    try {
+      const isImage = file.type.startsWith('image/')
+      let response
+
+      // 使用选中的目录ID上传，如果没有选中目录则使用默认的 common
+      const directoryId = selectedDirectoryId.value
+      if (isImage) {
+        response = await uploadImage(file, 'common', directoryId)
+      } else {
+        response = await uploadVideo(file, 'common', directoryId)
+      }
+
+      if (response && response.code === 200) {
+        uploadProgress.success++
+        uploadedFileUrls.push(response.data)
+      } else {
+        uploadProgress.failed++
+        console.error('上传失败:', response?.message || '未知错误')
+      }
+    } catch (error) {
+      uploadProgress.failed++
+      console.error('上传失败:', error)
     }
-  } catch (error) {
-    console.error('上传失败:', error)
-    ElMessage.error(error?.message || '上传失败，请重试')
-  } finally {
-    uploading.value = false
-    // 清空上传组件的文件列表
-    if (uploadRef.value) {
-      uploadRef.value.clearFiles()
-    }
+  }
+
+  // 更新最终状态
+  if (uploadProgress.failed === 0) {
+    uploadProgress.status = 'success'
+    ElMessage.success(`成功上传 ${uploadProgress.success} 个文件`)
+  } else if (uploadProgress.success === 0) {
+    uploadProgress.status = 'exception'
+    ElMessage.error('所有文件上传失败')
+  } else {
+    uploadProgress.status = 'exception'
+    ElMessage.warning(`部分文件上传失败：成功 ${uploadProgress.success} 个，失败 ${uploadProgress.failed} 个`)
+  }
+
+  // 上传完成后刷新列表
+  await loadData()
+
+  // 选中所有成功上传的文件
+  if (uploadedFileUrls.length > 0) {
+    await selectUploadedFiles(uploadedFileUrls)
+  }
+
+  uploading.value = false
+  
+  // 清空上传组件的文件列表
+  if (uploadRef.value) {
+    uploadRef.value.clearFiles()
   }
 }
 
-// 查找并选中新上传的文件
+// 关闭上传进度对话框
+const handleCloseUploadProgress = () => {
+  uploadProgressVisible.value = false
+  // 重置进度
+  uploadProgress.total = 0
+  uploadProgress.current = 0
+  uploadProgress.success = 0
+  uploadProgress.failed = 0
+  uploadProgress.percentage = 0
+  uploadProgress.status = 'success'
+  uploadProgress.currentFile = ''
+  // 清空待上传文件列表
+  pendingFiles.value = []
+  // 清除定时器
+  if (uploadTimer) {
+    clearTimeout(uploadTimer)
+    uploadTimer = null
+  }
+}
+
+// 查找并选中新上传的文件（单个）
 const selectUploadedFile = async (fileUrl) => {
-  // 从 URL 中提取路径（去掉签名参数和域名）
-  const urlPath = fileUrl.split('?')[0] // 去掉签名参数
-  const urlParts = urlPath.split('/')
-  const fileName = urlParts[urlParts.length - 1] // 文件名
-  
+  const files = await findUploadedFiles([fileUrl])
+  if (files.length > 0) {
+    await selectFiles(files)
+  }
+}
+
+// 查找并选中新上传的文件（多个）
+const selectUploadedFiles = async (fileUrls) => {
+  const files = await findUploadedFiles(fileUrls)
+  if (files.length > 0) {
+    await selectFiles(files)
+  }
+}
+
+// 查找上传的文件
+const findUploadedFiles = async (fileUrls) => {
   // 等待一小段时间确保后端已保存文件记录
   await new Promise(resolve => setTimeout(resolve, 800))
   
   // 先刷新当前页
   await loadData()
   
-  // 在当前列表中查找
-  let uploadedFile = fileList.value.find(f => {
-    const fileUrlPath = f.fileUrl?.split('?')[0] || ''
-    return fileUrlPath.includes(fileName) || 
-           fileUrlPath === urlPath ||
-           f.originalName === fileName
-  })
+  const foundFiles = []
   
-  // 如果当前页没找到，尝试搜索第一页（新上传的文件通常在最新）
-  if (!uploadedFile) {
-    const firstPageParams = {
-      ...searchForm,
-      page: 1,
-      pageSize: pagination.pageSize,
-    }
-    try {
-      const res = await getFileList(firstPageParams)
-      const firstPageFiles = res.data.records || []
-      uploadedFile = firstPageFiles.find(f => {
-        const fileUrlPath = f.fileUrl?.split('?')[0] || ''
-        return fileUrlPath.includes(fileName) || 
-               fileUrlPath === urlPath ||
-               f.originalName === fileName
-      })
-      
-      // 如果找到了，跳转到第一页
-      if (uploadedFile) {
-        pagination.page = 1
-        await loadData()
-        uploadedFile = fileList.value.find(f => f.id === uploadedFile.id)
+  for (const fileUrl of fileUrls) {
+    // 从 URL 中提取路径（去掉签名参数和域名）
+    const urlPath = fileUrl.split('?')[0] // 去掉签名参数
+    const urlParts = urlPath.split('/')
+    const fileName = urlParts[urlParts.length - 1] // 文件名
+    
+    // 在当前列表中查找
+    let uploadedFile = fileList.value.find(f => {
+      const fileUrlPath = f.fileUrl?.split('?')[0] || ''
+      return fileUrlPath.includes(fileName) || 
+             fileUrlPath === urlPath ||
+             f.originalName === fileName
+    })
+    
+    // 如果当前页没找到，尝试搜索第一页（新上传的文件通常在最新）
+    if (!uploadedFile) {
+      const firstPageParams = {
+        ...searchForm,
+        page: 1,
+        pageSize: pagination.pageSize,
       }
-    } catch (error) {
-      console.error('查找文件失败:', error)
+      try {
+        const res = await getFileList(firstPageParams)
+        const firstPageFiles = res.data.records || []
+        uploadedFile = firstPageFiles.find(f => {
+          const fileUrlPath = f.fileUrl?.split('?')[0] || ''
+          return fileUrlPath.includes(fileName) || 
+                 fileUrlPath === urlPath ||
+                 f.originalName === fileName
+        })
+        
+        // 如果找到了，跳转到第一页
+        if (uploadedFile) {
+          pagination.page = 1
+          await loadData()
+          uploadedFile = fileList.value.find(f => f.id === uploadedFile.id)
+        }
+      } catch (error) {
+        console.error('查找文件失败:', error)
+      }
+    }
+    
+    if (uploadedFile && !foundFiles.find(f => f.id === uploadedFile.id)) {
+      foundFiles.push(uploadedFile)
     }
   }
   
-  // 选中文件
-  if (uploadedFile) {
+  return foundFiles
+}
+
+// 选中文件
+const selectFiles = async (files) => {
+  for (const file of files) {
     if (props.multiple) {
       if (selectedFiles.value.length < props.maxSelect) {
-        selectedFiles.value.push(uploadedFile)
+        if (!selectedFiles.value.find(f => f.id === file.id)) {
+          selectedFiles.value.push(file)
+        }
       }
     } else {
-      selectedFiles.value = [uploadedFile]
+      selectedFiles.value = [file]
+      break // 单选模式只选择第一个
     }
-    // 滚动到选中的文件
+  }
+  
+  // 滚动到第一个选中的文件
+  if (files.length > 0) {
     await nextTick()
-    const fileElement = document.querySelector(`[data-file-id="${uploadedFile.id}"]`)
+    const fileElement = document.querySelector(`[data-file-id="${files[0].id}"]`)
     if (fileElement) {
       fileElement.scrollIntoView({ behavior: 'smooth', block: 'center' })
     }
   }
 }
+
+// 组件卸载时清理定时器
+onBeforeUnmount(() => {
+  if (uploadTimer) {
+    clearTimeout(uploadTimer)
+    uploadTimer = null
+  }
+})
 </script>
 
 <style scoped>
@@ -614,5 +844,56 @@ const selectUploadedFile = async (fileUrl) => {
 /* 上传按钮样式 */
 :deep(.el-form-item:last-child .el-button--success) {
   margin-left: 8px;
+}
+
+/* 左右分栏布局 */
+.file-selector-layout {
+  display: flex;
+  gap: 16px;
+  min-height: 500px;
+  max-height: 600px;
+}
+
+.directory-panel {
+  width: 30%;
+  min-width: 250px;
+  border: 1px solid #EBEEF5;
+  border-radius: 4px;
+  background: #fff;
+  overflow: hidden;
+}
+
+.file-panel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+/* 上传进度样式 */
+.upload-progress-content {
+  padding: 20px 0;
+}
+
+.progress-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  font-size: 14px;
+  color: #606266;
+}
+
+.progress-text {
+  font-size: 12px;
+  color: #909399;
+}
+
+.current-file {
+  margin-top: 12px;
+  font-size: 12px;
+  color: #909399;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 </style>
