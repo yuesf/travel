@@ -94,11 +94,20 @@ Page({
           image = hotel.coverImage;
         }
         
+        // 处理价格：确保价格字段正确
+        let price = 0;
+        if (hotel.price !== undefined && hotel.price !== null) {
+          price = parseFloat(hotel.price) || 0;
+        } else if (hotel.minPrice !== undefined && hotel.minPrice !== null) {
+          price = parseFloat(hotel.minPrice) || 0;
+        }
+        
         return {
           id: hotel.id,
           name: hotel.name,
           image: image,
-          price: hotel.price || hotel.minPrice || 0,
+          price: price,
+          minPrice: price, // 同时设置minPrice字段
           city: hotel.city || '',
           starLevel: hotel.starLevel || 0,
           // 列表页不显示简介，只显示设施和地址

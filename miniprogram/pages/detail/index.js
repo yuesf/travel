@@ -689,9 +689,9 @@ Page({
             cancelText: '取消',
             success: (res) => {
               if (res.confirm) {
-                // 跳转到个人中心或用户信息编辑页
-                wx.switchTab({
-                  url: '/pages/mine/index',
+                // 跳转到用户信息编辑页
+                wx.navigateTo({
+                  url: '/pages/mine/profile-edit?fromBooking=true',
                 });
               }
             },
@@ -770,9 +770,9 @@ Page({
             cancelText: '取消',
             success: (res) => {
               if (res.confirm) {
-                // 跳转到个人中心或用户信息编辑页
-                wx.switchTab({
-                  url: '/pages/mine/index',
+                // 跳转到用户信息编辑页
+                wx.navigateTo({
+                  url: '/pages/mine/profile-edit?fromBooking=true',
                 });
               }
             },

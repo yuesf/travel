@@ -73,7 +73,15 @@
         </view>
         
         <!-- 立即预订按钮（景点和酒店类型显示） -->
-        <view wx:if="{{productType === 'ATTRACTION' || productType === 'HOTEL'}}" class="product-book-btn" catchtap="onBookNow" catchtouchstart="onBookNowTouchStart">
+        <view 
+          wx:if="{{(productType === 'ATTRACTION' || productType === 'HOTEL') && product && product.id}}" 
+          class="product-book-btn" 
+          catchtap="onBookNow"
+          catchtouchstart="onBookNowTouchStart"
+          catchtouchend="onBookNowTouchEnd"
+          data-product-id="{{product.id}}"
+          data-product-type="{{productType}}"
+        >
           <text class="book-btn-text">立即预订</text>
         </view>
       </view>
@@ -247,7 +255,7 @@
             <text class="date-label">入住日期</text>
             <picker mode="date" value="{{checkInDate}}" start="{{minDate}}" bindchange="onCheckInDateChange">
               <view class="date-picker">
-                <text class="date-text">{{checkInDate || '请选择'}}</text>
+                <text class="date-text {{checkInDate ? '' : 'placeholder'}}">{{checkInDate || '请选择'}}</text>
                 <text class="date-arrow">›</text>
               </view>
             </picker>
@@ -256,32 +264,61 @@
             <text class="date-label">退房日期</text>
             <picker mode="date" value="{{checkOutDate}}" start="{{checkInDate || minDate}}" bindchange="onCheckOutDateChange">
               <view class="date-picker">
-                <text class="date-text">{{checkOutDate || '请选择'}}</text>
+                <text class="date-text {{checkOutDate ? '' : 'placeholder'}}">{{checkOutDate || '请选择'}}</text>
                 <text class="date-arrow">›</text>
               </view>
             </picker>
           </view>
         </view>
         
-        <!-- 房型列表 -->
-        <view wx:if="{{hotelDetail && hotelDetail.rooms}}" class="room-modal-rooms">
-          <view class="room-modal-rooms-title">选择房型</view>
-          <view
-            wx:for="{{hotelDetail.rooms}}"
-            wx:key="id"
-            class="room-modal-item {{selectedRoom && selectedRoom.id === item.id ? 'active' : ''}}"
-            data-room="{{item}}"
-            bindtap="onSelectRoom"
-          >
-            <view class="room-modal-item-info">
-              <text class="room-modal-item-name">{{item.name || item.roomType}}</text>
-              <text class="room-modal-item-desc">{{item.description || ''}}</text>
+        <!-- 房型选择 -->
+        <view wx:if="{{hotelDetail && hotelDetail.rooms}}" class="room-modal-room-selector">
+          <view class="date-item">
+            <text class="date-label">房型</text>
+            <view class="date-picker" bindtap="onToggleRoomList">
+              <text class="date-text {{selectedRoom ? '' : 'placeholder'}}">
+                {{selectedRoom ? (selectedRoom.name || selectedRoom.roomType) : '请选择房型'}}
+              </text>
+              <text class="date-arrow {{showRoomList ? 'rotate' : ''}}">›</text>
             </view>
-            <view class="room-modal-item-price">
-              <text class="room-modal-item-price-text">¥{{item.price}}</text>
-              <text class="room-modal-item-price-unit">/晚</text>
+          </view>
+          
+          <!-- 房型列表（可展开/收起） -->
+          <view wx:if="{{showRoomList}}" class="room-modal-rooms">
+            <view
+              wx:for="{{hotelDetail.rooms}}"
+              wx:key="id"
+              class="room-modal-item {{selectedRoom && selectedRoom.id === item.id ? 'active' : ''}}"
+              data-room="{{item}}"
+              bindtap="onSelectRoom"
+            >
+              <view class="room-modal-item-info">
+                <text class="room-modal-item-name">{{item.name || item.roomType}}</text>
+                <text wx:if="{{item.description}}" class="room-modal-item-desc">{{item.description}}</text>
+                <view wx:if="{{item.features && item.features.length > 0}}" class="room-modal-item-features">
+                  <text wx:for="{{item.features}}" wx:key="index" wx:for-item="feature" class="room-feature-tag">{{feature}}</text>
+                </view>
+              </view>
+              <view class="room-modal-item-right">
+                <view class="room-modal-item-price">
+                  <text class="room-modal-item-price-text">¥{{item.price}}</text>
+                  <text class="room-modal-item-price-unit">/晚</text>
+                </view>
+                <view wx:if="{{selectedRoom && selectedRoom.id === item.id}}" class="room-modal-item-check">✓</view>
+              </view>
             </view>
-            <view wx:if="{{selectedRoom && selectedRoom.id === item.id}}" class="room-modal-item-check">✓</view>
+          </view>
+          
+          <!-- 已选择房型信息展示 -->
+          <view wx:if="{{selectedRoom && !showRoomList}}" class="room-selected-info">
+            <view class="room-selected-content">
+              <text class="room-selected-name">{{selectedRoom.name || selectedRoom.roomType}}</text>
+              <text wx:if="{{selectedRoom.description}}" class="room-selected-desc">{{selectedRoom.description}}</text>
+            </view>
+            <view class="room-selected-price">
+              <text class="room-selected-price-text">¥{{selectedRoom.price}}</text>
+              <text class="room-selected-price-unit">/晚</text>
+            </view>
           </view>
         </view>
       </scroll-view>

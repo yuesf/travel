@@ -655,7 +655,7 @@
 .room-modal-item-check {
   position: absolute;
   top: 24rpx;
-  right: 24rpx;
+  right: 40rpx;
   font-size: 32rpx;
   color: #409EFF;
 }

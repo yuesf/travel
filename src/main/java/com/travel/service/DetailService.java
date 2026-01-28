@@ -2,16 +2,23 @@ package com.travel.service;
 
 import com.github.benmanes.caffeine.cache.Cache;
 import com.travel.entity.Attraction;
+import com.travel.entity.Hotel;
+import com.travel.entity.HotelRoom;
 import com.travel.entity.Product;
 import com.travel.mapper.AttractionMapper;
+import com.travel.mapper.HotelRoomMapper;
 import com.travel.util.OssUrlUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * 小程序详情服务类
@@ -37,6 +44,12 @@ public class DetailService {
     
     @Autowired
     private OssUrlUtil ossUrlUtil;
+    
+    @Autowired
+    private HotelService hotelService;
+    
+    @Autowired
+    private HotelRoomMapper hotelRoomMapper;
     
     /**
      * 获取景点详情
@@ -78,11 +91,64 @@ public class DetailService {
     
     /**
      * 获取酒店详情（包含房型列表）
+     * 注意：返回的图片URL（images字段）都是签名URL（OSS文件），可直接使用
      */
     public Map<String, Object> getHotelDetail(Long id) {
-        // 酒店功能还未实现，返回空结果
-        Map<String, Object> result = new HashMap<>();
-        result.put("message", "酒店功能暂未实现");
+        log.info("查询酒店详情，酒店ID: {}", id);
+        
+        if (id == null) {
+            throw new com.travel.exception.BusinessException(
+                com.travel.common.ResultCode.PARAM_ERROR.getCode(), 
+                "酒店ID不能为空"
+            );
+        }
+        
+        // 查询酒店详情
+        Hotel hotel = hotelService.getById(id);
+        
+        // 只返回上架的酒店
+        if (hotel.getStatus() == null || hotel.getStatus() != 1) {
+            throw new com.travel.exception.BusinessException(com.travel.common.ResultCode.NOT_FOUND);
+        }
+        
+        // 转换为Map格式
+        Map<String, Object> result = convertHotelToMap(hotel);
+        
+        // 查询房型列表（只返回上架的房型）
+        List<HotelRoom> allRooms = hotelRoomMapper.selectByHotelId(id);
+        List<Map<String, Object>> rooms = new ArrayList<>();
+        BigDecimal minPrice = null;
+        
+        if (allRooms != null && !allRooms.isEmpty()) {
+            // 过滤出上架的房型
+            List<HotelRoom> activeRooms = allRooms.stream()
+                .filter(room -> room.getStatus() != null && room.getStatus() == 1)
+                .collect(Collectors.toList());
+            
+            // 转换为Map格式并处理OSS URL
+            for (HotelRoom room : activeRooms) {
+                Map<String, Object> roomMap = convertHotelRoomToMap(room);
+                rooms.add(roomMap);
+                
+                // 计算最低价格
+                if (room.getPrice() != null) {
+                    if (minPrice == null || room.getPrice().compareTo(minPrice) < 0) {
+                        minPrice = room.getPrice();
+                    }
+                }
+            }
+        }
+        
+        // 设置房型列表和最低价格
+        result.put("rooms", rooms);
+        result.put("price", minPrice != null ? minPrice : BigDecimal.ZERO);
+        result.put("minPrice", minPrice != null ? minPrice : BigDecimal.ZERO);
+        
+        // 处理OSS URL签名
+        processOssUrlsInHotelMap(result);
+        
+        log.info("酒店详情查询成功，酒店名称: {}", hotel.getName());
+        
         return result;
     }
     
@@ -138,6 +204,69 @@ public class DetailService {
                 }
             }
             attraction.setImages(signedImages);
+        }
+    }
+    
+    /**
+     * 处理酒店Map中的OSS URL，生成签名URL
+     * 使用OssUrlUtil统一处理，返回的URL都是签名URL
+     */
+    private void processOssUrlsInHotelMap(Map<String, Object> hotelMap) {
+        if (hotelMap == null) {
+            return;
+        }
+        // 处理图片列表
+        if (hotelMap.get("images") != null) {
+            @SuppressWarnings("unchecked")
+            java.util.List<String> images = (java.util.List<String>) hotelMap.get("images");
+            if (images != null && !images.isEmpty()) {
+                java.util.List<String> signedImages = new java.util.ArrayList<>();
+                for (String imageUrl : images) {
+                    if (imageUrl != null && !imageUrl.isEmpty()) {
+                        signedImages.add(ossUrlUtil.processUrl(imageUrl));
+                    } else {
+                        signedImages.add(imageUrl);
+                    }
+                }
+                hotelMap.put("images", signedImages);
+            }
+        }
+        // 处理封面图片
+        if (hotelMap.get("image") != null) {
+            String imageUrl = (String) hotelMap.get("image");
+            if (imageUrl != null && !imageUrl.isEmpty()) {
+                hotelMap.put("image", ossUrlUtil.processUrl(imageUrl));
+            }
+        }
+        if (hotelMap.get("coverImage") != null) {
+            String coverImageUrl = (String) hotelMap.get("coverImage");
+            if (coverImageUrl != null && !coverImageUrl.isEmpty()) {
+                hotelMap.put("coverImage", ossUrlUtil.processUrl(coverImageUrl));
+            }
+        }
+        // 处理房型中的图片
+        if (hotelMap.get("rooms") != null) {
+            @SuppressWarnings("unchecked")
+            java.util.List<Map<String, Object>> rooms = (java.util.List<Map<String, Object>>) hotelMap.get("rooms");
+            if (rooms != null) {
+                for (Map<String, Object> room : rooms) {
+                    if (room.get("images") != null) {
+                        @SuppressWarnings("unchecked")
+                        java.util.List<String> roomImages = (java.util.List<String>) room.get("images");
+                        if (roomImages != null && !roomImages.isEmpty()) {
+                            java.util.List<String> signedRoomImages = new java.util.ArrayList<>();
+                            for (String imageUrl : roomImages) {
+                                if (imageUrl != null && !imageUrl.isEmpty()) {
+                                    signedRoomImages.add(ossUrlUtil.processUrl(imageUrl));
+                                } else {
+                                    signedRoomImages.add(imageUrl);
+                                }
+                            }
+                            room.put("images", signedRoomImages);
+                        }
+                    }
+                }
+            }
         }
     }
     
@@ -234,6 +363,93 @@ public class DetailService {
         map.put("city", "");
         map.put("starLevel", 0);
         map.put("productType", "PRODUCT");
+        
+        return map;
+    }
+    
+    /**
+     * 将Hotel实体转换为Map格式
+     */
+    private Map<String, Object> convertHotelToMap(Hotel hotel) {
+        Map<String, Object> map = new HashMap<>();
+        map.put("id", hotel.getId());
+        map.put("name", hotel.getName());
+        map.put("city", hotel.getCity());
+        map.put("province", hotel.getProvince());
+        map.put("district", hotel.getDistrict());
+        map.put("address", hotel.getAddress());
+        map.put("starLevel", hotel.getStarLevel());
+        map.put("description", hotel.getDescription());
+        map.put("facilities", hotel.getFacilities());
+        map.put("contactPhone", hotel.getContactPhone());
+        map.put("longitude", hotel.getLongitude());
+        map.put("latitude", hotel.getLatitude());
+        map.put("status", hotel.getStatus());
+        map.put("createTime", hotel.getCreateTime());
+        map.put("updateTime", hotel.getUpdateTime());
+        
+        // 处理图片：取第一张图片作为封面图
+        if (hotel.getImages() != null && !hotel.getImages().isEmpty()) {
+            map.put("image", hotel.getImages().get(0));
+            map.put("coverImage", hotel.getImages().get(0));
+        } else {
+            map.put("image", "");
+            map.put("coverImage", "");
+        }
+        
+        map.put("images", hotel.getImages());
+        
+        // 小程序需要的其他字段
+        map.put("rating", 0); // 评分（酒店暂时没有评分）
+        map.put("reviewCount", 0); // 评论数（酒店暂时没有评论）
+        map.put("location", hotel.getAddress()); // 位置信息
+        map.put("productType", "HOTEL");
+        
+        return map;
+    }
+    
+    /**
+     * 将HotelRoom实体转换为Map格式
+     */
+    private Map<String, Object> convertHotelRoomToMap(HotelRoom room) {
+        Map<String, Object> map = new HashMap<>();
+        map.put("id", room.getId());
+        map.put("hotelId", room.getHotelId());
+        map.put("name", room.getRoomType()); // 使用roomType作为name
+        map.put("roomType", room.getRoomType());
+        map.put("price", room.getPrice());
+        map.put("stock", room.getStock());
+        map.put("bedType", room.getBedType());
+        map.put("area", room.getArea());
+        map.put("facilities", room.getFacilities());
+        map.put("images", room.getImages());
+        map.put("status", room.getStatus());
+        map.put("createTime", room.getCreateTime());
+        map.put("updateTime", room.getUpdateTime());
+        
+        // 构建描述信息
+        List<String> descParts = new ArrayList<>();
+        if (room.getBedType() != null && !room.getBedType().isEmpty()) {
+            descParts.add(room.getBedType());
+        }
+        if (room.getArea() != null) {
+            descParts.add(room.getArea() + "㎡");
+        }
+        String description = String.join(" | ", descParts);
+        map.put("description", description);
+        
+        // 构建特性列表（features）
+        List<String> features = new ArrayList<>();
+        if (room.getBedType() != null && !room.getBedType().isEmpty()) {
+            features.add(room.getBedType());
+        }
+        if (room.getArea() != null) {
+            features.add(room.getArea() + "㎡");
+        }
+        if (room.getFacilities() != null && !room.getFacilities().isEmpty()) {
+            features.addAll(room.getFacilities());
+        }
+        map.put("features", features);
         
         return map;
     }

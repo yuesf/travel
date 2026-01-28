@@ -62,6 +62,8 @@ Component({
     minDate: '',
     // 是否显示酒店预订弹窗
     showHotelModal: false,
+    // 是否展开房型列表
+    showRoomList: false,
     // 选中的房型（酒店）
     selectedRoom: null,
     // 入住日期（酒店）
@@ -91,6 +93,15 @@ Component({
       const minDateStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
       this.setData({
         minDate: minDateStr,
+      });
+      
+      // 调试：打印组件属性
+      const { product, productType } = this.properties;
+      console.log('product-card 组件挂载:', {
+        productId: product?.id,
+        productName: product?.name,
+        productType: productType,
+        hasProduct: !!product,
       });
     },
   },
@@ -279,29 +290,91 @@ Component({
      * 立即预订按钮触摸开始（阻止事件冒泡）
      */
     onBookNowTouchStart(e) {
+      console.log('onBookNowTouchStart 被调用', e);
       // 阻止事件冒泡到父元素
       if (e && typeof e.stopPropagation === 'function') {
         e.stopPropagation();
       }
+    },
+    
+    /**
+     * 立即预订按钮触摸结束（作为备用方案，如果 tap 事件不触发）
+     */
+    onBookNowTouchEnd(e) {
+      console.log('onBookNowTouchEnd 被调用', e);
+      // 如果 tap 事件没有触发，使用 touchEnd 作为备用
+      // 延迟一点时间，让 tap 事件有机会触发
+      setTimeout(() => {
+        // 检查是否已经有 tap 事件处理了
+        if (!this._bookNowHandled) {
+          console.log('tap 事件未触发，使用 touchEnd 作为备用');
+          this._bookNowHandled = true;
+          this.onBookNow(e);
+          // 重置标志，以便下次点击
+          setTimeout(() => {
+            this._bookNowHandled = false;
+          }, 500);
+        }
+      }, 100);
     },
 
     /**
      * 立即预订（景点和酒店）
      */
     async onBookNow(e) {
+      console.log('========== onBookNow 被调用 ==========');
+      console.log('事件对象:', e);
+      console.log('事件类型:', e?.type);
+      console.log('当前时间:', new Date().toISOString());
+      
+      // 标记已处理，避免 touchEnd 重复调用
+      this._bookNowHandled = true;
+      
       // 阻止事件冒泡
       if (e) {
         if (typeof e.stopPropagation === 'function') {
           e.stopPropagation();
+          console.log('已调用 stopPropagation');
         }
         // 阻止默认行为
         if (typeof e.preventDefault === 'function') {
           e.preventDefault();
+          console.log('已调用 preventDefault');
         }
       }
       
+      const { product, productType } = this.properties;
+      
+      console.log('组件属性:', { 
+        product: product ? { id: product.id, name: product.name } : null,
+        productType: productType,
+        hasProduct: !!product,
+        hasProductId: !!(product && product.id),
+      });
+      
+      // 从 dataset 获取数据（备用）
+      const datasetProductId = e?.currentTarget?.dataset?.productId || e?.target?.dataset?.productId;
+      const datasetProductType = e?.currentTarget?.dataset?.productType || e?.target?.dataset?.productType;
+      console.log('Dataset 数据:', { datasetProductId, datasetProductType });
+      
+      if (!product || !product.id) {
+        console.warn('商品数据无效:', product);
+        wx.showToast({
+          title: '商品信息无效',
+          icon: 'none',
+        });
+        // 重置标志
+        setTimeout(() => {
+          this._bookNowHandled = false;
+        }, 500);
+        return;
+      }
+      
       // 检查登录状态
-      if (!auth.isLoggedIn()) {
+      const isLoggedIn = auth.isLoggedIn();
+      console.log('登录状态:', isLoggedIn);
+      
+      if (!isLoggedIn) {
         wx.showModal({
           title: '提示',
           content: '请先登录后再预订',
@@ -315,21 +388,43 @@ Component({
             }
           },
         });
-        return;
-      }
-      
-      const { product, productType } = this.properties;
-      
-      if (!product || !product.id) {
+        // 重置标志
+        setTimeout(() => {
+          this._bookNowHandled = false;
+        }, 500);
         return;
       }
 
       // 根据类型处理预订
-      if (productType === 'ATTRACTION') {
-        await this.handleAttractionBooking();
-      } else if (productType === 'HOTEL') {
-        await this.handleHotelBooking();
+      try {
+        console.log('开始处理预订，类型:', productType);
+        if (productType === 'ATTRACTION') {
+          console.log('处理景点预订');
+          await this.handleAttractionBooking();
+        } else if (productType === 'HOTEL') {
+          console.log('处理酒店预订');
+          await this.handleHotelBooking();
+        } else {
+          console.warn('不支持的商品类型:', productType);
+          wx.showToast({
+            title: '不支持的商品类型',
+            icon: 'none',
+          });
+        }
+      } catch (error) {
+        console.error('预订处理失败:', error);
+        console.error('错误堆栈:', error.stack);
+        wx.showToast({
+          title: error.message || '预订失败',
+          icon: 'none',
+        });
+      } finally {
+        // 重置标志
+        setTimeout(() => {
+          this._bookNowHandled = false;
+        }, 500);
       }
+      console.log('========== onBookNow 结束 ==========');
     },
 
     /**
@@ -376,6 +471,7 @@ Component({
         this.setData({
           hotelDetail: detail,
           showHotelModal: true,
+          showRoomList: false,
           selectedRoom: null,
           checkInDate: '',
           checkOutDate: '',
@@ -417,6 +513,16 @@ Component({
     onCloseHotelModal() {
       this.setData({
         showHotelModal: false,
+        showRoomList: false,
+      });
+    },
+
+    /**
+     * 切换房型列表显示/隐藏
+     */
+    onToggleRoomList() {
+      this.setData({
+        showRoomList: !this.data.showRoomList,
       });
     },
 
@@ -427,6 +533,7 @@ Component({
       const { room } = e.currentTarget.dataset;
       this.setData({
         selectedRoom: room,
+        showRoomList: false, // 选择后自动收起列表
       });
     },
 
@@ -502,8 +609,8 @@ Component({
             cancelText: '取消',
             success: (res) => {
               if (res.confirm) {
-                wx.switchTab({
-                  url: '/pages/mine/index',
+                wx.navigateTo({
+                  url: '/pages/mine/profile-edit?fromBooking=true',
                 });
               }
             },
@@ -572,9 +679,14 @@ Component({
       
       // 验证房型
       if (!selectedRoom) {
+        // 自动展开房型列表，方便用户选择
+        this.setData({
+          showRoomList: true,
+        });
         wx.showToast({
           title: '请选择房型',
           icon: 'none',
+          duration: 2000,
         });
         return;
       }
@@ -603,8 +715,8 @@ Component({
             cancelText: '取消',
             success: (res) => {
               if (res.confirm) {
-                wx.switchTab({
-                  url: '/pages/mine/index',
+                wx.navigateTo({
+                  url: '/pages/mine/profile-edit?fromBooking=true',
                 });
               }
             },

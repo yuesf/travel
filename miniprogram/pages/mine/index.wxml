@@ -12,12 +12,14 @@
     <view wx:if="{{!loading || isLoggedIn}}">
     <!-- 用户信息卡片 -->
     <view class="user-card">
-    <view wx:if="{{isLoggedIn}}" class="user-info">
+    <view wx:if="{{isLoggedIn}}" class="user-info" bindtap="goToProfileEdit">
       <image class="avatar" src="{{userInfo.avatar || '/assets/icons/default-avatar.png'}}" mode="aspectFill"></image>
       <view class="user-details">
         <text class="nickname">{{userInfo.nickname || '微信用户'}}</text>
         <text class="phone" wx:if="{{userInfo.phone}}">{{userInfo.phone}}</text>
+        <text class="phone-placeholder" wx:else>点击完善手机号</text>
       </view>
+      <text class="edit-icon">></text>
     </view>
     <view wx:else class="login-prompt">
       <image class="avatar" src="/assets/icons/default-avatar.png" mode="aspectFill"></image>

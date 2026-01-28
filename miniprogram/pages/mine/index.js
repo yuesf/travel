@@ -487,6 +487,17 @@ Page({
   },
 
   /**
+   * 跳转到用户信息编辑页
+   */
+  goToProfileEdit() {
+    this.checkAuthAndExecute(() => {
+      wx.navigateTo({
+        url: '/pages/mine/profile-edit',
+      });
+    });
+  },
+
+  /**
    * 跳转到客服中心
    */
   goToService() {
