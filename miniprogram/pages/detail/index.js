@@ -692,6 +692,13 @@ Page({
                 // 跳转到用户信息编辑页
                 wx.navigateTo({
                   url: '/pages/mine/profile-edit?fromBooking=true',
+                  fail: (err) => {
+                    console.error('跳转完善手机号失败:', err);
+                    wx.showToast({
+                      title: '跳转失败，请重试',
+                      icon: 'none',
+                    });
+                  },
                 });
               }
             },
@@ -773,6 +780,13 @@ Page({
                 // 跳转到用户信息编辑页
                 wx.navigateTo({
                   url: '/pages/mine/profile-edit?fromBooking=true',
+                  fail: (err) => {
+                    console.error('跳转完善手机号失败:', err);
+                    wx.showToast({
+                      title: '跳转失败，请重试',
+                      icon: 'none',
+                    });
+                  },
                 });
               }
             },

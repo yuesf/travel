@@ -493,6 +493,13 @@ Page({
     this.checkAuthAndExecute(() => {
       wx.navigateTo({
         url: '/pages/mine/profile-edit',
+        fail: (err) => {
+          console.error('跳转编辑资料页失败:', err);
+          wx.showToast({
+            title: '跳转失败，请重试',
+            icon: 'none',
+          });
+        },
       });
     });
   },

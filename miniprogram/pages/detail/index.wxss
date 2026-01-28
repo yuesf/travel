@@ -582,6 +582,8 @@
   display: flex;
   align-items: center;
   gap: 8rpx;
+  padding-right: 20rpx;
+  box-sizing: border-box;
 }
 
 .date-text {
