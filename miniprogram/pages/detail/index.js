@@ -753,28 +753,94 @@ Page({
       return;
     }
     
-    // 景点和商品：先加入购物车，然后跳转到订单确认页
+    // 景点类型：直接创建订单，不加入购物车
+    if (type === 'attraction') {
+      try {
+        // 获取用户信息作为联系人信息
+        const userInfo = auth.getUserInfo();
+        const contactName = userInfo?.nickname || userInfo?.name || '微信用户';
+        const contactPhone = userInfo?.phone || '';
+        
+        // 如果手机号为空，提示用户填写
+        if (!contactPhone) {
+          wx.showModal({
+            title: '提示',
+            content: '请先完善手机号信息',
+            confirmText: '去完善',
+            cancelText: '取消',
+            success: (res) => {
+              if (res.confirm) {
+                // 跳转到个人中心或用户信息编辑页
+                wx.switchTab({
+                  url: '/pages/mine/index',
+                });
+              }
+            },
+          });
+          return;
+        }
+        
+        // 构建订单项
+        const orderItem = {
+          itemType: 'ATTRACTION',
+          itemId: id,
+          quantity: quantity,
+          useDate: useDate,
+        };
+        
+        // 构建订单数据
+        const orderData = {
+          orderType: 'ATTRACTION',
+          items: [orderItem],
+          contactName: contactName,
+          contactPhone: contactPhone,
+        };
+        
+        // 显示加载提示
+        wx.showLoading({
+          title: '创建订单中...',
+          mask: true,
+        });
+        
+        // 创建订单
+        const order = await orderApi.createOrder(orderData);
+        console.log('订单创建成功:', order);
+        
+        wx.hideLoading();
+        
+        // 关闭景点预订弹窗
+        this.setData({ 
+          showAttractionModal: false,
+        });
+        
+        // 跳转到订单详情页
+        wx.navigateTo({
+          url: `/pages/order/detail?id=${order.id}`,
+        });
+      } catch (error) {
+        wx.hideLoading();
+        // 如果是未登录错误，不显示错误提示（已经跳转到登录页了）
+        if (error.isAuthError) {
+          return;
+        }
+        
+        console.error('创建订单失败', error);
+        wx.showToast({
+          title: error.message || '创建订单失败',
+          icon: 'none',
+        });
+      }
+      return;
+    }
+    
+    // 商品类型：先加入购物车，然后跳转到订单确认页
     try {
       // 构建购物车数据
-      let itemType = '';
-      let itemId = id;
-      
-      if (type === 'attraction') {
-        itemType = 'ATTRACTION';
-      } else {
-        itemType = 'PRODUCT';
-      }
-      
       const cartData = {
-        itemType,
-        itemId,
-        quantity,
+        itemType: 'PRODUCT',
+        itemId: id,
+        quantity: quantity,
       };
-      
-      // 景点添加使用日期
-      if (type === 'attraction' && useDate) {
-        cartData.useDate = useDate;
-      }
       
       const cartItem = await cartApi.addToCart(cartData);
       

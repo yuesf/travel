@@ -76,9 +76,11 @@ const RETRY_CONFIG = {
   RETRY_DELAY: 1000, // 重试延迟（毫秒）
 };
 
-// 默认图片路径（使用相对路径，避免被当作服务器路径）
+// 默认图片路径（使用绝对路径，从项目根目录开始）
 const DEFAULT_IMAGES = {
-  PRODUCT: '../../static/images/default-product.png', // 默认商品图片
+  PRODUCT: '/static/images/default-product.png', // 默认商品图片
+  AVATAR: '/assets/icons/default-avatar.png', // 默认头像
+  ICON: '/static/images/default-product.png', // 默认图标
 };
 
 module.exports = {

@@ -5,6 +5,7 @@
 
 const constants = require('../../utils/constants');
 const cartApi = require('../../api/cart');
+const orderApi = require('../../api/order');
 const auth = require('../../utils/auth');
 const productApi = require('../../api/product');
 
@@ -53,6 +54,28 @@ Component({
     specTipText: '',
     // 格式化后的描述（富文本）
     formattedDescription: '',
+    // 是否显示景点预订弹窗
+    showAttractionModal: false,
+    // 使用日期（景点）
+    useDate: '',
+    // 最小日期（今天）
+    minDate: '',
+    // 是否显示酒店预订弹窗
+    showHotelModal: false,
+    // 选中的房型（酒店）
+    selectedRoom: null,
+    // 入住日期（酒店）
+    checkInDate: '',
+    // 退房日期（酒店）
+    checkOutDate: '',
+    // 酒店详情（包含房型列表）
+    hotelDetail: null,
+    // 景点详情
+    attractionDetail: null,
+    // 加载状态
+    loading: false,
+    // 图片错误映射：productId -> true 表示该商品图片加载失败
+    imageErrorMap: {},
   },
 
   /**
@@ -62,6 +85,13 @@ Component({
     attached() {
       // 组件挂载时格式化描述
       this.formatDescription();
+      
+      // 设置最小日期（今天）
+      const today = new Date();
+      const minDateStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+      this.setData({
+        minDate: minDateStr,
+      });
     },
   },
 
@@ -73,12 +103,139 @@ Component({
       // 当描述、摘要或商品类型变化时，重新格式化
       this.formatDescription();
     },
+    'product': function(product) {
+      // 当商品数据变化时，检查是否需要清除错误标记
+      if (product && product.id) {
+        const imageErrorMap = { ...this.data.imageErrorMap };
+        const currentImage = product.image || product.coverImage;
+        
+        // 如果图片已更新且不是默认图片，清除错误标记（新图片可能加载成功）
+        // 但如果当前图片和之前失败的图片不同，说明是新图片，清除错误标记
+        if (imageErrorMap[product.id] && currentImage && currentImage !== this.data.defaultProductImage) {
+          // 检查图片是否真的改变了（通过比较当前图片和之前失败的图片）
+          // 这里简化处理：如果图片存在且不是默认图片，就清除错误标记
+          delete imageErrorMap[product.id];
+          this.setData({
+            imageErrorMap,
+          });
+        }
+      }
+    },
   },
 
   /**
    * 组件的方法列表
    */
   methods: {
+    /**
+     * 图片加载失败事件
+     */
+    onImageError(e) {
+      const productId = e.currentTarget.dataset.productId;
+      const isDefault = e.currentTarget.dataset.isDefault === 'true';
+      const { product } = this.properties;
+      
+      console.log('图片加载失败事件触发:', {
+        productId,
+        isDefault,
+        product: product ? { id: product.id, name: product.name } : null,
+        currentImageErrorMap: this.data.imageErrorMap,
+      });
+      
+      // 如果当前已经是默认图片，不再处理（避免无限循环）
+      if (isDefault) {
+        console.log('当前已是默认图片，跳过处理（避免无限循环）');
+        return;
+      }
+      
+      // 使用 product.id 或 productId，优先使用 productId（从 dataset 获取）
+      const finalProductId = productId || (product && product.id);
+      
+      if (!finalProductId || !product) {
+        console.warn('商品ID或商品数据不存在，无法处理图片错误');
+        return;
+      }
+      
+      // 如果已经标记为错误，不再处理（避免重复触发）
+      if (this.data.imageErrorMap[finalProductId]) {
+        console.log('该商品图片错误已标记，跳过处理');
+        return;
+      }
+      
+      const currentImage = product.image || product.coverImage;
+      
+      // 如果已经是默认图片，不再处理（避免无限循环）
+      if (currentImage === this.data.defaultProductImage) {
+        console.log('当前已是默认图片，跳过处理');
+        return;
+      }
+      
+      console.error('商品图片加载失败，切换到默认图片:', {
+        productId: finalProductId,
+        productName: product.name,
+        failedImage: currentImage,
+        defaultImage: this.data.defaultProductImage,
+      });
+      
+      // 标记该商品图片加载失败
+      const imageErrorMap = { ...this.data.imageErrorMap };
+      imageErrorMap[finalProductId] = true;
+      
+      console.log('准备更新 imageErrorMap:', {
+        before: this.data.imageErrorMap,
+        after: imageErrorMap,
+        finalProductId,
+      });
+      
+      this.setData({
+        imageErrorMap,
+      }, () => {
+        console.log('已更新 imageErrorMap，当前值:', this.data.imageErrorMap);
+        console.log('当前 product.id:', product.id);
+        console.log('imageErrorMap[product.id]:', this.data.imageErrorMap[product.id]);
+      });
+    },
+
+    /**
+     * 规格弹窗中的图片加载失败事件
+     */
+    onSpecImageError(e) {
+      const type = e.currentTarget.dataset.type;
+      const { product, productDetail } = this.properties;
+      
+      console.error('规格弹窗图片加载失败:', {
+        type,
+        productId: product?.id,
+        productName: product?.name,
+      });
+      
+      // 如果是商品详情图片失败，更新productDetail
+      if (type === 'detail' && productDetail && productDetail.images && productDetail.images.length > 0) {
+        const currentImage = productDetail.images[0];
+        // 如果已经是默认图片，不再处理（避免无限循环）
+        if (currentImage === this.data.defaultProductImage) {
+          return;
+        }
+        productDetail.images[0] = this.data.defaultProductImage;
+        this.setData({
+          productDetail: { ...productDetail }, // 创建新对象以触发更新
+        });
+      }
+      // 如果是商品图片失败，更新product
+      else if (type === 'product' && product) {
+        const currentImage = product.image || product.coverImage;
+        // 如果已经是默认图片，不再处理（避免无限循环）
+        if (currentImage === this.data.defaultProductImage) {
+          return;
+        }
+        product.image = this.data.defaultProductImage;
+        product.coverImage = this.data.defaultProductImage;
+        this.setData({
+          product: { ...product }, // 创建新对象以触发更新
+        });
+      }
+    },
+
     /**
      * 点击卡片
      */
@@ -119,12 +276,46 @@ Component({
     },
 
     /**
-     * 立即预订（景点和酒店）
+     * 立即预订按钮触摸开始（阻止事件冒泡）
      */
-    onBookNow(e) {
-      // 阻止事件冒泡
+    onBookNowTouchStart(e) {
+      // 阻止事件冒泡到父元素
       if (e && typeof e.stopPropagation === 'function') {
         e.stopPropagation();
+      }
+    },
+
+    /**
+     * 立即预订（景点和酒店）
+     */
+    async onBookNow(e) {
+      // 阻止事件冒泡
+      if (e) {
+        if (typeof e.stopPropagation === 'function') {
+          e.stopPropagation();
+        }
+        // 阻止默认行为
+        if (typeof e.preventDefault === 'function') {
+          e.preventDefault();
+        }
+      }
+      
+      // 检查登录状态
+      if (!auth.isLoggedIn()) {
+        wx.showModal({
+          title: '提示',
+          content: '请先登录后再预订',
+          confirmText: '去登录',
+          cancelText: '取消',
+          success: (res) => {
+            if (res.confirm) {
+              wx.navigateTo({
+                url: '/pages/mine/login',
+              });
+            }
+          },
+        });
+        return;
       }
       
       const { product, productType } = this.properties;
@@ -133,29 +324,343 @@ Component({
         return;
       }
 
-      // 根据商品类型跳转到对应的详情页
-      let url = '';
-      switch (productType) {
-        case 'ATTRACTION':
-          url = `/pages/detail/index?type=attraction&id=${product.id}`;
-          break;
-        case 'HOTEL':
-          url = `/pages/detail/index?type=hotel&id=${product.id}`;
-          break;
-        default:
-          return;
+      // 根据类型处理预订
+      if (productType === 'ATTRACTION') {
+        await this.handleAttractionBooking();
+      } else if (productType === 'HOTEL') {
+        await this.handleHotelBooking();
       }
+    },
 
-      if (url) {
+    /**
+     * 处理景点预订
+     */
+    async handleAttractionBooking() {
+      const { product } = this.properties;
+      
+      try {
+        this.setData({ loading: true });
+        
+        // 获取景点详情
+        const detail = await productApi.getAttractionDetail(product.id);
+        
+        this.setData({
+          attractionDetail: detail,
+          showAttractionModal: true,
+          useDate: '',
+          quantity: 1,
+          loading: false,
+        });
+      } catch (error) {
+        console.error('获取景点详情失败:', error);
+        this.setData({ loading: false });
+        wx.showToast({
+          title: error.message || '获取景点信息失败',
+          icon: 'none',
+        });
+      }
+    },
+
+    /**
+     * 处理酒店预订
+     */
+    async handleHotelBooking() {
+      const { product } = this.properties;
+      
+      try {
+        this.setData({ loading: true });
+        
+        // 获取酒店详情（包含房型列表）
+        const detail = await productApi.getHotelDetail(product.id);
+        
+        this.setData({
+          hotelDetail: detail,
+          showHotelModal: true,
+          selectedRoom: null,
+          checkInDate: '',
+          checkOutDate: '',
+          quantity: 1,
+          loading: false,
+        });
+      } catch (error) {
+        console.error('获取酒店详情失败:', error);
+        this.setData({ loading: false });
+        wx.showToast({
+          title: error.message || '获取酒店信息失败',
+          icon: 'none',
+        });
+      }
+    },
+
+    /**
+     * 关闭景点预订弹窗
+     */
+    onCloseAttractionModal() {
+      this.setData({
+        showAttractionModal: false,
+      });
+    },
+
+    /**
+     * 选择使用日期（景点）
+     */
+    onUseDateChange(e) {
+      const useDate = e.detail.value;
+      this.setData({
+        useDate,
+      });
+    },
+
+    /**
+     * 关闭酒店预订弹窗
+     */
+    onCloseHotelModal() {
+      this.setData({
+        showHotelModal: false,
+      });
+    },
+
+    /**
+     * 选择房型（酒店）
+     */
+    onSelectRoom(e) {
+      const { room } = e.currentTarget.dataset;
+      this.setData({
+        selectedRoom: room,
+      });
+    },
+
+    /**
+     * 选择入住日期（酒店）
+     */
+    onCheckInDateChange(e) {
+      const checkInDate = e.detail.value;
+      const { checkOutDate } = this.data;
+      
+      // 如果退房日期早于入住日期，清空退房日期
+      if (checkOutDate && checkOutDate <= checkInDate) {
+        this.setData({
+          checkInDate,
+          checkOutDate: '',
+        });
+      } else {
+        this.setData({
+          checkInDate,
+        });
+      }
+    },
+
+    /**
+     * 选择退房日期（酒店）
+     */
+    onCheckOutDateChange(e) {
+      const checkOutDate = e.detail.value;
+      const { checkInDate } = this.data;
+      
+      // 验证退房日期必须晚于入住日期
+      if (checkInDate && checkOutDate <= checkInDate) {
+        wx.showToast({
+          title: '退房日期必须晚于入住日期',
+          icon: 'none',
+        });
+        return;
+      }
+      
+      this.setData({
+        checkOutDate,
+      });
+    },
+
+    /**
+     * 确认景点预订（创建订单）
+     */
+    async onConfirmAttractionBooking() {
+      const { product } = this.properties;
+      const { useDate, quantity, attractionDetail } = this.data;
+      
+      // 验证使用日期
+      if (!useDate) {
+        wx.showToast({
+          title: '请选择使用日期',
+          icon: 'none',
+        });
+        return;
+      }
+      
+      try {
+        // 获取用户信息作为联系人信息
+        const userInfo = auth.getUserInfo();
+        const contactName = userInfo?.nickname || userInfo?.name || '微信用户';
+        const contactPhone = userInfo?.phone || '';
+        
+        // 如果手机号为空，提示用户填写
+        if (!contactPhone) {
+          wx.showModal({
+            title: '提示',
+            content: '请先完善手机号信息',
+            confirmText: '去完善',
+            cancelText: '取消',
+            success: (res) => {
+              if (res.confirm) {
+                wx.switchTab({
+                  url: '/pages/mine/index',
+                });
+              }
+            },
+          });
+          return;
+        }
+        
+        // 构建订单项
+        const orderItem = {
+          itemType: 'ATTRACTION',
+          itemId: product.id,
+          quantity: quantity,
+          useDate: useDate,
+        };
+        
+        // 构建订单数据
+        const orderData = {
+          orderType: 'ATTRACTION',
+          items: [orderItem],
+          contactName: contactName,
+          contactPhone: contactPhone,
+        };
+        
+        // 显示加载提示
+        wx.showLoading({
+          title: '创建订单中...',
+          mask: true,
+        });
+        
+        // 创建订单
+        const order = await orderApi.createOrder(orderData);
+        console.log('订单创建成功:', order);
+        
+        wx.hideLoading();
+        
+        // 关闭弹窗
+        this.setData({ 
+          showAttractionModal: false,
+        });
+        
+        // 跳转到订单详情页
         wx.navigateTo({
-          url,
-          fail: (err) => {
-            console.error('跳转详情页失败:', err);
-            wx.showToast({
-              title: '跳转失败，请重试',
-              icon: 'none',
-            });
-          },
+          url: `/pages/order/detail?id=${order.id}`,
+        });
+      } catch (error) {
+        wx.hideLoading();
+        // 如果是未登录错误，不显示错误提示（已经跳转到登录页了）
+        if (error.isAuthError) {
+          return;
+        }
+        
+        console.error('创建订单失败', error);
+        wx.showToast({
+          title: error.message || '创建订单失败',
+          icon: 'none',
+        });
+      }
+    },
+
+    /**
+     * 确认酒店预订（创建订单）
+     */
+    async onConfirmHotelBooking() {
+      const { product } = this.properties;
+      const { selectedRoom, checkInDate, checkOutDate, quantity } = this.data;
+      
+      // 验证房型
+      if (!selectedRoom) {
+        wx.showToast({
+          title: '请选择房型',
+          icon: 'none',
+        });
+        return;
+      }
+      
+      // 验证日期
+      if (!checkInDate || !checkOutDate) {
+        wx.showToast({
+          title: '请选择入住和退房日期',
+          icon: 'none',
+        });
+        return;
+      }
+      
+      try {
+        // 获取用户信息作为联系人信息
+        const userInfo = auth.getUserInfo();
+        const contactName = userInfo?.nickname || userInfo?.name || '微信用户';
+        const contactPhone = userInfo?.phone || '';
+        
+        // 如果手机号为空，提示用户填写
+        if (!contactPhone) {
+          wx.showModal({
+            title: '提示',
+            content: '请先完善手机号信息',
+            confirmText: '去完善',
+            cancelText: '取消',
+            success: (res) => {
+              if (res.confirm) {
+                wx.switchTab({
+                  url: '/pages/mine/index',
+                });
+              }
+            },
+          });
+          return;
+        }
+        
+        // 构建订单项
+        const orderItem = {
+          itemType: 'HOTEL_ROOM',
+          itemId: selectedRoom.id,
+          quantity: quantity,
+          checkInDate: checkInDate,
+          checkOutDate: checkOutDate,
+        };
+        
+        // 构建订单数据
+        const orderData = {
+          orderType: 'HOTEL',
+          items: [orderItem],
+          contactName: contactName,
+          contactPhone: contactPhone,
+        };
+        
+        // 显示加载提示
+        wx.showLoading({
+          title: '创建订单中...',
+          mask: true,
+        });
+        
+        // 创建订单
+        const order = await orderApi.createOrder(orderData);
+        console.log('订单创建成功:', order);
+        
+        wx.hideLoading();
+        
+        // 关闭弹窗
+        this.setData({ 
+          showHotelModal: false,
+        });
+        
+        // 跳转到订单详情页
+        wx.navigateTo({
+          url: `/pages/order/detail?id=${order.id}`,
+        });
+      } catch (error) {
+        wx.hideLoading();
+        // 如果是未登录错误，不显示错误提示（已经跳转到登录页了）
+        if (error.isAuthError) {
+          return;
+        }
+        
+        console.error('创建订单失败', error);
+        wx.showToast({
+          title: error.message || '创建订单失败',
+          icon: 'none',
         });
       }
     },

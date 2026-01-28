@@ -12,28 +12,51 @@
 >
   <swiper-item wx:for="{{banners}}" wx:key="index" class="banner-item">
     <!-- 图片类型 -->
-    <image
-      wx:if="{{item.type === 'image'}}"
-      class="banner-image"
-      src="{{item.image}}"
-      mode="aspectFill"
-      bindtap="onBannerTap"
-      binderror="onImageError"
-      data-index="{{index}}"
-    />
+    <view wx:if="{{item.type === 'image'}}" class="banner-image-wrapper">
+      <image
+        wx:if="{{!imageErrors[index]}}"
+        class="banner-image"
+        src="{{item.image}}"
+        mode="aspectFill"
+        bindtap="onBannerTap"
+        binderror="onImageError"
+        data-index="{{index}}"
+      />
+      <!-- 图片加载失败时显示占位图 -->
+      <view wx:else class="banner-image-error">
+        <image
+          class="banner-placeholder"
+          src="{{defaultImage}}"
+          mode="aspectFill"
+        />
+        <text class="error-text">图片加载失败</text>
+      </view>
+    </view>
 
     <!-- 视频类型 -->
-    <video
-      wx:elif="{{item.type === 'video'}}"
-      class="banner-video"
-      src="{{item.video}}"
-      controls="{{true}}"
-      show-center-play-btn="{{true}}"
-      enable-play-gesture="{{true}}"
-      bindplay="onVideoPlay"
-      bindended="onVideoEnded"
-      bindtap="onBannerTap"
-      data-index="{{index}}"
-    />
+    <view wx:elif="{{item.type === 'video'}}" class="banner-video-wrapper">
+      <video
+        wx:if="{{!videoErrors[index]}}"
+        class="banner-video"
+        src="{{item.video}}"
+        controls="{{true}}"
+        show-center-play-btn="{{true}}"
+        enable-play-gesture="{{true}}"
+        bindplay="onVideoPlay"
+        bindended="onVideoEnded"
+        binderror="onVideoError"
+        bindtap="onBannerTap"
+        data-index="{{index}}"
+      />
+      <!-- 视频加载失败时显示占位图 -->
+      <view wx:else class="banner-video-error">
+        <image
+          class="banner-placeholder"
+          src="{{defaultImage}}"
+          mode="aspectFill"
+        />
+        <text class="error-text">视频加载失败</text>
+      </view>
+    </view>
   </swiper-item>
 </swiper>

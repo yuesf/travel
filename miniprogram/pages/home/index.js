@@ -5,6 +5,7 @@
 const homeApi = require('../../api/home');
 const storage = require('../../utils/storage');
 const { normalizeUrl } = require('../../utils/url');
+const constants = require('../../utils/constants');
 
 // 缓存键名
 const CACHE_KEY_HOME = 'home_data';
@@ -148,86 +149,108 @@ Page({
         });
       });
       
-      const banners = bannersData.map((banner, index) => ({
-        id: banner.id || `banner_${index}`,
-        type: banner.type || 'image',
-        image: normalizeUrl(banner.image || ''),
-        video: normalizeUrl(banner.video || ''),
-        link: banner.link || '', // 兼容旧版本
-        title: banner.title || '',
-        // 新的链接配置字段
-        linkType: banner.linkType || '',
-        linkValue: banner.linkValue || '',
-        linkDisplay: banner.linkDisplay || '',
-      }));
+      const banners = bannersData.map((banner, index) => {
+        const imageUrl = normalizeUrl(banner.image || '');
+        const videoUrl = normalizeUrl(banner.video || '');
+        return {
+          id: banner.id || `banner_${index}`,
+          type: banner.type || 'image',
+          image: imageUrl || constants.DEFAULT_IMAGES.PRODUCT, // 如果图片为空，使用默认图片
+          video: videoUrl || '', // 视频为空时不设置默认值，由组件处理
+          link: banner.link || '', // 兼容旧版本
+          title: banner.title || '',
+          // 新的链接配置字段
+          linkType: banner.linkType || '',
+          linkValue: banner.linkValue || '',
+          linkDisplay: banner.linkDisplay || '',
+        };
+      });
       
       console.log('✅ 处理后的轮播图数量:', banners.length);
       console.log('========================================');
 
-      const icons = (homeData?.icons || []).map(icon => ({
-        id: icon.id,
-        type: icon.type || '',
-        relatedId: icon.relatedId || null,
-        relatedName: icon.relatedName || '',
-        name: icon.name || '',
-        icon: normalizeUrl(icon.icon || ''), // 后端已处理OSS签名，这里只处理localhost
-        linkUrl: icon.linkUrl || '', // 外部链接地址
-        categoryId: icon.categoryId || null, // 文章分类ID
-      }));
+      const icons = (homeData?.icons || []).map(icon => {
+        const iconUrl = normalizeUrl(icon.icon || '');
+        return {
+          id: icon.id,
+          type: icon.type || '',
+          relatedId: icon.relatedId || null,
+          relatedName: icon.relatedName || '',
+          name: icon.name || '',
+          icon: iconUrl || constants.DEFAULT_IMAGES.ICON, // 如果图标为空，使用默认图片
+          linkUrl: icon.linkUrl || '', // 外部链接地址
+          categoryId: icon.categoryId || null, // 文章分类ID
+        };
+      });
       console.log('处理后的图标数据:', icons);
 
-      const recommendAttractions = (homeData.recommendAttractions || []).map(item => ({
-        id: item.id,
-        name: item.name || '',
-        image: normalizeUrl(item.image || ''), // 后端已处理OSS签名，这里只处理localhost
-        coverImage: normalizeUrl(item.image || ''),
-        city: item.city || '',
-        price: item.price || 0,
-        minPrice: item.price || 0,
-        productType: 'ATTRACTION',
-      }));
-
-      const recommendHotels = (homeData.recommendHotels || []).map(item => ({
-        id: item.id,
-        name: item.name || '',
-        image: normalizeUrl(item.image || ''), // 后端已处理OSS签名，这里只处理localhost
-        coverImage: normalizeUrl(item.image || ''),
-        city: item.city || '',
-        price: item.price || 0,
-        minPrice: item.price || 0,
-        starLevel: item.starLevel || 0,
-        productType: 'HOTEL',
-      }));
-
-      const recommendProducts = (homeData.recommendProducts || []).map(item => ({
-        id: item.id,
-        name: item.name || '',
-        image: normalizeUrl(item.image || ''), // 后端已处理OSS签名，这里只处理localhost
-        coverImage: normalizeUrl(item.image || ''),
-        price: item.price || 0,
-        minPrice: item.price || 0,
-        originalPrice: item.originalPrice || 0,
-        sales: item.sales || 0,
-        productType: 'PRODUCT',
-      }));
-
-      // 处理推荐商品分类数据（按分类分组）
-      const recommendProductCategories = (homeData.recommendProductCategories || []).map(category => ({
-        categoryId: category.categoryId,
-        categoryName: category.categoryName || '',
-        categoryIcon: normalizeUrl(category.categoryIcon || ''), // 后端已处理OSS签名，这里只处理localhost
-        products: (category.products || []).map(item => ({
+      const recommendAttractions = (homeData.recommendAttractions || []).map(item => {
+        const imageUrl = normalizeUrl(item.image || '');
+        return {
           id: item.id,
           name: item.name || '',
-          image: normalizeUrl(item.image || ''), // 后端已处理OSS签名，这里只处理localhost
-          coverImage: normalizeUrl(item.image || ''),
+          image: imageUrl || constants.DEFAULT_IMAGES.PRODUCT, // 如果图片为空，使用默认图片
+          coverImage: imageUrl || constants.DEFAULT_IMAGES.PRODUCT,
+          city: item.city || '',
+          price: item.price || 0,
+          minPrice: item.price || 0,
+          productType: 'ATTRACTION',
+        };
+      });
+
+      const recommendHotels = (homeData.recommendHotels || []).map(item => {
+        const imageUrl = normalizeUrl(item.image || '');
+        return {
+          id: item.id,
+          name: item.name || '',
+          image: imageUrl || constants.DEFAULT_IMAGES.PRODUCT, // 如果图片为空，使用默认图片
+          coverImage: imageUrl || constants.DEFAULT_IMAGES.PRODUCT,
+          city: item.city || '',
+          price: item.price || 0,
+          minPrice: item.price || 0,
+          starLevel: item.starLevel || 0,
+          productType: 'HOTEL',
+        };
+      });
+
+      const recommendProducts = (homeData.recommendProducts || []).map(item => {
+        const imageUrl = normalizeUrl(item.image || '');
+        return {
+          id: item.id,
+          name: item.name || '',
+          image: imageUrl || constants.DEFAULT_IMAGES.PRODUCT, // 如果图片为空，使用默认图片
+          coverImage: imageUrl || constants.DEFAULT_IMAGES.PRODUCT,
           price: item.price || 0,
           minPrice: item.price || 0,
           originalPrice: item.originalPrice || 0,
           sales: item.sales || 0,
           productType: 'PRODUCT',
-        })),
-      }));
+        };
+      });
+
+      // 处理推荐商品分类数据（按分类分组）
+      const recommendProductCategories = (homeData.recommendProductCategories || []).map(category => {
+        const categoryIconUrl = normalizeUrl(category.categoryIcon || '');
+        return {
+          categoryId: category.categoryId,
+          categoryName: category.categoryName || '',
+          categoryIcon: categoryIconUrl || constants.DEFAULT_IMAGES.ICON, // 如果图标为空，使用默认图片
+          products: (category.products || []).map(item => {
+            const imageUrl = normalizeUrl(item.image || '');
+            return {
+              id: item.id,
+              name: item.name || '',
+              image: imageUrl || constants.DEFAULT_IMAGES.PRODUCT, // 如果图片为空，使用默认图片
+              coverImage: imageUrl || constants.DEFAULT_IMAGES.PRODUCT,
+              price: item.price || 0,
+              minPrice: item.price || 0,
+              originalPrice: item.originalPrice || 0,
+              sales: item.sales || 0,
+              productType: 'PRODUCT',
+            };
+          }),
+        };
+      });
 
       // 更新页面数据（此时所有OSS URL都已获取签名URL）
       this.setData({
@@ -405,6 +428,73 @@ Page({
   onViewMoreProducts() {
     wx.switchTab({
       url: '/pages/category/index?type=product',
+    });
+  },
+
+  /**
+   * 分类图标图片加载失败事件
+   */
+  onCategoryIconError(e) {
+    const index = e.currentTarget.dataset.index;
+    const categories = [...this.data.recommendProductCategories];
+    const category = categories[index];
+    
+    if (!category) {
+      return;
+    }
+    
+    // 如果已经是默认图片，不再处理（避免无限循环）
+    if (category.categoryIcon === constants.DEFAULT_IMAGES.ICON) {
+      return;
+    }
+    
+    console.error('分类图标图片加载失败:', {
+      index,
+      categoryId: category.categoryId,
+      categoryName: category.categoryName,
+      icon: category.categoryIcon,
+    });
+    
+    // 直接更新分类图标为默认图片
+    categories[index] = {
+      ...category,
+      categoryIcon: constants.DEFAULT_IMAGES.ICON,
+    };
+    this.setData({
+      recommendProductCategories: categories,
+    });
+  },
+
+  /**
+   * Icon 图标图片加载失败事件
+   */
+  onIconImageError(e) {
+    const index = e.currentTarget.dataset.index;
+    const icons = [...this.data.icons];
+    const icon = icons[index];
+    
+    if (!icon) {
+      return;
+    }
+    
+    // 如果已经是默认图片，不再处理（避免无限循环）
+    if (icon.icon === constants.DEFAULT_IMAGES.ICON) {
+      return;
+    }
+    
+    console.error('图标图片加载失败:', {
+      index,
+      icon: icon.icon,
+      icon,
+    });
+    
+    // 直接更新图标为默认图片
+    icons[index] = {
+      ...icon,
+      icon: constants.DEFAULT_IMAGES.ICON,
+    };
+    this.setData({
+      icons,
     });
   },
 

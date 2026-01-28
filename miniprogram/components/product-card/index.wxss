@@ -162,6 +162,8 @@
   display: flex;
   align-items: center;
   gap: 16rpx;
+  position: relative;
+  z-index: 5;
 }
 
 .product-price {
@@ -239,6 +241,10 @@
   border-radius: 8rpx;
   box-shadow: 0 2rpx 8rpx rgba(64, 158, 255, 0.3);
   transition: all 0.3s;
+  position: relative;
+  z-index: 10;
+  /* 确保按钮可以独立点击 */
+  pointer-events: auto;
 }
 
 .product-book-btn:active {
@@ -250,6 +256,8 @@
   font-size: 24rpx;
   color: #FFFFFF;
   font-weight: 500;
+  /* 确保文本不会阻止点击 */
+  pointer-events: none;
 }
 
 /* 规格选择弹窗 */
@@ -497,4 +505,233 @@
   font-size: 28rpx;
   color: #ffffff;
   white-space: nowrap;
+}
+
+/* 景点/酒店预订弹窗 */
+.room-modal-mask {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 1000;
+  background-color: rgba(0, 0, 0, 0.5);
+}
+
+.room-modal {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  max-height: 80vh;
+  background-color: #ffffff;
+  border-radius: 30rpx 30rpx 0 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.room-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 30rpx;
+  border-bottom: 1rpx solid #EBEEF5;
+}
+
+.room-modal-title {
+  font-size: 32rpx;
+  font-weight: bold;
+  color: #303133;
+}
+
+.room-modal-close {
+  font-size: 40rpx;
+  color: #909399;
+  line-height: 1;
+}
+
+.room-modal-content {
+  flex: 1;
+  padding: 30rpx;
+}
+
+.room-modal-info {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  padding: 20rpx;
+  margin-bottom: 30rpx;
+  border-radius: 12rpx;
+  background-color: #F5F7FA;
+}
+
+.room-modal-image {
+  width: 120rpx;
+  height: 120rpx;
+  border-radius: 8rpx;
+  margin-right: 20rpx;
+}
+
+.room-modal-details {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8rpx;
+}
+
+.room-modal-name {
+  font-size: 28rpx;
+  color: #303133;
+  font-weight: bold;
+}
+
+.room-modal-price {
+  font-size: 32rpx;
+  color: #F56C6C;
+  font-weight: bold;
+}
+
+.room-modal-dates {
+  display: flex;
+  flex-direction: column;
+  gap: 20rpx;
+  margin-bottom: 30rpx;
+  padding-bottom: 30rpx;
+  border-bottom: 1rpx solid #EBEEF5;
+}
+
+.date-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.date-label {
+  font-size: 28rpx;
+  color: #606266;
+}
+
+.date-picker {
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+}
+
+.date-text {
+  font-size: 28rpx;
+  color: #303133;
+}
+
+.date-arrow {
+  font-size: 32rpx;
+  color: #909399;
+}
+
+.room-modal-rooms {
+  display: flex;
+  flex-direction: column;
+  gap: 20rpx;
+  margin-bottom: 30rpx;
+}
+
+.room-modal-rooms-title {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #303133;
+  margin-bottom: 12rpx;
+}
+
+.room-modal-item {
+  position: relative;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  padding: 24rpx;
+  border-radius: 12rpx;
+  background-color: #F5F7FA;
+  border: 2rpx solid transparent;
+}
+
+.room-modal-item.active {
+  background-color: #ECF5FF;
+  border-color: #409EFF;
+}
+
+.room-modal-item-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8rpx;
+}
+
+.room-modal-item-name {
+  font-size: 30rpx;
+  font-weight: bold;
+  color: #303133;
+}
+
+.room-modal-item-desc {
+  font-size: 26rpx;
+  color: #909399;
+}
+
+.room-modal-item-price {
+  display: flex;
+  align-items: baseline;
+  margin-left: 20rpx;
+}
+
+.room-modal-item-price-text {
+  font-size: 32rpx;
+  font-weight: bold;
+  color: #F56C6C;
+}
+
+.room-modal-item-price-unit {
+  font-size: 24rpx;
+  color: #909399;
+}
+
+.room-modal-item-check {
+  position: absolute;
+  top: 24rpx;
+  right: 24rpx;
+  font-size: 32rpx;
+  color: #409EFF;
+}
+
+.room-modal-footer {
+  padding: 30rpx;
+  border-top: 1rpx solid #EBEEF5;
+}
+
+.room-modal-actions {
+  display: flex;
+  flex-direction: row;
+  gap: 20rpx;
+}
+
+.room-modal-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24rpx 0;
+  border-radius: 8rpx;
+  font-size: 28rpx;
+}
+
+.room-modal-btn.cancel {
+  background-color: #F5F7FA;
+  color: #606266;
+}
+
+.room-modal-btn.confirm {
+  background-color: #409EFF;
+  color: #ffffff;
+}
+
+.room-modal-btn:active {
+  opacity: 0.8;
 }

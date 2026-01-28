@@ -43,7 +43,13 @@
         data-icon="{{item}}"
         bindtap="onIconTap"
       >
-        <image class="icon-image" src="{{item.icon}}" mode="aspectFit" />
+        <image 
+          class="icon-image" 
+          src="{{item.icon || '/static/images/default-product.png'}}" 
+          mode="aspectFit"
+          binderror="onIconImageError"
+          data-index="{{index}}"
+        />
         <text class="icon-name">{{item.name}}</text>
       </view>
     </view>
@@ -120,7 +126,14 @@
           data-index="{{index}}"
           bindtap="onProductCategoryTabChange"
         >
-          <image wx:if="{{item.categoryIcon}}" class="category-tab-icon" src="{{item.categoryIcon}}" mode="aspectFit" />
+          <image 
+            wx:if="{{item.categoryIcon}}" 
+            class="category-tab-icon" 
+            src="{{item.categoryIcon || '/static/images/default-product.png'}}" 
+            mode="aspectFit"
+            binderror="onCategoryIconError"
+            data-index="{{index}}"
+          />
           <text class="category-tab-text">{{item.categoryName}}</text>
         </view>
       </view>

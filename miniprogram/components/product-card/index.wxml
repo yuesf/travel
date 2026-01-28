@@ -4,8 +4,12 @@
   <view class="product-image-wrapper">
     <image
       class="product-image"
-      src="{{product.image || product.coverImage || defaultProductImage}}"
+      src="{{imageErrorMap[product.id] ? defaultProductImage : (product.image || product.coverImage || defaultProductImage)}}"
       mode="aspectFill"
+      binderror="onImageError"
+      data-product-id="{{product.id}}"
+      data-productId="{{product.id}}"
+      data-is-default="{{imageErrorMap[product.id] ? 'true' : 'false'}}"
     />
     <!-- 标签 -->
     <view wx:if="{{product.tag}}" class="product-tag">
@@ -69,7 +73,7 @@
         </view>
         
         <!-- 立即预订按钮（景点和酒店类型显示） -->
-        <view wx:if="{{productType === 'ATTRACTION' || productType === 'HOTEL'}}" class="product-book-btn" catchtap="onBookNow">
+        <view wx:if="{{productType === 'ATTRACTION' || productType === 'HOTEL'}}" class="product-book-btn" catchtap="onBookNow" catchtouchstart="onBookNowTouchStart">
           <text class="book-btn-text">立即预订</text>
         </view>
       </view>
@@ -87,8 +91,28 @@
       <scroll-view class="spec-modal-content" scroll-y="true">
         <!-- 商品信息 -->
         <view class="spec-product-info">
-          <image wx:if="{{productDetail && productDetail.images && productDetail.images.length > 0}}" class="spec-product-image" src="{{productDetail.images[0]}}" mode="aspectFill" />
-          <image wx:elif="{{product.image || product.coverImage}}" class="spec-product-image" src="{{product.image || product.coverImage}}" mode="aspectFill" />
+          <image 
+            wx:if="{{productDetail && productDetail.images && productDetail.images.length > 0}}" 
+            class="spec-product-image" 
+            src="{{productDetail.images[0] || defaultProductImage}}" 
+            mode="aspectFill"
+            binderror="onSpecImageError"
+            data-type="detail"
+          />
+          <image 
+            wx:elif="{{product.image || product.coverImage}}" 
+            class="spec-product-image" 
+            src="{{product.image || product.coverImage || defaultProductImage}}" 
+            mode="aspectFill"
+            binderror="onSpecImageError"
+            data-type="product"
+          />
+          <image 
+            wx:else
+            class="spec-product-image" 
+            src="{{defaultProductImage}}" 
+            mode="aspectFill"
+          />
           <view class="spec-product-details">
             <text class="spec-product-name">{{productDetail ? productDetail.name : product.name}}</text>
             <text class="spec-product-price">¥{{productDetail ? productDetail.price : (product.price || product.minPrice || 0)}}</text>
@@ -134,6 +158,147 @@
         <view class="spec-modal-actions">
           <view class="spec-modal-btn cancel" bindtap="onCloseSpecModal">取消</view>
           <view class="spec-modal-btn confirm" bindtap="onAddToCart">确定</view>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 景点预订弹窗 -->
+  <view wx:if="{{showAttractionModal && productType === 'ATTRACTION'}}" class="room-modal-mask" bindtap="onCloseAttractionModal">
+    <view class="room-modal" catchtap="true">
+      <view class="room-modal-header">
+        <text class="room-modal-title">景点预订</text>
+        <text class="room-modal-close" bindtap="onCloseAttractionModal">✕</text>
+      </view>
+      
+      <scroll-view class="room-modal-content" scroll-y="true">
+        <!-- 景点信息 -->
+        <view class="room-modal-info">
+          <image 
+            wx:if="{{product.image || product.coverImage}}" 
+            class="room-modal-image" 
+            src="{{product.image || product.coverImage}}" 
+            mode="aspectFill" 
+          />
+          <view class="room-modal-details">
+            <text class="room-modal-name">{{product.name}}</text>
+            <text class="room-modal-price">¥{{product.price || 0}}</text>
+          </view>
+        </view>
+        
+        <!-- 日期选择 -->
+        <view class="room-modal-dates">
+          <view class="date-item">
+            <text class="date-label">使用日期</text>
+            <picker mode="date" value="{{useDate}}" start="{{minDate}}" bindchange="onUseDateChange">
+              <view class="date-picker">
+                <text class="date-text">{{useDate || '请选择'}}</text>
+                <text class="date-arrow">›</text>
+              </view>
+            </picker>
+          </view>
+        </view>
+      </scroll-view>
+
+      <!-- 操作按钮 -->
+      <view class="room-modal-footer">
+        <view class="quantity-selector">
+          <text class="quantity-label">数量：</text>
+          <view class="quantity-controls">
+            <view class="quantity-btn minus" bindtap="onDecreaseQuantity">-</view>
+            <text class="quantity-value">{{quantity}}</text>
+            <view class="quantity-btn plus" bindtap="onIncreaseQuantity">+</view>
+          </view>
+        </view>
+        <view class="room-modal-actions">
+          <view class="room-modal-btn cancel" bindtap="onCloseAttractionModal">取消</view>
+          <view class="room-modal-btn confirm" bindtap="onConfirmAttractionBooking">确定</view>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 酒店预订弹窗 -->
+  <view wx:if="{{showHotelModal && productType === 'HOTEL'}}" class="room-modal-mask" bindtap="onCloseHotelModal">
+    <view class="room-modal" catchtap="true">
+      <view class="room-modal-header">
+        <text class="room-modal-title">酒店预订</text>
+        <text class="room-modal-close" bindtap="onCloseHotelModal">✕</text>
+      </view>
+      
+      <scroll-view class="room-modal-content" scroll-y="true">
+        <!-- 酒店信息 -->
+        <view class="room-modal-info">
+          <image 
+            wx:if="{{product.image || product.coverImage}}" 
+            class="room-modal-image" 
+            src="{{product.image || product.coverImage}}" 
+            mode="aspectFill" 
+          />
+          <view class="room-modal-details">
+            <text class="room-modal-name">{{product.name}}</text>
+            <text class="room-modal-price">¥{{product.price || product.minPrice || 0}}起</text>
+          </view>
+        </view>
+        
+        <!-- 日期选择 -->
+        <view class="room-modal-dates">
+          <view class="date-item">
+            <text class="date-label">入住日期</text>
+            <picker mode="date" value="{{checkInDate}}" start="{{minDate}}" bindchange="onCheckInDateChange">
+              <view class="date-picker">
+                <text class="date-text">{{checkInDate || '请选择'}}</text>
+                <text class="date-arrow">›</text>
+              </view>
+            </picker>
+          </view>
+          <view class="date-item">
+            <text class="date-label">退房日期</text>
+            <picker mode="date" value="{{checkOutDate}}" start="{{checkInDate || minDate}}" bindchange="onCheckOutDateChange">
+              <view class="date-picker">
+                <text class="date-text">{{checkOutDate || '请选择'}}</text>
+                <text class="date-arrow">›</text>
+              </view>
+            </picker>
+          </view>
+        </view>
+        
+        <!-- 房型列表 -->
+        <view wx:if="{{hotelDetail && hotelDetail.rooms}}" class="room-modal-rooms">
+          <view class="room-modal-rooms-title">选择房型</view>
+          <view
+            wx:for="{{hotelDetail.rooms}}"
+            wx:key="id"
+            class="room-modal-item {{selectedRoom && selectedRoom.id === item.id ? 'active' : ''}}"
+            data-room="{{item}}"
+            bindtap="onSelectRoom"
+          >
+            <view class="room-modal-item-info">
+              <text class="room-modal-item-name">{{item.name || item.roomType}}</text>
+              <text class="room-modal-item-desc">{{item.description || ''}}</text>
+            </view>
+            <view class="room-modal-item-price">
+              <text class="room-modal-item-price-text">¥{{item.price}}</text>
+              <text class="room-modal-item-price-unit">/晚</text>
+            </view>
+            <view wx:if="{{selectedRoom && selectedRoom.id === item.id}}" class="room-modal-item-check">✓</view>
+          </view>
+        </view>
+      </scroll-view>
+
+      <!-- 操作按钮 -->
+      <view class="room-modal-footer">
+        <view class="quantity-selector">
+          <text class="quantity-label">数量：</text>
+          <view class="quantity-controls">
+            <view class="quantity-btn minus" bindtap="onDecreaseQuantity">-</view>
+            <text class="quantity-value">{{quantity}}</text>
+            <view class="quantity-btn plus" bindtap="onIncreaseQuantity">+</view>
+          </view>
+        </view>
+        <view class="room-modal-actions">
+          <view class="room-modal-btn cancel" bindtap="onCloseHotelModal">取消</view>
+          <view class="room-modal-btn confirm" bindtap="onConfirmHotelBooking">确定</view>
         </view>
       </view>
     </view>

@@ -3,7 +3,8 @@
  * 支持图片和视频轮播，自动播放，手动滑动，点击事件
  */
 
-const NavigationHelper = require('../../utils/navigation-helper.js')
+const NavigationHelper = require('../../utils/navigation-helper.js');
+const constants = require('../../utils/constants');
 
 Component({
   /**
@@ -53,6 +54,9 @@ Component({
   data: {
     currentIndex: 0, // 当前轮播索引
     shouldAutoplay: true, // 实际控制轮播是否自动播放（用于视频播放时暂停轮播）
+    imageErrors: {}, // 记录图片加载失败的索引 {index: true}
+    videoErrors: {}, // 记录视频加载失败的索引 {index: true}
+    defaultImage: constants.DEFAULT_IMAGES.PRODUCT, // 默认图片
   },
 
   /**
@@ -215,8 +219,42 @@ Component({
         banner,
       });
       
+      // 记录该索引的图片加载失败
+      const imageErrors = { ...this.data.imageErrors };
+      imageErrors[index] = true;
+      this.setData({
+        imageErrors,
+      });
+      
       // 触发图片错误事件（供父组件使用）
       this.triggerEvent('imageerror', {
+        index,
+        banner,
+      });
+    },
+
+    /**
+     * 视频加载失败事件
+     */
+    onVideoError(e) {
+      const index = e.currentTarget.dataset.index;
+      const banner = this.data.banners[index];
+      
+      console.error('轮播图视频加载失败:', {
+        index,
+        video: banner?.video,
+        banner,
+      });
+      
+      // 记录该索引的视频加载失败
+      const videoErrors = { ...this.data.videoErrors };
+      videoErrors[index] = true;
+      this.setData({
+        videoErrors,
+      });
+      
+      // 触发视频错误事件（供父组件使用）
+      this.triggerEvent('videoerror', {
         index,
         banner,
       });
