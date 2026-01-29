@@ -172,7 +172,7 @@
   </view>
 
   <!-- 景点预订弹窗 -->
-  <view wx:if="{{showAttractionModal && productType === 'ATTRACTION'}}" class="room-modal-mask" bindtap="onCloseAttractionModal">
+  <view wx:if="{{showAttractionModal && productType === 'ATTRACTION'}}" class="room-modal-mask" bindtap="onCloseAttractionModal" catchtouchmove="onPreventMove">
     <view class="room-modal" catchtap="true">
       <view class="room-modal-header">
         <text class="room-modal-title">景点预订</text>
@@ -227,7 +227,7 @@
   </view>
 
   <!-- 酒店预订弹窗 -->
-  <view wx:if="{{showHotelModal && productType === 'HOTEL'}}" class="room-modal-mask" bindtap="onCloseHotelModal">
+  <view wx:if="{{showHotelModal && productType === 'HOTEL'}}" class="room-modal-mask" bindtap="onCloseHotelModal" catchtouchmove="onPreventMove">
     <view class="room-modal" catchtap="true">
       <view class="room-modal-header">
         <text class="room-modal-title">酒店预订</text>
@@ -284,7 +284,7 @@
           </view>
           
           <!-- 房型列表（可展开/收起） -->
-          <view wx:if="{{showRoomList}}" class="room-modal-rooms">
+          <view class="room-modal-rooms {{showRoomList ? 'expanded' : ''}}">
             <view
               wx:for="{{hotelDetail.rooms}}"
               wx:key="id"

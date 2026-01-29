@@ -359,10 +359,10 @@ Page({
     let url = '';
     switch (cartItem.itemType) {
       case 'ATTRACTION':
-        url = `/pages/detail/index?type=attraction&id=${cartItem.itemId}`;
+        url = `/pages/attraction/detail?id=${cartItem.itemId}`;
         break;
       case 'HOTEL_ROOM':
-        url = `/pages/detail/index?type=hotel&id=${cartItem.itemId}`;
+        url = `/pages/hotel/detail?id=${cartItem.itemId}`;
         break;
       case 'PRODUCT':
         url = `/pages/detail/index?type=product&id=${cartItem.itemId}`;

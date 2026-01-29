@@ -40,6 +40,11 @@ public class AttractionTicket implements Serializable {
      * 价格
      */
     private BigDecimal price;
+
+    /**
+     * 库存
+     */
+    private Integer stock;
     
     /**
      * 包含景点列表（JSON数组）

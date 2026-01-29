@@ -165,6 +165,63 @@
   background-color: #ffffff;
 }
 
+/* 景点主 Tab：门票预订 / 景区介绍 */
+.booking-main-tabs {
+  display: flex;
+  flex-direction: row;
+  background-color: #ffffff;
+  margin-top: 10rpx;
+  border-bottom: 1rpx solid #EBEEF5;
+}
+
+.booking-main-tab {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 26rpx 0;
+  position: relative;
+}
+
+.booking-main-tab-text {
+  font-size: 30rpx;
+  color: #606266;
+}
+
+.booking-main-tab.active .booking-main-tab-text {
+  color: #00b894;
+  font-weight: bold;
+}
+
+.booking-main-tab.active::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 80rpx;
+  height: 4rpx;
+  border-radius: 999rpx;
+  background: linear-gradient(90deg, #00b894 0%, #00cec9 100%);
+}
+
+.booking-section {
+  background-color: #ffffff;
+  padding: 30rpx;
+  margin-top: 10rpx;
+}
+
+.booking-date-section {
+  margin-bottom: 30rpx;
+}
+
+.booking-date-title {
+  font-size: 30rpx;
+  color: #303133;
+  font-weight: bold;
+  margin-bottom: 16rpx;
+}
+
 .tabs-container {
   display: flex;
   flex-direction: row;
@@ -519,6 +576,7 @@
   bottom: 0;
   z-index: 1000;
   background-color: rgba(0, 0, 0, 0.5);
+  overflow: hidden;
 }
 
 .room-modal {
@@ -531,6 +589,16 @@
   border-radius: 30rpx 30rpx 0 0;
   display: flex;
   flex-direction: column;
+  transform: translateZ(0);
+  -webkit-transform: translateZ(0);
+  will-change: transform;
+  transition: transform 0.3s ease;
+}
+
+.room-modal-mask[style*="display: none"],
+.room-modal-mask:not([class*="show"]) {
+  opacity: 0;
+  pointer-events: none;
 }
 
 .room-modal-header {
@@ -556,6 +624,8 @@
 .room-modal-content {
   flex: 1;
   padding: 30rpx;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .room-modal-dates {
@@ -578,12 +648,195 @@
   color: #606266;
 }
 
+/* 景点可订日期 tab 列表（最近四天） */
+.date-tabs {
+  display: flex;
+  flex-direction: row;
+  margin-top: 20rpx;
+  gap: 16rpx;
+  overflow-x: auto;
+  padding-bottom: 10rpx;
+}
+
+.date-tab-item {
+  min-width: 140rpx;
+  padding: 14rpx 10rpx;
+  border-radius: 16rpx;
+  background-color: #ffffff;
+  border: 2rpx solid #E4E7ED;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+}
+
+.date-tab-item.active {
+  border-color: #409EFF;
+  background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+  box-shadow: 0 6rpx 16rpx rgba(64, 158, 255, 0.35);
+}
+
+.date-tab-label {
+  font-size: 26rpx;
+  color: #606266;
+  margin-bottom: 6rpx;
+}
+
+.date-tab-date {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #303133;
+}
+
+.date-tab-item.active .date-tab-label,
+.date-tab-item.active .date-tab-date {
+  color: #ffffff;
+}
+
+.date-tab-item.more-date {
+  border-style: dashed;
+}
+
+.ticket-categories-section {
+  display: flex;
+  flex-direction: column;
+  gap: 24rpx;
+}
+
+.ticket-category {
+  background-color: #F7F9FB;
+  border-radius: 16rpx;
+  padding: 20rpx 20rpx 8rpx 20rpx;
+}
+
+.ticket-category-header {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12rpx;
+}
+
+.ticket-category-name {
+  font-size: 30rpx;
+  font-weight: bold;
+  color: #303133;
+}
+
+.ticket-category-desc {
+  font-size: 24rpx;
+  color: #909399;
+  margin-left: 12rpx;
+}
+
+.ticket-category-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16rpx;
+}
+
+.ticket-card {
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+  justify-content: space-between;
+  padding: 26rpx 24rpx;
+  border-radius: 20rpx;
+  background-color: #ffffff;
+  box-shadow: 0 8rpx 24rpx rgba(0, 0, 0, 0.04);
+}
+
+.ticket-card-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8rpx;
+}
+
+.ticket-card-name {
+  font-size: 28rpx;
+  color: #303133;
+  font-weight: 600;
+}
+
+.ticket-card-desc {
+  font-size: 24rpx;
+  color: #909399;
+}
+
+.ticket-card-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 10rpx;
+  margin-left: 20rpx;
+}
+
+.ticket-card-price-row {
+  display: flex;
+  align-items: baseline;
+}
+
+.ticket-card-price {
+  font-size: 32rpx;
+  font-weight: bold;
+  color: #F56C6C;
+}
+
+.ticket-card-book-btn {
+  min-width: 150rpx;
+  padding: 14rpx 26rpx;
+  border-radius: 999rpx;
+  background: linear-gradient(135deg, #ff9f43 0%, #ff6b6b 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 12rpx;
+}
+
+.ticket-card-book-text {
+  font-size: 26rpx;
+  color: #ffffff;
+  font-weight: bold;
+}
+
+.booking-quantity-row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-end;
+  margin-top: 26rpx;
+}
+
+/* 景点票种卡片内的数量行 */
+.ticket-quantity-row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-end;
+  margin-top: 6rpx;
+}
+
+.ticket-quantity-label {
+  font-size: 24rpx;
+  color: #606266;
+  margin-right: 10rpx;
+}
+
+/* 票种卡片里的数量按钮稍微圆一点 */
+.ticket-quantity-row .quantity-btn {
+  border-radius: 12rpx;
+}
+
 .date-picker {
   display: flex;
   align-items: center;
   gap: 8rpx;
-  padding-right: 20rpx;
+  padding-right: 50rpx;
   box-sizing: border-box;
+  min-height: 60rpx;
+  position: relative;
 }
 
 .date-text {
@@ -682,12 +935,16 @@
 .quantity-controls {
   display: flex;
   align-items: center;
-  gap: 24rpx;
+  justify-content: space-between;
+  gap: 0;
+  background-color: #F5F7FA;
+  border-radius: 16rpx;
+  padding: 0 8rpx;
 }
 
 .quantity-btn {
-  width: 60rpx;
-  height: 60rpx;
+  width: 64rpx;
+  height: 64rpx;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -702,9 +959,9 @@
 }
 
 .quantity-value {
-  font-size: 32rpx;
+  font-size: 30rpx;
   color: #303133;
-  min-width: 60rpx;
+  min-width: 64rpx;
   text-align: center;
 }
 

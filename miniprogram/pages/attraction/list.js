@@ -137,7 +137,7 @@ Page({
     }
     
     wx.navigateTo({
-      url: `/pages/detail/index?id=${product.id}&type=attraction`,
+      url: `/pages/attraction/detail?id=${product.id}`,
       fail: (err) => {
         console.error('跳转景点详情失败:', err);
         wx.showToast({

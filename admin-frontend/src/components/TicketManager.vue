@@ -25,20 +25,7 @@
           ¥{{ row.price }}
         </template>
       </el-table-column>
-      <el-table-column prop="includedAttractions" label="包含景点" width="200">
-        <template #default="{ row }">
-          <el-tag
-            v-for="(item, index) in row.includedAttractions"
-            :key="index"
-            size="small"
-            style="margin-right: 5px"
-          >
-            {{ item }}
-          </el-tag>
-        </template>
-      </el-table-column>
-      <el-table-column prop="verificationMethod" label="核验方式" width="120" />
-      <el-table-column prop="refundRule" label="退改规则" width="120" />
+      <el-table-column prop="stock" label="库存" width="120" />
       <el-table-column prop="sort" label="排序" width="100" />
       <el-table-column prop="status" label="状态" width="100">
         <template #default="{ row }">
@@ -89,35 +76,12 @@
             style="width: 100%"
           />
         </el-form-item>
-        <el-form-item label="包含景点">
-          <el-select
-            v-model="editForm.includedAttractions"
-            multiple
-            filterable
-            allow-create
-            default-first-option
-            placeholder="请选择或输入景点"
+        <el-form-item label="库存">
+          <el-input-number
+            v-model="editForm.stock"
+            :min="0"
             style="width: 100%"
-          >
-            <el-option label="金顶" value="金顶" />
-            <el-option label="紫霄" value="紫霄" />
-            <el-option label="南岩" value="南岩" />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="核验方式">
-          <el-select v-model="editForm.verificationMethod" placeholder="请选择核验方式" style="width: 100%">
-            <el-option label="身份证" value="ID_CARD" />
-            <el-option label="有效证件" value="VALID_DOCUMENT" />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="退改规则">
-          <el-select v-model="editForm.refundRule" placeholder="请选择退改规则" style="width: 100%">
-            <el-option label="随时可退" value="ANYTIME_REFUND" />
-            <el-option label="不可退" value="NO_REFUND" />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="预订须知链接">
-          <el-input v-model="editForm.bookingNoticeUrl" placeholder="请输入链接（可选）" />
+          />
         </el-form-item>
         <el-form-item label="排序">
           <el-input-number v-model="editForm.sort" :min="0" style="width: 100%" />
@@ -166,10 +130,7 @@ const editForm = reactive({
   categoryId: null,
   name: '',
   price: null,
-  includedAttractions: [],
-  verificationMethod: '',
-  refundRule: '',
-  bookingNoticeUrl: '',
+  stock: null,
   sort: 0,
   status: 1,
 })
@@ -209,10 +170,7 @@ const handleAdd = () => {
   editForm.categoryId = null
   editForm.name = ''
   editForm.price = null
-  editForm.includedAttractions = []
-  editForm.verificationMethod = ''
-  editForm.refundRule = ''
-  editForm.bookingNoticeUrl = ''
+  editForm.stock = null
   editForm.sort = 0
   editForm.status = 1
   dialogVisible.value = true
@@ -224,10 +182,7 @@ const handleEdit = (row) => {
   editForm.categoryId = row.categoryId
   editForm.name = row.name
   editForm.price = parseFloat(row.price)
-  editForm.includedAttractions = row.includedAttractions || []
-  editForm.verificationMethod = row.verificationMethod || ''
-  editForm.refundRule = row.refundRule || ''
-  editForm.bookingNoticeUrl = row.bookingNoticeUrl || ''
+  editForm.stock = row.stock != null ? row.stock : null
   editForm.sort = row.sort
   editForm.status = row.status
   dialogVisible.value = true
@@ -247,16 +202,17 @@ const handleSubmit = async () => {
     ElMessage.warning('请输入价格')
     return
   }
+  if (editForm.stock === null) {
+    ElMessage.warning('请输入库存')
+    return
+  }
 
   try {
     if (editForm.id) {
       await updateTicket(props.attractionId, editForm.id, {
         name: editForm.name,
         price: editForm.price,
-        includedAttractions: editForm.includedAttractions,
-        verificationMethod: editForm.verificationMethod,
-        refundRule: editForm.refundRule,
-        bookingNoticeUrl: editForm.bookingNoticeUrl,
+        stock: editForm.stock,
         sort: editForm.sort,
         status: editForm.status,
       })
@@ -266,10 +222,7 @@ const handleSubmit = async () => {
         categoryId: editForm.categoryId,
         name: editForm.name,
         price: editForm.price,
-        includedAttractions: editForm.includedAttractions,
-        verificationMethod: editForm.verificationMethod,
-        refundRule: editForm.refundRule,
-        bookingNoticeUrl: editForm.bookingNoticeUrl,
+        stock: editForm.stock,
         sort: editForm.sort,
         status: editForm.status,
       })

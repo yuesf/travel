@@ -58,14 +58,25 @@ Page({
           });
         }
       } catch (error) {
-        // 忽略框架内部性能监控错误
-        if (error && error.message && 
-            (error.message.includes('__subPageFrameEndTime__') || 
-             error.message.includes('Cannot read property'))) {
-          console.warn('获取导航栏高度时遇到框架内部错误（已忽略）:', error.message);
-        } else {
-          console.error('获取导航栏高度失败:', error);
+        const msg = (error && error.message) || '';
+
+        // 1. 忽略已知的框架/工具内部无害错误
+        // - 小程序性能监控 / 子页面统计
+        // - 微信广告 / 插屏广告相关内部文件不存在
+        // - 工具内部尝试读取 /saaa_config.json 报错
+        if (
+          msg.includes('__subPageFrameEndTime__') ||
+          msg.includes('Cannot read property') ||
+          msg.includes('interstitialAdExtInfo.txt') ||
+          msg.includes('saaa_config.json') ||
+          msg.includes('not node js file system')
+        ) {
+          console.warn('获取导航栏高度时遇到已知无害的框架内部错误（已忽略）:', msg);
+          return;
         }
+
+        // 2. 其他未知错误仍然作为真正的错误输出，方便排查
+        console.error('获取导航栏高度失败:', error);
       }
     }, 50); // 延迟50ms，确保页面完全初始化
   },
@@ -625,7 +636,7 @@ Page({
       // 跳转到景点详情或列表
       if (relatedId) {
         wx.navigateTo({
-          url: `/pages/detail/index?id=${relatedId}&type=attraction`,
+          url: `/pages/attraction/detail?id=${relatedId}`,
         });
       } else {
         // 未选择具体景点，跳转到景点列表页面
@@ -644,7 +655,7 @@ Page({
       // 跳转到酒店详情或列表
       if (relatedId) {
         wx.navigateTo({
-          url: `/pages/detail/index?id=${relatedId}&type=hotel`,
+          url: `/pages/hotel/detail?id=${relatedId}`,
         });
       } else {
         // 未选择具体酒店，跳转到酒店列表页面

@@ -6,6 +6,7 @@ import com.travel.dto.CartResponse;
 import com.travel.dto.CartUpdateRequest;
 import com.travel.entity.Attraction;
 import com.travel.entity.Cart;
+import com.travel.entity.AttractionTicket;
 import com.travel.entity.HotelRoom;
 import com.travel.entity.Product;
 import com.travel.exception.BusinessException;
@@ -42,6 +43,9 @@ public class CartService {
     
     @Autowired
     private ProductMapper productMapper;
+
+    @Autowired
+    private com.travel.mapper.AttractionTicketMapper attractionTicketMapper;
     
     @Autowired
     private OssUrlUtil ossUrlUtil;
@@ -196,6 +200,22 @@ public class CartService {
         if ("ATTRACTION".equals(itemType)) {
             // 验证景点库存
             Attraction attraction = attractionMapper.selectById(itemId);
+            if (attraction == null) {
+                throw new BusinessException(ResultCode.NOT_FOUND);
+            }
+            if (attraction.getStatus() == null || attraction.getStatus() != 1) {
+                throw new BusinessException(ResultCode.PARAM_ERROR.getCode(), "景点已下架");
+            }
+            if (attraction.getTicketStock() != null && attraction.getTicketStock() < quantity) {
+                throw new BusinessException(ResultCode.PARAM_ERROR.getCode(), "库存不足");
+            }
+        } else if ("ATTRACTION_TICKET".equals(itemType)) {
+            // 票种级别的库存校验：仍以所属景点的库存为准
+            com.travel.entity.AttractionTicket ticket = attractionTicketMapper.selectById(itemId);
+            if (ticket == null) {
+                throw new BusinessException(ResultCode.NOT_FOUND);
+            }
+            Attraction attraction = attractionMapper.selectById(ticket.getAttractionId());
             if (attraction == null) {
                 throw new BusinessException(ResultCode.NOT_FOUND);
             }

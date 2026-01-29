@@ -1,0 +1,231 @@
+<!-- 酒店详情页（独立） -->
+<view class="page-container">
+  <!-- 加载状态 -->
+  <view wx:if="{{loading}}" class="loading-container">
+    <text class="loading-text">加载中...</text>
+  </view>
+
+  <!-- 内容区域 -->
+  <view wx:elif="{{detail}}" class="content-container">
+    <!-- 图片/视频轮播区域 -->
+    <view class="swiper-container">
+      <swiper
+        class="swiper"
+        indicator-dots="{{mediaList.length > 1}}"
+        indicator-color="rgba(255, 255, 255, 0.5)"
+        indicator-active-color="#ffffff"
+        autoplay="{{mediaList.length > 1}}"
+        interval="{{3000}}"
+        duration="{{500}}"
+        circular="{{true}}"
+        bindchange="onSwiperChange"
+      >
+        <swiper-item wx:for="{{mediaList}}" wx:key="index">
+          <!-- 图片 -->
+          <image
+            wx:if="{{item.type === 'image'}}"
+            class="swiper-image"
+            src="{{item.url}}"
+            mode="aspectFill"
+            data-index="{{index}}"
+            bindtap="onImageTap"
+          />
+          <!-- 视频 -->
+          <video
+            wx:elif="{{item.type === 'video'}}"
+            class="swiper-video"
+            src="{{item.url}}"
+            poster="{{item.poster}}"
+            controls="{{true}}"
+            show-center-play-btn="{{true}}"
+            enable-play-gesture="{{true}}"
+            bindplay="onVideoPlay"
+            bindfullscreenchange="onVideoFullscreenChange"
+          />
+        </swiper-item>
+      </swiper>
+      <!-- 轮播指示器 -->
+      <view wx:if="{{mediaList.length > 1}}" class="swiper-indicator">
+        <text class="swiper-indicator-text">{{currentSwiperIndex + 1}}/{{mediaList.length}}</text>
+      </view>
+    </view>
+
+    <!-- 基本信息区域 -->
+    <view class="info-section">
+      <view class="info-header">
+        <text class="info-name">{{detail.name}}</text>
+        <view class="info-price-row">
+          <text class="info-price">¥{{detail.price}}</text>
+          <text wx:if="{{detail.originalPrice}}" class="info-original-price">¥{{detail.originalPrice}}</text>
+        </view>
+      </view>
+
+      <!-- 评分、位置、星级 -->
+      <view class="info-meta">
+        <view wx:if="{{detail.rating}}" class="info-rating">
+          <text class="info-rating-text">评分：{{detail.rating}}</text>
+          <text class="info-rating-star">★</text>
+        </view>
+        <view wx:if="{{detail.starLevel}}" class="info-hotel">
+          <text class="info-hotel-text">星级：{{detail.starLevel}}星</text>
+        </view>
+        <view wx:if="{{detail.address}}" class="info-location">
+          <text class="info-location-icon">📍</text>
+          <text class="info-location-text">{{detail.address}}</text>
+        </view>
+      </view>
+    </view>
+
+    <!-- 房型列表 -->
+    <view wx:if="{{detail.rooms && detail.rooms.length}}" class="detail-section">
+      <view class="detail-tab-content">
+        <view class="detail-rooms">
+          <view class="detail-rooms-title">房型选择</view>
+          <view class="detail-rooms-list">
+            <view
+              wx:for="{{detail.rooms}}"
+              wx:key="id"
+              class="room-item"
+              data-room="{{item}}"
+              bindtap="onSelectRoom"
+            >
+              <view class="room-info">
+                <text class="room-name">{{item.name}}</text>
+                <text class="room-desc">{{item.description}}</text>
+                <view class="room-features">
+                  <text wx:for="{{item.features}}" wx:key="index" class="room-feature">{{item}}</text>
+                </view>
+              </view>
+              <view class="room-price">
+                <text class="room-price-text">¥{{item.price}}</text>
+                <text class="room-price-unit">/晚</text>
+              </view>
+            </view>
+          </view>
+        </view>
+      </view>
+    </view>
+
+    <!-- 酒店详情描述 -->
+    <view class="detail-section">
+      <view class="tabs-container">
+        <view
+          wx:for="{{['详情', '评价', '须知']}}"
+          wx:key="index"
+          class="tab-item {{activeTab === index ? 'active' : ''}}"
+          data-index="{{index}}"
+          bindtap="onTabChange"
+        >
+          <text class="tab-text">{{item}}</text>
+        </view>
+      </view>
+
+      <view class="detail-content">
+        <!-- 详情 -->
+        <view wx:if="{{activeTab === 0}}" class="detail-tab-content">
+          <view wx:if="{{detail.description}}" class="detail-description">
+            <rich-text nodes="{{detail.description}}"></rich-text>
+          </view>
+        </view>
+
+        <!-- 评价 -->
+        <view wx:if="{{activeTab === 1}}" class="detail-tab-content">
+          <view class="empty-content">
+            <text class="empty-text">暂无评价</text>
+          </view>
+        </view>
+
+        <!-- 须知 -->
+        <view wx:if="{{activeTab === 2}}" class="detail-tab-content">
+          <view wx:if="{{detail.notice}}" class="detail-notice">
+            <rich-text nodes="{{detail.notice}}"></rich-text>
+          </view>
+          <view wx:else class="empty-content">
+            <text class="empty-text">暂无须知</text>
+          </view>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 空状态 -->
+  <view wx:if="{{!loading && !detail}}" class="empty-container">
+    <text class="empty-text">暂无酒店信息</text>
+  </view>
+
+  <!-- 房型选择弹窗 -->
+  <view wx:if="{{showRoomModal}}" class="room-modal-mask" bindtap="onCloseRoomModal" catchtouchmove="onPreventMove">
+    <view class="room-modal" catchtap="true">
+      <view class="room-modal-header">
+        <text class="room-modal-title">确认预订</text>
+        <text class="room-modal-close" bindtap="onCloseRoomModal">✕</text>
+      </view>
+
+      <scroll-view class="room-modal-content" scroll-y="true">
+        <!-- 房型信息 -->
+        <view wx:if="{{selectedRoom}}" class="room-modal-item-info">
+          <text class="room-modal-item-name">{{selectedRoom.name}}</text>
+          <text class="room-modal-item-desc">{{selectedRoom.description}}</text>
+        </view>
+
+        <!-- 日期选择 -->
+        <view class="room-modal-dates">
+          <view class="date-item">
+            <text class="date-label">入住日期</text>
+            <picker mode="date" value="{{checkInDate}}" start="{{minDate}}" bindchange="onCheckInDateChange">
+              <view class="date-picker">
+                <text class="date-text">{{checkInDate || '请选择'}}</text>
+                <text class="date-arrow">›</text>
+              </view>
+            </picker>
+          </view>
+          <view class="date-item">
+            <text class="date-label">退房日期</text>
+            <picker mode="date" value="{{checkOutDate}}" start="{{checkInDate || minDate}}" bindchange="onCheckOutDateChange">
+              <view class="date-picker">
+                <text class="date-text">{{checkOutDate || '请选择'}}</text>
+                <text class="date-arrow">›</text>
+              </view>
+            </picker>
+          </view>
+        </view>
+      </scroll-view>
+
+      <!-- 数量和操作按钮 -->
+      <view class="room-modal-footer">
+        <view class="quantity-selector">
+          <text class="quantity-label">数量：</text>
+          <view class="quantity-controls">
+            <view class="quantity-btn minus" bindtap="onDecreaseQuantity">-</view>
+            <text class="quantity-value">{{quantity}}</text>
+            <view class="quantity-btn plus" bindtap="onIncreaseQuantity">+</view>
+          </view>
+        </view>
+        <view class="room-modal-actions">
+          <view class="room-modal-btn cancel" bindtap="onCloseRoomModal">取消</view>
+          <view class="room-modal-btn confirm" bindtap="onBookNow">确定</view>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 底部操作栏：导航 + 预订按钮 -->
+  <view wx:if="{{detail}}" class="action-bar">
+    <view class="action-nav-icons">
+      <view class="nav-icon" bindtap="onGoHome">
+        <text class="nav-icon-text">🏠</text>
+        <text class="nav-icon-label">首页</text>
+      </view>
+      <view class="nav-icon" bindtap="onGoCart">
+        <text class="nav-icon-text">🛒</text>
+        <text class="nav-icon-label">购物车</text>
+      </view>
+    </view>
+    <view class="action-buttons">
+      <view class="action-btn buy" bindtap="onBookNow">
+        <text class="action-btn-text">立即预订</text>
+      </view>
+    </view>
+  </view>
+</view>
+

@@ -64,6 +64,9 @@ public class OrderService {
     
     @Autowired
     private OssUrlUtil ossUrlUtil;
+
+    @Autowired
+    private com.travel.mapper.AttractionTicketMapper attractionTicketMapper;
     
     private final ObjectMapper objectMapper = new ObjectMapper();
     
@@ -455,6 +458,19 @@ public class OrderService {
                 }
                 price = attraction.getTicketPrice() != null ? attraction.getTicketPrice() : BigDecimal.ZERO;
                 itemName = attraction.getName();
+                break;
+            case "ATTRACTION_TICKET":
+                com.travel.entity.AttractionTicket ticket = attractionTicketMapper.selectById(itemId);
+                if (ticket == null) {
+                    throw new BusinessException(ResultCode.DATA_NOT_FOUND.getCode(), "票种不存在或已下架");
+                }
+                Attraction ticketAttraction = attractionMapper.selectById(ticket.getAttractionId());
+                if (ticketAttraction == null || ticketAttraction.getStatus() == null || ticketAttraction.getStatus() != 1) {
+                    throw new BusinessException(ResultCode.DATA_NOT_FOUND.getCode(), "景点不存在或已下架");
+                }
+                price = ticket.getPrice() != null ? ticket.getPrice() : BigDecimal.ZERO;
+                // 将景点名称包含在订单项名称中：景点名称 - 票种名称
+                itemName = ticketAttraction.getName() + " - " + ticket.getName();
                 break;
             case "HOTEL_ROOM":
                 HotelRoom room = hotelRoomMapper.selectById(itemId);

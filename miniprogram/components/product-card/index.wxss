@@ -527,6 +527,7 @@
   bottom: 0;
   z-index: 1000;
   background-color: rgba(0, 0, 0, 0.5);
+  overflow: hidden;
 }
 
 .room-modal {
@@ -539,6 +540,16 @@
   border-radius: 30rpx 30rpx 0 0;
   display: flex;
   flex-direction: column;
+  transform: translateZ(0);
+  -webkit-transform: translateZ(0);
+  will-change: transform;
+  transition: transform 0.3s ease;
+}
+
+.room-modal-mask[style*="display: none"],
+.room-modal-mask:not([class*="show"]) {
+  opacity: 0;
+  pointer-events: none;
 }
 
 .room-modal-header {
@@ -564,6 +575,8 @@
 .room-modal-content {
   flex: 1;
   padding: 30rpx;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .room-modal-info {
@@ -626,8 +639,10 @@
   display: flex;
   align-items: center;
   gap: 8rpx;
-  padding-right: 20rpx;
+  padding-right: 50rpx;
   box-sizing: border-box;
+  min-height: 60rpx;
+  position: relative;
 }
 
 .date-text {
@@ -661,12 +676,23 @@
   display: flex;
   flex-direction: column;
   gap: 16rpx;
-  margin-top: 20rpx;
-  padding: 20rpx;
+  margin-top: 0;
+  padding: 0 20rpx;
   background-color: #FAFBFC;
   border-radius: 12rpx;
+  max-height: 0;
+  opacity: 0;
+  overflow: hidden;
+  transition: max-height 0.3s ease, opacity 0.3s ease, margin-top 0.3s ease, padding-top 0.3s ease, padding-bottom 0.3s ease;
+}
+
+.room-modal-rooms.expanded {
   max-height: 500rpx;
+  opacity: 1;
+  margin-top: 20rpx;
+  padding: 20rpx;
   overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .room-modal-rooms-title {

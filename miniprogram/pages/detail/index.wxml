@@ -84,8 +84,124 @@
       </view>
     </view>
 
-    <!-- 详情内容区域 -->
-    <view class="detail-section">
+    <!-- 景点详情主 Tab（门票预订 / 景区介绍） -->
+    <view wx:if="{{type === 'attraction'}}" class="booking-main-tabs">
+      <view
+        class="booking-main-tab {{bookingMainTab === 'booking' ? 'active' : ''}}"
+        data-tab="booking"
+        bindtap="onBookingMainTabChange"
+      >
+        <text class="booking-main-tab-text">门票预订</text>
+      </view>
+      <view
+        class="booking-main-tab {{bookingMainTab === 'intro' ? 'active' : ''}}"
+        data-tab="intro"
+        bindtap="onBookingMainTabChange"
+      >
+        <text class="booking-main-tab-text">景区介绍</text>
+      </view>
+    </view>
+
+    <!-- 门票预订区域（仅景点 & 门票预订 Tab 下显示） -->
+    <view wx:if="{{type === 'attraction' && bookingMainTab === 'booking'}}" class="booking-section">
+      <!-- 可订日期 -->
+      <view class="booking-date-section">
+        <view class="booking-date-title">可订日期</view>
+        <view class="date-tabs">
+          <view
+            wx:for="{{dateOptions}}"
+            wx:key="fullDate"
+            class="date-tab-item {{selectedDateIndex === index ? 'active' : ''}}"
+            data-index="{{index}}"
+            bindtap="onSelectUseDateTab"
+          >
+            <text class="date-tab-label">{{item.label}}</text>
+            <text class="date-tab-date">{{item.monthDay}}</text>
+          </view>
+          <!-- 更多日期 -->
+          <picker mode="date" value="{{useDate}}" start="{{minDate}}" bindchange="onUseDateChange">
+            <view class="date-tab-item more-date">
+              <text class="date-tab-label">更多</text>
+              <text class="date-tab-date">日期 ›</text>
+            </view>
+          </picker>
+        </view>
+      </view>
+
+      <!-- 票种分类 + 票种列表 -->
+      <view wx:if="{{detail.ticketCategories && detail.ticketCategories.length}}" class="ticket-categories-section">
+        <view
+          wx:for="{{detail.ticketCategories}}"
+          wx:for-item="cat"
+          wx:key="id"
+          class="ticket-category"
+        >
+          <view class="ticket-category-header">
+            <text class="ticket-category-name">{{cat.name}}</text>
+            <text wx:if="{{cat.description}}" class="ticket-category-desc">{{cat.description}}</text>
+          </view>
+          <view wx:if="{{cat.tickets && cat.tickets.length}}" class="ticket-category-list">
+            <view
+              wx:for="{{cat.tickets}}"
+              wx:for-item="ticket"
+              wx:key="id"
+              class="ticket-card"
+            >
+              <view class="ticket-card-info">
+                <text class="ticket-card-name">{{ticket.name}}</text>
+                <text wx:if="{{ticket.includedAttractions && ticket.includedAttractions.length}}" class="ticket-card-desc">
+                  {{ticket.includedAttractions.join('、')}}
+                </text>
+              </view>
+              <view class="ticket-card-right">
+                <view class="ticket-card-price-row">
+                  <text class="ticket-card-price">¥{{ticket.price || detail.price}}</text>
+                </view>
+                <!-- 票种数量选择 -->
+                <view class="ticket-quantity-row">
+                  <text class="ticket-quantity-label">数量：</text>
+                  <view class="quantity-controls">
+                    <view
+                      class="quantity-btn minus"
+                      data-ticket-id="{{ticket.id}}"
+                      bindtap="onDecreaseTicketQuantity"
+                    >-</view>
+                    <text class="quantity-value">
+                      {{ticketQuantities[ticket.id] || 1}}
+                    </text>
+                    <view
+                      class="quantity-btn plus"
+                      data-ticket-id="{{ticket.id}}"
+                      bindtap="onIncreaseTicketQuantity"
+                    >+</view>
+                  </view>
+                </view>
+                <view
+                  class="ticket-card-book-btn"
+                  data-ticket="{{ticket}}"
+                  bindtap="onTicketBookTap"
+                >
+                  <text class="ticket-card-book-text">预订</text>
+                </view>
+              </view>
+            </view>
+          </view>
+        </view>
+      </view>
+
+      <!-- 数量选择 -->
+      <view class="booking-quantity-row">
+        <text class="quantity-label">数量：</text>
+        <view class="quantity-controls">
+          <view class="quantity-btn minus" bindtap="onDecreaseQuantity">-</view>
+          <text class="quantity-value">{{quantity}}</text>
+          <view class="quantity-btn plus" bindtap="onIncreaseQuantity">+</view>
+        </view>
+      </view>
+    </view>
+
+    <!-- 景区介绍 / 酒店 / 商品详情区域 -->
+    <view wx:if="{{type !== 'attraction' || bookingMainTab === 'intro'}}" class="detail-section">
       <!-- 标签页 -->
       <view class="tabs-container">
         <view
@@ -123,7 +239,7 @@
           </view>
 
           <!-- 房型列表（酒店） -->
-          <view wx:if="{{type === 'hotel' && detail.rooms}}" class="detail-rooms">
+          <view wx:if="{{type === 'hotel' && detail.rooms && detail.rooms.length}}" class="detail-rooms">
             <view class="detail-rooms-title">房型选择</view>
             <view class="detail-rooms-list">
               <view
@@ -144,24 +260,6 @@
                   <text class="room-price-text">¥{{item.price}}</text>
                   <text class="room-price-unit">/晚</text>
                 </view>
-              </view>
-            </view>
-          </view>
-
-          <!-- 门票信息（景点） -->
-          <view wx:if="{{type === 'attraction' && detail.tickets}}" class="detail-tickets">
-            <view class="detail-tickets-title">门票信息</view>
-            <view class="detail-tickets-list">
-              <view
-                wx:for="{{detail.tickets}}"
-                wx:key="id"
-                class="ticket-item"
-              >
-                <view class="ticket-info">
-                  <text class="ticket-name">{{item.name}}</text>
-                  <text class="ticket-desc">{{item.description}}</text>
-                </view>
-                <text class="ticket-price">¥{{item.price}}</text>
               </view>
             </view>
           </view>
@@ -208,17 +306,18 @@
     
     <!-- 右侧操作按钮 -->
     <view class="action-buttons">
-      <view class="action-btn cart" bindtap="onAddToCart">
+      <!-- 非景点：保留加入购物车和立即购买 -->
+      <view wx:if="{{type !== 'attraction'}}" class="action-btn cart" bindtap="onAddToCart">
         <text class="action-btn-text">加入购物车</text>
       </view>
-      <view class="action-btn buy" bindtap="onBuyNow">
+      <view wx:if="{{type !== 'attraction'}}" class="action-btn buy" bindtap="onBuyNow">
         <text class="action-btn-text">立即购买</text>
       </view>
     </view>
   </view>
 
   <!-- 景点预订弹窗 -->
-  <view wx:if="{{showAttractionModal && type === 'attraction'}}" class="room-modal-mask" bindtap="onCloseAttractionModal">
+  <view wx:if="{{showAttractionModal && type === 'attraction'}}" class="room-modal-mask" bindtap="onCloseAttractionModal" catchtouchmove="onPreventMove">
     <view class="room-modal" catchtap="true">
       <view class="room-modal-header">
         <text class="room-modal-title">选择使用日期</text>
@@ -259,7 +358,7 @@
   </view>
 
   <!-- 房型选择弹窗（酒店） -->
-  <view wx:if="{{showRoomModal && type === 'hotel'}}" class="room-modal-mask" bindtap="onCloseRoomModal">
+  <view wx:if="{{showRoomModal && type === 'hotel'}}" class="room-modal-mask" bindtap="onCloseRoomModal" catchtouchmove="onPreventMove">
     <view class="room-modal" catchtap="true">
       <view class="room-modal-header">
         <text class="room-modal-title">选择房型</text>
@@ -290,7 +389,7 @@
         </view>
 
         <!-- 房型列表 -->
-        <view wx:if="{{detail.rooms}}" class="room-modal-rooms">
+        <view wx:if="{{detail.rooms && detail.rooms.length}}" class="room-modal-rooms">
           <view
             wx:for="{{detail.rooms}}"
             wx:key="id"

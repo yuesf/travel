@@ -3,6 +3,7 @@ package com.travel.entity;
 import lombok.Data;
 import java.io.Serializable;
 import java.time.LocalDateTime;
+import java.util.List;
 
 /**
  * 票种分类实体类
@@ -53,4 +54,9 @@ public class AttractionTicketCategory implements Serializable {
      * 更新时间
      */
     private LocalDateTime updateTime;
+
+    /**
+     * 该分类下的具体票种列表（小程序景点详情用，非数据库字段）
+     */
+    private List<com.travel.entity.AttractionTicket> tickets;
 }

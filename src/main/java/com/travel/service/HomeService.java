@@ -9,12 +9,14 @@ import com.travel.dto.SearchRequest;
 import com.travel.entity.Attraction;
 import com.travel.entity.MiniProgramConfig;
 import com.travel.entity.Hotel;
+import com.travel.entity.HotelRoom;
 import com.travel.entity.Product;
 import com.travel.entity.ProductCategory;
 import com.travel.mapper.AttractionMapper;
 import com.travel.mapper.MiniProgramConfigMapper;
 import com.travel.mapper.ProductMapper;
 import com.travel.mapper.ProductCategoryMapper;
+import com.travel.mapper.HotelRoomMapper;
 import com.travel.util.OssUrlUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
@@ -22,6 +24,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -47,6 +50,9 @@ public class HomeService {
     
     @Autowired
     private com.travel.mapper.HotelMapper hotelMapper;
+    
+    @Autowired
+    private HotelRoomMapper hotelRoomMapper;
     
     @Autowired
     private ProductCategoryMapper productCategoryMapper;
@@ -414,8 +420,31 @@ public class HomeService {
                                         item.setImage(hotel.getImages().get(0));
                                     }
                                     item.setCity(hotel.getCity());
-                                    // 暂无独立价格字段时可根据房型/其他逻辑扩展，这里先置为 null
-                                    item.setPrice(null);
+                                    
+                                    // 计算酒店最低房型价格（仅统计上架房型）
+                                    BigDecimal minPrice = null;
+                                    try {
+                                        List<HotelRoom> allRooms = hotelRoomMapper.selectByHotelId(id);
+                                        if (allRooms != null && !allRooms.isEmpty()) {
+                                            for (HotelRoom room : allRooms) {
+                                                if (room == null || room.getStatus() == null || room.getStatus() != 1) {
+                                                    continue;
+                                                }
+                                                BigDecimal roomPrice = room.getPrice();
+                                                if (roomPrice == null) {
+                                                    continue;
+                                                }
+                                                if (minPrice == null || roomPrice.compareTo(minPrice) < 0) {
+                                                    minPrice = roomPrice;
+                                                }
+                                            }
+                                        }
+                                    } catch (Exception e) {
+                                        log.warn("计算酒店最低房型价格失败，hotelId: {}", id, e);
+                                    }
+                                    
+                                    // 如果存在有效房型价格，则使用最低价；否则回退为0
+                                    item.setPrice(minPrice != null ? minPrice : BigDecimal.ZERO);
                                     item.setStarLevel(hotel.getStarLevel());
                                     item.setStatus(hotel.getStatus());
                                     hotels.add(item);

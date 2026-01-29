@@ -150,4 +150,15 @@ public class Attraction implements Serializable {
      * 更新时间
      */
     private LocalDateTime updateTime;
+
+    /**
+     * 票种分类列表（小程序景点详情用，非数据库字段）
+     * 结构：每个分类下包含多个具体票种
+     */
+    private List<com.travel.entity.AttractionTicketCategory> ticketCategories;
+
+    /**
+     * 扁平的具体票种列表（便于部分前端直接遍历使用，非数据库字段）
+     */
+    private List<com.travel.entity.AttractionTicket> tickets;
 }

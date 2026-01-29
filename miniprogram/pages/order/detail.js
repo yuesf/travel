@@ -216,12 +216,74 @@ Page({
    * 支付订单
    */
   async onPayOrder() {
-    // 跳转到支付页面或调用支付接口
-    wx.showToast({
-      title: '支付功能开发中',
-      icon: 'none',
-    });
-    // TODO: 实现支付功能
+    const { orderId } = this.data;
+    
+    if (!orderId) {
+      wx.showToast({
+        title: '订单ID不能为空',
+        icon: 'none',
+      });
+      return;
+    }
+
+    try {
+      wx.showLoading({
+        title: '支付中...',
+        mask: true,
+      });
+
+      // 调用支付接口
+      const paymentParams = await orderApi.payOrder(orderId, {
+        payType: 'WECHAT',
+      });
+
+      wx.hideLoading();
+
+      console.log('支付参数:', paymentParams);
+
+      // 调用微信支付
+      wx.requestPayment({
+        timeStamp: paymentParams.timeStamp,
+        nonceStr: paymentParams.nonceStr,
+        package: paymentParams.package,
+        signType: paymentParams.signType,
+        paySign: paymentParams.paySign,
+        success: (res) => {
+          console.log('支付成功:', res);
+          wx.showToast({
+            title: '支付成功',
+            icon: 'success',
+          });
+          
+          // 刷新订单详情
+          setTimeout(() => {
+            this.loadOrderDetail();
+          }, 1500);
+        },
+        fail: (err) => {
+          console.error('支付失败:', err);
+          
+          if (err.errMsg && err.errMsg.includes('cancel')) {
+            wx.showToast({
+              title: '支付已取消',
+              icon: 'none',
+            });
+          } else {
+            wx.showToast({
+              title: '支付失败，请重试',
+              icon: 'none',
+            });
+          }
+        },
+      });
+    } catch (error) {
+      wx.hideLoading();
+      console.error('支付失败:', error);
+      wx.showToast({
+        title: error.message || '支付失败',
+        icon: 'none',
+      });
+    }
   },
 
   /**

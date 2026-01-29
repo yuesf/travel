@@ -65,13 +65,6 @@
           </template>
         </el-table-column>
         <el-table-column prop="city" label="城市" width="100" />
-        <el-table-column prop="ticketPrice" label="门票价格" width="100" sortable="custom">
-          <template #default="{ row }">
-            <span v-if="row.ticketPrice">¥{{ row.ticketPrice }}</span>
-            <span v-else>-</span>
-          </template>
-        </el-table-column>
-        <el-table-column prop="ticketStock" label="库存" width="100" sortable="custom" />
         <el-table-column prop="status" label="状态" width="100">
           <template #default="{ row }">
             <el-tag :type="row.status === 1 ? 'success' : 'info'">

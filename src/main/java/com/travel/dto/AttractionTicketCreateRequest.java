@@ -37,6 +37,12 @@ public class AttractionTicketCreateRequest {
      */
     @NotNull(message = "价格不能为空")
     private BigDecimal price;
+
+    /**
+     * 库存
+     */
+    @NotNull(message = "库存不能为空")
+    private Integer stock;
     
     /**
      * 包含景点列表
@@ -52,11 +58,6 @@ public class AttractionTicketCreateRequest {
      * 退改规则：ANYTIME_REFUND-随时可退，NO_REFUND-不可退
      */
     private String refundRule;
-    
-    /**
-     * 预订须知链接
-     */
-    private String bookingNoticeUrl;
     
     /**
      * 排序

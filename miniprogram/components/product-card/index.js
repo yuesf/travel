@@ -9,6 +9,14 @@ const orderApi = require('../../api/order');
 const auth = require('../../utils/auth');
 const productApi = require('../../api/product');
 
+// 格式化日期为 yyyy-MM-dd
+function formatDate(date) {
+  const y = date.getFullYear();
+  const m = (date.getMonth() + 1).toString().padStart(2, '0');
+  const d = date.getDate().toString().padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
 Component({
   /**
    * 组件的属性列表
@@ -267,10 +275,10 @@ Component({
       let url = '';
       switch (productType) {
         case 'ATTRACTION':
-          url = `/pages/detail/index?type=attraction&id=${product.id}`;
+          url = `/pages/attraction/detail?id=${product.id}`;
           break;
         case 'HOTEL':
-          url = `/pages/detail/index?type=hotel&id=${product.id}`;
+          url = `/pages/hotel/detail?id=${product.id}`;
           break;
         case 'PRODUCT':
           url = `/pages/detail/index?type=product&id=${product.id}`;
@@ -322,59 +330,18 @@ Component({
      * 立即预订（景点和酒店）
      */
     async onBookNow(e) {
-      console.log('========== onBookNow 被调用 ==========');
-      console.log('事件对象:', e);
-      console.log('事件类型:', e?.type);
-      console.log('当前时间:', new Date().toISOString());
-      
-      // 标记已处理，避免 touchEnd 重复调用
-      this._bookNowHandled = true;
-      
-      // 阻止事件冒泡
-      if (e) {
-        if (typeof e.stopPropagation === 'function') {
-          e.stopPropagation();
-          console.log('已调用 stopPropagation');
-        }
-        // 阻止默认行为
-        if (typeof e.preventDefault === 'function') {
-          e.preventDefault();
-          console.log('已调用 preventDefault');
-        }
-      }
-      
       const { product, productType } = this.properties;
-      
-      console.log('组件属性:', { 
-        product: product ? { id: product.id, name: product.name } : null,
-        productType: productType,
-        hasProduct: !!product,
-        hasProductId: !!(product && product.id),
-      });
-      
-      // 从 dataset 获取数据（备用）
-      const datasetProductId = e?.currentTarget?.dataset?.productId || e?.target?.dataset?.productId;
-      const datasetProductType = e?.currentTarget?.dataset?.productType || e?.target?.dataset?.productType;
-      console.log('Dataset 数据:', { datasetProductId, datasetProductType });
-      
+
       if (!product || !product.id) {
-        console.warn('商品数据无效:', product);
         wx.showToast({
           title: '商品信息无效',
           icon: 'none',
         });
-        // 重置标志
-        setTimeout(() => {
-          this._bookNowHandled = false;
-        }, 500);
         return;
       }
-      
+
       // 检查登录状态
-      const isLoggedIn = auth.isLoggedIn();
-      console.log('登录状态:', isLoggedIn);
-      
-      if (!isLoggedIn) {
+      if (!auth.isLoggedIn()) {
         wx.showModal({
           title: '提示',
           content: '请先登录后再预订',
@@ -388,43 +355,119 @@ Component({
             }
           },
         });
-        // 重置标志
-        setTimeout(() => {
-          this._bookNowHandled = false;
-        }, 500);
         return;
       }
 
-      // 根据类型处理预订
+      // 获取用户信息（联系人）
+      const userInfo = auth.getUserInfo();
+      const contactName = userInfo?.nickname || userInfo?.name || '微信用户';
+      const contactPhone = userInfo?.phone || '';
+
+      // 如果手机号为空，先引导去完善
+      if (!contactPhone) {
+        wx.showModal({
+          title: '提示',
+          content: '请先完善手机号信息',
+          confirmText: '去完善',
+          cancelText: '取消',
+          success: (res) => {
+            if (res.confirm) {
+              wx.navigateTo({
+                url: '/pages/mine/profile-edit?fromBooking=true',
+              });
+            }
+          },
+        });
+        return;
+      }
+
+      // 默认日期：今天/明天
+      const today = new Date();
+      const tomorrow = new Date();
+      tomorrow.setDate(today.getDate() + 1);
+      const useDate = formatDate(today);
+      const checkInDate = formatDate(today);
+      const checkOutDate = formatDate(tomorrow);
+
       try {
-        console.log('开始处理预订，类型:', productType);
+        wx.showLoading({
+          title: '创建订单中...',
+          mask: true,
+        });
+
+        let orderData = null;
+
         if (productType === 'ATTRACTION') {
-          console.log('处理景点预订');
-          await this.handleAttractionBooking();
+          // 景点：直接按今天使用日期创建订单（数量默认 1）
+          const orderItem = {
+            itemType: 'ATTRACTION',
+            itemId: product.id,
+            quantity: 1,
+            useDate,
+          };
+
+          orderData = {
+            orderType: 'ATTRACTION',
+            items: [orderItem],
+            contactName,
+            contactPhone,
+          };
         } else if (productType === 'HOTEL') {
-          console.log('处理酒店预订');
-          await this.handleHotelBooking();
+          // 酒店：先拉取酒店详情，选择第一个房型作为默认房型
+          const detail = await productApi.getHotelDetail(product.id);
+          const rooms = detail?.rooms || [];
+          if (!rooms.length) {
+            wx.hideLoading();
+            wx.showToast({
+              title: '暂无可售房型',
+              icon: 'none',
+            });
+            return;
+          }
+
+          const defaultRoom = rooms[0];
+
+          const orderItem = {
+            itemType: 'HOTEL_ROOM',
+            itemId: defaultRoom.id,
+            quantity: 1,
+            checkInDate,
+            checkOutDate,
+          };
+
+          orderData = {
+            orderType: 'HOTEL',
+            items: [orderItem],
+            contactName,
+            contactPhone,
+          };
         } else {
-          console.warn('不支持的商品类型:', productType);
+          wx.hideLoading();
           wx.showToast({
-            title: '不支持的商品类型',
+            title: '不支持的预订类型',
             icon: 'none',
           });
+          return;
         }
+
+        // 创建订单
+        const order = await orderApi.createOrder(orderData);
+        console.log('首页立即预订创建订单成功:', order);
+
+        wx.hideLoading();
+
+        // 跳转到订单详情页
+        wx.navigateTo({
+          url: `/pages/order/detail?id=${order.id}`,
+        });
       } catch (error) {
-        console.error('预订处理失败:', error);
-        console.error('错误堆栈:', error.stack);
+        wx.hideLoading();
+        console.error('首页立即预订创建订单失败:', error);
         wx.showToast({
-          title: error.message || '预订失败',
+          title: error.message || '创建订单失败',
           icon: 'none',
         });
-      } finally {
-        // 重置标志
-        setTimeout(() => {
-          this._bookNowHandled = false;
-        }, 500);
       }
-      console.log('========== onBookNow 结束 ==========');
     },
 
     /**
@@ -518,12 +561,23 @@ Component({
     },
 
     /**
+     * 阻止弹窗背景滚动（在 mask 上使用）
+     */
+    onPreventMove() {
+      // 阻止事件冒泡，防止页面滚动
+      return false;
+    },
+
+    /**
      * 切换房型列表显示/隐藏
      */
     onToggleRoomList() {
-      this.setData({
-        showRoomList: !this.data.showRoomList,
-      });
+      // 延迟更新，避免与 picker 关闭动画冲突
+      setTimeout(() => {
+        this.setData({
+          showRoomList: !this.data.showRoomList,
+        });
+      }, 100);
     },
 
     /**
@@ -544,17 +598,25 @@ Component({
       const checkInDate = e.detail.value;
       const { checkOutDate } = this.data;
       
-      // 如果退房日期早于入住日期，清空退房日期
-      if (checkOutDate && checkOutDate <= checkInDate) {
-        this.setData({
-          checkInDate,
-          checkOutDate: '',
-        });
-      } else {
-        this.setData({
-          checkInDate,
-        });
-      }
+      // 使用 nextTick 延迟更新，避免与 picker 关闭动画冲突
+      wx.nextTick(() => {
+        // 如果退房日期为空或早于等于入住日期，自动设置为入住日期+1天
+        if (!checkOutDate || checkOutDate <= checkInDate) {
+          // 计算入住日期+1天
+          const checkInDateObj = new Date(checkInDate);
+          checkInDateObj.setDate(checkInDateObj.getDate() + 1);
+          const nextDay = checkInDateObj.toISOString().split('T')[0];
+          
+          this.setData({
+            checkInDate,
+            checkOutDate: nextDay,
+          });
+        } else {
+          this.setData({
+            checkInDate,
+          });
+        }
+      });
     },
 
     /**
@@ -658,9 +720,16 @@ Component({
           showAttractionModal: false,
         });
         
-        // 跳转到订单详情页
+        // 直接跳转到订单详情页
         wx.navigateTo({
           url: `/pages/order/detail?id=${order.id}`,
+          fail: (err) => {
+            console.error('跳转订单详情失败:', err);
+            wx.showToast({
+              title: '跳转失败，请重试',
+              icon: 'none',
+            });
+          },
         });
       } catch (error) {
         wx.hideLoading();
@@ -772,9 +841,16 @@ Component({
           showHotelModal: false,
         });
         
-        // 跳转到订单详情页
+        // 直接跳转到订单详情页
         wx.navigateTo({
           url: `/pages/order/detail?id=${order.id}`,
+          fail: (err) => {
+            console.error('跳转订单详情失败:', err);
+            wx.showToast({
+              title: '跳转失败，请重试',
+              icon: 'none',
+            });
+          },
         });
       } catch (error) {
         wx.hideLoading();

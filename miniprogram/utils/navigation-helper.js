@@ -319,7 +319,7 @@ function navigateToAttractionDetail(attractionId) {
   }
 
   wx.navigateTo({
-    url: `/pages/detail/index?id=${attractionId}&type=attraction`,
+    url: `/pages/attraction/detail?id=${attractionId}`,
     fail: (err) => {
       console.error('跳转到景点详情失败:', err)
       wx.showModal({
@@ -344,7 +344,7 @@ function navigateToHotelDetail(hotelId) {
   }
 
   wx.navigateTo({
-    url: `/pages/detail/index?id=${hotelId}&type=hotel`,
+    url: `/pages/hotel/detail?id=${hotelId}`,
     fail: (err) => {
       console.error('跳转到酒店详情失败:', err)
       wx.showModal({

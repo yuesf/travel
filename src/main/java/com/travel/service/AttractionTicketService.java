@@ -110,17 +110,8 @@ public class AttractionTicketService {
         if (request.getPrice() != null) {
             ticket.setPrice(request.getPrice());
         }
-        if (request.getIncludedAttractions() != null) {
-            ticket.setIncludedAttractions(request.getIncludedAttractions());
-        }
-        if (request.getVerificationMethod() != null) {
-            ticket.setVerificationMethod(request.getVerificationMethod());
-        }
-        if (request.getRefundRule() != null) {
-            ticket.setRefundRule(request.getRefundRule());
-        }
-        if (request.getBookingNoticeUrl() != null) {
-            ticket.setBookingNoticeUrl(request.getBookingNoticeUrl());
+        if (request.getStock() != null) {
+            ticket.setStock(request.getStock());
         }
         if (request.getSort() != null) {
             ticket.setSort(request.getSort());

@@ -44,13 +44,15 @@
     {
       "root": "pages/attraction",
       "pages": [
-        "list"
+        "list",
+        "detail"
       ]
     },
     {
       "root": "pages/hotel",
       "pages": [
-        "list"
+        "list",
+        "detail"
       ]
     }
   ],

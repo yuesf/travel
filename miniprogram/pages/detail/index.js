@@ -33,9 +33,15 @@ Page({
     activeTab: 0,
     // 详情标签页列表
     tabs: ['详情', '评价', '须知'],
+    // 景点详情主 Tab：booking-门票预订，intro-景区介绍（仅景点使用）
+    bookingMainTab: 'booking',
     
     // 最小日期（今天）
     minDate: '',
+    // 景点可选日期列表（最近四天）
+    dateOptions: [],
+    // 已选日期下标（最近四天卡片），-1 表示通过“更多日期”选择
+    selectedDateIndex: 0,
     
     // 是否显示景点预订弹窗（景点）
     showAttractionModal: false,
@@ -59,8 +65,10 @@ Page({
     showSpecTip: false,
     specTipText: '',
     
-    // 数量选择器值
+    // 通用数量选择器值（酒店房型 / 商品等使用）
     quantity: 1,
+    // 景点票种数量映射：{ [ticketId]: number }
+    ticketQuantities: {},
   },
 
   /**
@@ -84,11 +92,16 @@ Page({
     // 设置最小日期（今天）
     const today = new Date();
     const minDateStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
-    
+    const dateOptions = this.generateDateOptions(today);
+
     this.setData({
       type,
       id: parseInt(id),
       minDate: minDateStr,
+      // 仅景点使用订日期和主 Tab
+      bookingMainTab: type === 'attraction' ? 'booking' : this.data.bookingMainTab,
+      dateOptions,
+      useDate: dateOptions[0]?.fullDate || '',
     });
 
     // 设置导航栏标题
@@ -146,10 +159,46 @@ Page({
       console.log('========== 商品详情数据 ==========');
       console.log('详情数据:', JSON.stringify(detail, null, 2));
       console.log('商品名称:', detail?.name);
-      console.log('商品价格:', detail?.price);
+      console.log('商品价格(原始):', detail?.price);
       console.log('商品图片:', detail?.images);
       console.log('商品描述:', detail?.description);
       console.log('================================');
+      
+      /**
+       * 统一处理前端展示用价格，避免首页/列表与详情页金额不一致
+       * - 景点：优先使用 ticketPrice，其次 price
+       * - 酒店：优先使用 minPrice，其次 price
+       * - 商品：保持使用 price，如果没有则回退到 minPrice
+       */
+      if (detail) {
+        let displayPrice = detail.price;
+        
+        // 如果 price 为空或无效，按类型做兜底
+        if (displayPrice === undefined || displayPrice === null || displayPrice === '') {
+          if (type === 'attraction') {
+            displayPrice = detail.ticketPrice != null ? detail.ticketPrice : detail.minPrice;
+          } else if (type === 'hotel') {
+            displayPrice = detail.minPrice != null ? detail.minPrice : detail.price;
+          } else if (type === 'product') {
+            displayPrice = detail.price != null ? detail.price : detail.minPrice;
+          }
+        }
+
+        // 最终保证为数字
+        if (displayPrice === undefined || displayPrice === null || displayPrice === '') {
+          displayPrice = 0;
+        }
+
+        // 直接覆盖 detail.price，保证 WXML 中使用的字段一致
+        detail.price = Number(displayPrice);
+
+        console.log('商品价格(用于展示):', detail.price, {
+          type,
+          originalPrice: detail.originalPrice,
+          ticketPrice: detail.ticketPrice,
+          minPrice: detail.minPrice,
+        });
+      }
       
       // 处理媒体列表（图片和视频）- 后端已处理OSS签名，这里只处理localhost
       const mediaList = this.processMediaList(detail);
@@ -200,6 +249,34 @@ Page({
         icon: 'none',
       });
     }
+  },
+
+  /**
+   * 生成最近四天的日期选项
+   */
+  generateDateOptions(baseDate = new Date()) {
+    const weekMap = ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六'];
+    const labelMap = ['今天', '明天', '后天'];
+
+    const options = [];
+
+    for (let i = 0; i < 4; i++) {
+      const d = new Date(baseDate);
+      d.setDate(d.getDate() + i);
+
+      const year = d.getFullYear();
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+
+      options.push({
+        label: labelMap[i] || weekMap[d.getDay()],
+        monthDay: `${d.getMonth() + 1}-${d.getDate()}`,
+        fullDate: `${year}-${month}-${day}`,
+        weekday: weekMap[d.getDay()],
+      });
+    }
+
+    return options;
   },
 
   /**
@@ -291,6 +368,17 @@ Page({
   },
 
   /**
+   * 景点详情主 Tab 切换（门票预订 / 景区介绍）
+   */
+  onBookingMainTabChange(e) {
+    const { tab } = e.currentTarget.dataset;
+    if (!tab) return;
+    this.setData({
+      bookingMainTab: tab,
+    });
+  },
+
+  /**
    * 选择房型（酒店）
    */
   onSelectRoom(e) {
@@ -317,6 +405,22 @@ Page({
     const useDate = e.detail.value;
     this.setData({
       useDate,
+      selectedDateIndex: -1,
+    });
+  },
+
+  /**
+   * 点击最近四天日期卡片（景点）
+   */
+  onSelectUseDateTab(e) {
+    const { index } = e.currentTarget.dataset;
+    const { dateOptions } = this.data;
+    const option = dateOptions[index];
+    if (!option) return;
+
+    this.setData({
+      selectedDateIndex: index,
+      useDate: option.fullDate,
     });
   },
 
@@ -330,23 +434,39 @@ Page({
   },
 
   /**
+   * 阻止弹窗背景滚动（在 mask 上使用）
+   */
+  onPreventMove() {
+    // 阻止事件冒泡，防止页面滚动
+    return false;
+  },
+
+  /**
    * 选择入住日期
    */
   onCheckInDateChange(e) {
     const checkInDate = e.detail.value;
     const { checkOutDate } = this.data;
     
-    // 如果退房日期早于入住日期，清空退房日期
-    if (checkOutDate && checkOutDate <= checkInDate) {
-      this.setData({
-        checkInDate,
-        checkOutDate: '',
-      });
-    } else {
-      this.setData({
-        checkInDate,
-      });
-    }
+    // 使用 nextTick 延迟更新，避免与 picker 关闭动画冲突
+    wx.nextTick(() => {
+      // 如果退房日期为空或早于等于入住日期，自动设置为入住日期+1天
+      if (!checkOutDate || checkOutDate <= checkInDate) {
+        // 计算入住日期+1天
+        const checkInDateObj = new Date(checkInDate);
+        checkInDateObj.setDate(checkInDateObj.getDate() + 1);
+        const nextDay = checkInDateObj.toISOString().split('T')[0];
+        
+        this.setData({
+          checkInDate,
+          checkOutDate: nextDay,
+        });
+      } else {
+        this.setData({
+          checkInDate,
+        });
+      }
+    });
   },
 
   /**
@@ -371,7 +491,7 @@ Page({
   },
 
   /**
-   * 减少数量
+   * 减少数量（通用）
    */
   onDecreaseQuantity() {
     const { quantity, detail } = this.data;
@@ -384,7 +504,7 @@ Page({
   },
 
   /**
-   * 增加数量
+   * 增加数量（通用）
    */
   onIncreaseQuantity() {
     const { quantity, detail } = this.data;
@@ -401,6 +521,114 @@ Page({
     this.setData({
       quantity: quantity + 1,
     });
+  },
+
+  /**
+   * 获取指定票种当前数量，默认 1
+   */
+  getTicketQuantity(ticketId) {
+    const { ticketQuantities } = this.data;
+    if (!ticketId) {
+      return 1;
+    }
+    const current = ticketQuantities[ticketId];
+    if (typeof current !== 'number' || current <= 0) {
+      return 1;
+    }
+    return current;
+  },
+
+  /**
+   * 设置指定票种数量
+   */
+  setTicketQuantity(ticketId, quantity) {
+    if (!ticketId) return;
+    let finalQty = parseInt(quantity, 10);
+    if (isNaN(finalQty) || finalQty <= 0) {
+      finalQty = 1;
+    }
+    const { ticketQuantities } = this.data;
+    this.setData({
+      ticketQuantities: {
+        ...ticketQuantities,
+        [ticketId]: finalQty,
+      },
+    });
+  },
+
+  /**
+   * 减少票种数量
+   */
+  onDecreaseTicketQuantity(e) {
+    const { ticketId } = e.currentTarget.dataset;
+    const { detail } = this.data;
+    if (!ticketId) return;
+
+    const current = this.getTicketQuantity(ticketId);
+    if (current <= 1) {
+      return;
+    }
+
+    // 校验库存（如果有的话）
+    let maxStock = detail && detail.stock;
+    if (detail && detail.ticketCategories) {
+      detail.ticketCategories.forEach(cat => {
+        if (cat && cat.tickets) {
+          cat.tickets.forEach(t => {
+            if (t && String(t.id) === String(ticketId) && t.stock !== undefined) {
+              maxStock = t.stock;
+            }
+          });
+        }
+      });
+    }
+
+    if (maxStock !== undefined && current > maxStock) {
+      wx.showToast({
+        title: `库存不足，仅剩${maxStock}张`,
+        icon: 'none',
+      });
+      this.setTicketQuantity(ticketId, maxStock);
+      return;
+    }
+
+    this.setTicketQuantity(ticketId, current - 1);
+  },
+
+  /**
+   * 增加票种数量
+   */
+  onIncreaseTicketQuantity(e) {
+    const { ticketId } = e.currentTarget.dataset;
+    const { detail } = this.data;
+    if (!ticketId) return;
+
+    const current = this.getTicketQuantity(ticketId);
+    let next = current + 1;
+
+    // 校验库存（如果有的话）
+    let maxStock = detail && detail.stock;
+    if (detail && detail.ticketCategories) {
+      detail.ticketCategories.forEach(cat => {
+        if (cat && cat.tickets) {
+          cat.tickets.forEach(t => {
+            if (t && String(t.id) === String(ticketId) && t.stock !== undefined) {
+              maxStock = t.stock;
+            }
+          });
+        }
+      });
+    }
+
+    if (maxStock !== undefined && next > maxStock) {
+      wx.showToast({
+        title: `库存不足，仅剩${maxStock}张`,
+        icon: 'none',
+      });
+      next = maxStock;
+    }
+
+    this.setTicketQuantity(ticketId, next);
   },
 
   /**
@@ -425,12 +653,24 @@ Page({
       return;
     }
     
-    const { type, id, detail, quantity, selectedRoom, selectedSpec, showSpecModal, showRoomModal } = this.data;
+    const { type, id, detail, quantity, selectedRoom, selectedSpec, showSpecModal, showRoomModal, useDate } = this.data;
     
     // 如果是从弹窗中点击确定按钮，直接执行加入购物车逻辑
     if (showSpecModal || showRoomModal) {
       await this.doAddToCart();
       return;
+    }
+
+    // 景点需要选择使用日期
+    if (type === 'attraction') {
+      if (!useDate) {
+        wx.showToast({
+          title: '请选择使用日期',
+          icon: 'none',
+        });
+        this.setData({ showAttractionModal: true });
+        return;
+      }
     }
     
     // 酒店需要选择房型
@@ -563,6 +803,14 @@ Page({
   },
   
   /**
+   * 房型弹窗中的立即预订确认（酒店）
+   * 复用现有 onBuyNow 逻辑，保证弹窗“确定”按钮可用
+   */
+  async onBookNow() {
+    await this.onBuyNow();
+  },
+  
+  /**
    * 选择规格（商品）
    */
   onSelectSpec(e) {
@@ -642,12 +890,12 @@ Page({
     
     // 景点需要选择使用日期
     if (type === 'attraction') {
+      // 新的景点预订流程全部从票种「预订」按钮进入，这里保持兜底提示但不再弹出日期选择弹窗
       if (!useDate) {
         wx.showToast({
           title: '请选择使用日期',
           icon: 'none',
         });
-        this.setData({ showAttractionModal: true });
         return;
       }
     }
@@ -740,9 +988,16 @@ Page({
           showRoomModal: false,
         });
         
-        // 跳转到订单详情页或支付页
+        // 直接跳转到订单详情页
         wx.navigateTo({
           url: `/pages/order/detail?id=${order.id}`,
+          fail: (err) => {
+            console.error('跳转订单详情失败:', err);
+            wx.showToast({
+              title: '跳转失败，请重试',
+              icon: 'none',
+            });
+          },
         });
       } catch (error) {
         wx.hideLoading();
@@ -760,7 +1015,7 @@ Page({
       return;
     }
     
-    // 景点类型：直接创建订单，不加入购物车
+    // 景点类型：直接创建订单，不加入购物车（从票种预订按钮也会复用此逻辑）
     if (type === 'attraction') {
       try {
         // 获取用户信息作为联系人信息
@@ -827,9 +1082,16 @@ Page({
           showAttractionModal: false,
         });
         
-        // 跳转到订单详情页
+        // 直接跳转到订单详情页
         wx.navigateTo({
           url: `/pages/order/detail?id=${order.id}`,
+          fail: (err) => {
+            console.error('跳转订单详情失败:', err);
+            wx.showToast({
+              title: '跳转失败，请重试',
+              icon: 'none',
+            });
+          },
         });
       } catch (error) {
         wx.hideLoading();
@@ -871,6 +1133,123 @@ Page({
       console.error('立即购买失败', error);
       wx.showToast({
         title: error.message || '购买失败',
+        icon: 'none',
+      });
+    }
+  },
+
+  /**
+   * 点击票种上的「预订」按钮（景点）
+   */
+  async onTicketBookTap(e) {
+    const { ticket } = e.currentTarget.dataset;
+    const { type, useDate } = this.data;
+
+    if (type !== 'attraction') {
+      return;
+    }
+
+    if (!ticket) {
+      wx.showToast({
+        title: '票种信息异常',
+        icon: 'none',
+      });
+      return;
+    }
+
+    if (!useDate) {
+      wx.showToast({
+        title: '请选择使用日期',
+        icon: 'none',
+      });
+      return;
+    }
+
+    if (ticket.status !== undefined && ticket.status !== 1) {
+      wx.showToast({
+        title: '该票种暂不可售',
+        icon: 'none',
+      });
+      return;
+    }
+
+    // 直接走景点下单逻辑，但按票种维度计价：使用订单类型 ATTRACTION_TICKET
+    try {
+      // 检查登录
+      if (!auth.isLoggedIn()) {
+        wx.showModal({
+          title: '提示',
+          content: '请先登录后再购买',
+          confirmText: '去登录',
+          cancelText: '取消',
+          success: (res) => {
+            if (res.confirm) {
+              wx.navigateTo({
+                url: '/pages/mine/login',
+              });
+            }
+          },
+        });
+        return;
+      }
+
+      const userInfo = auth.getUserInfo();
+      const contactName = userInfo?.nickname || userInfo?.name || '微信用户';
+      const contactPhone = userInfo?.phone || '';
+
+      if (!contactPhone) {
+        wx.showModal({
+          title: '提示',
+          content: '请先完善手机号信息',
+          confirmText: '去完善',
+          cancelText: '取消',
+          success: (res) => {
+            if (res.confirm) {
+              wx.navigateTo({
+                url: '/pages/mine/profile-edit?fromBooking=true',
+              });
+            }
+          },
+        });
+        return;
+      }
+
+      // 每个票种使用自己的数量，默认为 1
+      const ticketQuantity = this.getTicketQuantity(ticket.id);
+
+      const orderItem = {
+        itemType: 'ATTRACTION_TICKET',
+        itemId: ticket.id,
+        quantity: ticketQuantity,
+        useDate,
+      };
+
+      const orderData = {
+        orderType: 'ATTRACTION',
+        items: [orderItem],
+        contactName,
+        contactPhone,
+      };
+
+      wx.showLoading({
+        title: '创建订单中...',
+        mask: true,
+      });
+
+      const order = await orderApi.createOrder(orderData);
+      wx.hideLoading();
+
+      wx.navigateTo({
+        url: `/pages/order/detail?id=${order.id}`,
+      });
+    } catch (error) {
+      wx.hideLoading();
+      if (error.isAuthError) {
+        return;
+      }
+      console.error('创建景点票种订单失败', error);
+      wx.showToast({
+        title: error.message || '创建订单失败',
         icon: 'none',
       });
     }

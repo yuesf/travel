@@ -175,42 +175,7 @@
             </el-form-item>
           </el-tab-pane>
 
-          <!-- Tab 3: 门票信息 -->
-          <el-tab-pane label="门票信息" name="ticket">
-            <el-row :gutter="20">
-              <el-col :span="12">
-                <el-form-item label="门票价格" prop="ticketPrice">
-                  <el-input-number
-                    v-model="formData.ticketPrice"
-                    :precision="2"
-                    :step="0.01"
-                    :min="0"
-                    placeholder="请输入门票价格"
-                    style="width: 100%"
-                  />
-                  <span class="form-unit">元</span>
-                </el-form-item>
-              </el-col>
-              <el-col :span="12">
-                <el-form-item label="门票库存" prop="ticketStock">
-                  <el-input-number
-                    v-model="formData.ticketStock"
-                    :min="0"
-                    placeholder="请输入门票库存"
-                    style="width: 100%"
-                  />
-                  <span class="form-unit">张</span>
-                </el-form-item>
-              </el-col>
-            </el-row>
-
-            <el-form-item label="有效期" prop="validPeriod">
-              <el-input v-model="formData.validPeriod" placeholder="请输入有效期，如：7天" />
-              <div class="form-tip">例如：7天、30天、永久有效</div>
-            </el-form-item>
-          </el-tab-pane>
-
-          <!-- Tab 4: 状态设置 -->
+          <!-- Tab 3: 状态设置 -->
           <el-tab-pane label="状态设置" name="status">
             <el-form-item label="状态" prop="status">
               <el-radio-group v-model="formData.status">
@@ -220,17 +185,12 @@
             </el-form-item>
           </el-tab-pane>
 
-          <!-- Tab 5: 可订日期管理 -->
-          <el-tab-pane label="可订日期" name="booking-dates" v-if="isEdit">
-            <BookingDateManager :attraction-id="route.params.id" />
-          </el-tab-pane>
-
-          <!-- Tab 6: 票种分类 -->
+          <!-- Tab 4: 票种分类 -->
           <el-tab-pane label="票种分类" name="ticket-categories" v-if="isEdit">
             <TicketCategoryManager :attraction-id="route.params.id" />
           </el-tab-pane>
 
-          <!-- Tab 7: 具体票种 -->
+          <!-- Tab 5: 具体票种 -->
           <el-tab-pane label="具体票种" name="tickets" v-if="isEdit">
             <TicketManager :attraction-id="route.params.id" />
           </el-tab-pane>
@@ -249,7 +209,6 @@ import VideoUpload from '@/components/VideoUpload.vue'
 import RichTextEditor from '@/components/RichTextEditor.vue'
 import RegionPicker from '@/components/RegionPicker.vue'
 import TimePicker from '@/components/TimePicker.vue'
-import BookingDateManager from '@/components/BookingDateManager.vue'
 import TicketCategoryManager from '@/components/TicketCategoryManager.vue'
 import TicketManager from '@/components/TicketManager.vue'
 import { getAttractionById, createAttraction, updateAttraction } from '@/api/attractions'
@@ -279,9 +238,6 @@ const formData = reactive({
   contactPhone: '',
   longitude: null,
   latitude: null,
-  ticketPrice: null,
-  ticketStock: null,
-  validPeriod: '',
   status: 1, // 默认上架
   rating: '', // 景区评级
   tags: [], // 景区标签
@@ -305,9 +261,6 @@ const commonTags = [
 // 表单验证规则
 const formRules = {
   name: [{ required: true, message: '请输入景点名称', trigger: 'blur' }],
-  // 门票价格和库存改为可选，因为现在通过可订日期和票种来管理
-  ticketPrice: [],
-  ticketStock: [],
 }
 
 // 加载详情数据
@@ -343,9 +296,6 @@ const loadDetail = async () => {
       formData.contactPhone = data.contactPhone || ''
       formData.longitude = data.longitude ? parseFloat(data.longitude) : null
       formData.latitude = data.latitude ? parseFloat(data.latitude) : null
-      formData.ticketPrice = data.ticketPrice ? parseFloat(data.ticketPrice) : null
-      formData.ticketStock = data.ticketStock || null
-      formData.validPeriod = data.validPeriod || ''
       formData.status = data.status !== undefined ? data.status : 1
       formData.rating = data.rating || ''
       formData.tags = data.tags || []
@@ -403,9 +353,6 @@ const handleSubmit = async () => {
             // 确保经纬度为数字类型
             longitude: formData.longitude ? parseFloat(formData.longitude) : null,
             latitude: formData.latitude ? parseFloat(formData.latitude) : null,
-            // 门票价格和库存改为可选，如果为空则不发送
-            ticketPrice: formData.ticketPrice || null,
-            ticketStock: formData.ticketStock || null,
           }
 
           if (isEdit.value) {

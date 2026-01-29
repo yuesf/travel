@@ -2,10 +2,14 @@ package com.travel.service;
 
 import com.github.benmanes.caffeine.cache.Cache;
 import com.travel.entity.Attraction;
+import com.travel.entity.AttractionTicket;
+import com.travel.entity.AttractionTicketCategory;
 import com.travel.entity.Hotel;
 import com.travel.entity.HotelRoom;
 import com.travel.entity.Product;
 import com.travel.mapper.AttractionMapper;
+import com.travel.mapper.AttractionTicketCategoryMapper;
+import com.travel.mapper.AttractionTicketMapper;
 import com.travel.mapper.HotelRoomMapper;
 import com.travel.util.OssUrlUtil;
 import lombok.extern.slf4j.Slf4j;
@@ -35,6 +39,12 @@ public class DetailService {
     @Autowired
     @Qualifier("attractionDetailCache")
     private Cache<Long, Attraction> attractionDetailCache;
+
+    @Autowired
+    private AttractionTicketCategoryMapper attractionTicketCategoryMapper;
+
+    @Autowired
+    private AttractionTicketMapper attractionTicketMapper;
     
     @Autowired
     private ProductService productService;
@@ -82,6 +92,58 @@ public class DetailService {
         
         // 处理OSS URL签名
         processOssUrlsInAttraction(attraction);
+
+        // 加载票种分类和票种列表，用于小程序景点详情页
+        try {
+            List<AttractionTicketCategory> categories = attractionTicketCategoryMapper.selectList(id);
+            List<AttractionTicket> tickets = attractionTicketMapper.selectList(id, null);
+
+            if (categories != null && !categories.isEmpty()) {
+                // 仅保留启用状态的分类
+                List<AttractionTicketCategory> activeCategories = new ArrayList<>();
+
+                Map<Long, List<AttractionTicket>> ticketsByCategory = new HashMap<>();
+                if (tickets != null && !tickets.isEmpty()) {
+                    for (AttractionTicket ticket : tickets) {
+                        if (ticket.getStatus() == null || ticket.getStatus() != 1) {
+                            // 仅暴露启用状态的票种
+                            continue;
+                        }
+                        Long categoryId = ticket.getCategoryId();
+                        if (categoryId == null) {
+                            continue;
+                        }
+                        ticketsByCategory
+                            .computeIfAbsent(categoryId, k -> new ArrayList<>())
+                            .add(ticket);
+                    }
+                }
+
+                List<AttractionTicket> flatTickets = new ArrayList<>();
+
+                for (AttractionTicketCategory category : categories) {
+                    if (category == null || category.getStatus() == null || category.getStatus() != 1) {
+                        continue;
+                    }
+                    List<AttractionTicket> categoryTickets = ticketsByCategory.getOrDefault(
+                        category.getId(),
+                        new ArrayList<>()
+                    );
+                    // 分类下至少有一个票种才返回，避免前端出现空分类
+                    if (!categoryTickets.isEmpty()) {
+                        category.setTickets(categoryTickets);
+                        activeCategories.add(category);
+                        flatTickets.addAll(categoryTickets);
+                    }
+                }
+
+                attraction.setTicketCategories(activeCategories);
+                attraction.setTickets(flatTickets);
+            }
+        } catch (Exception e) {
+            // 为避免影响主流程，这里仅记录日志，不抛出异常
+            log.warn("加载景点票务信息失败，attractionId={}，error={}", id, e.getMessage());
+        }
         
         // 存入缓存
         attractionDetailCache.put(id, attraction);
